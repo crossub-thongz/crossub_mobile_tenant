@@ -95,7 +95,7 @@ export function TenantShell({
           )}
           <div className="flex items-center gap-1">
             <Link
-              href={ROUTES.NOTIFICATIONS}
+              href="#"
               className="relative flex size-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary"
               aria-label="Notifications"
             >
@@ -108,7 +108,8 @@ export function TenantShell({
               variant="ghost"
               size="icon"
               className="size-9"
-              onClick={() => setMoreOpen((v) => !v)}
+              // onClick={() => setMoreOpen((v) => !v)}
+
             >
               <Menu className="size-5" />
             </Button>
@@ -151,9 +152,7 @@ export function TenantShell({
         className="flex-1 px-4 py-4 pb-24"
         style={{ paddingTop: headerHeight + 16 }}
       >
-        <div className="mb-4">
-          <ConnectionBanner />
-        </div>
+
         {children}
       </main>
       <nav className="fixed bottom-0 left-1/2 z-50 w-full max-w-lg -translate-x-1/2 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
@@ -165,7 +164,8 @@ export function TenantShell({
             return (
               <Link
                 key={href}
-                href={href}
+                href="#"
+                // href={href}
                 className={cn(
                   'relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 text-[10px] font-medium',
                   active ? 'text-primary' : 'text-muted-foreground',
@@ -182,7 +182,8 @@ export function TenantShell({
             );
           })}
           <Link
-            href={ROUTES.PROFILE}
+            href="#"
+            // href={ROUTES.PROFILE}
             className={cn(
               'flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 text-[10px] font-medium',
               isActive(pathname, ROUTES.PROFILE) ? 'text-primary' : 'text-muted-foreground',
