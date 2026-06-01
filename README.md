@@ -94,6 +94,8 @@ Leave `COOKIE_DOMAIN` empty so auth cookies bind to each app hostname.
 | Start Command | `pnpm --filter @crossub/tenant start` |
 | Health check | `/login` |
 
+If Render still has the **agent portal** commands (`build:portal` / `start:portal`), either update them to `build:tenant` / `start:tenant`, or push this repo — root `package.json` includes `build:portal` → `build:tenant` aliases for compatibility.
+
 ## Integration map
 
 ```
