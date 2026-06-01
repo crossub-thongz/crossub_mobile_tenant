@@ -1,0 +1,262 @@
+export type Priority = 'urgent' | 'high' | 'normal' | 'low';
+
+export type TenantLifecyclePhase =
+  | 'searching'
+  | 'applied'
+  | 'onboarding'
+  | 'active'
+  | 'renewal'
+  | 'vacating'
+  | 'completed';
+
+export type ApplicationStatus =
+  | 'submitted'
+  | 'missing_information'
+  | 'under_review'
+  | 'approved'
+  | 'declined';
+
+export type OnboardingStepId =
+  | 'deposit'
+  | 'bond'
+  | 'lease_signing'
+  | 'account_setup'
+  | 'ingoing_report';
+
+export type OnboardingStepStatus = 'pending' | 'uploaded' | 'approved' | 'completed';
+
+export type IngoingReportStatus =
+  | 'pending_tenant_review'
+  | 'partially_confirmed'
+  | 'disputed'
+  | 'confirmed'
+  | 'overdue';
+
+export type MaintenanceTenantStatus =
+  | 'submitted'
+  | 'under_review'
+  | 'waiting_for_approval'
+  | 'contractor_assigned'
+  | 'appointment_required'
+  | 'in_progress'
+  | 'completed'
+  | 'closed';
+
+export type MessageType =
+  | 'general'
+  | 'maintenance'
+  | 'inspection'
+  | 'rent_review'
+  | 'accounting'
+  | 'vacating';
+
+export type RentReviewTenantStatus = 'pending' | 'accepted' | 'rejected' | 'countered';
+
+export type ArrearsStage =
+  | 'late_reminder'
+  | 'follow_up'
+  | 'termination_notice'
+  | 'resolved';
+
+export interface TimelineEntry {
+  id: string;
+  at: string;
+  actor: string;
+  title: string;
+  detail?: string;
+}
+
+export interface PendingAction {
+  id: string;
+  module:
+    | 'application'
+    | 'onboarding'
+    | 'ingoing'
+    | 'maintenance'
+    | 'rent_review'
+    | 'renewal'
+    | 'vacating'
+    | 'outgoing'
+    | 'payment'
+    | 'message';
+  title: string;
+  subtitle: string;
+  status: string;
+  priority: Priority;
+  dueAt?: string;
+  href: string;
+  updatedAt: string;
+}
+
+export interface TenantNotification {
+  id: string;
+  title: string;
+  body: string;
+  type: string;
+  read: boolean;
+  href: string;
+  createdAt: string;
+  actionRequired?: string;
+}
+
+export interface ListingProperty {
+  id: string;
+  address: string;
+  suburb: string;
+  rentWeekly: number;
+  propertyType: string;
+  bedrooms: number;
+  bathrooms: number;
+  availableFrom: string;
+  openInspectionAt?: string;
+  features: string[];
+  imageUrl?: string;
+}
+
+export interface RentalApplication {
+  id: string;
+  referenceNumber: string;
+  propertyId: string;
+  propertyAddress: string;
+  status: ApplicationStatus;
+  submittedAt: string;
+  missingDocuments?: string[];
+  declineReason?: string;
+}
+
+export interface OnboardingStep {
+  id: OnboardingStepId;
+  title: string;
+  description: string;
+  status: OnboardingStepStatus;
+  dueAt?: string;
+  amount?: number;
+  href: string;
+}
+
+export interface LeaseSummary {
+  id: string;
+  propertyAddress: string;
+  rentWeekly: number;
+  leaseStart: string;
+  leaseEnd: string;
+  periodic: boolean;
+  status: 'active' | 'periodic' | 'expiring' | 'vacating';
+  documents: { id: string; name: string; uploadedAt: string }[];
+  renewalDueInDays?: number;
+}
+
+export interface ReportSection {
+  id: string;
+  room: string;
+  description: string;
+  photos: string[];
+  tenantConfirmed: boolean;
+  tenantDispute?: string;
+  confirmedAt?: string;
+}
+
+export interface IngoingReport {
+  id: string;
+  propertyAddress: string;
+  status: IngoingReportStatus;
+  dueBy: string;
+  sections: ReportSection[];
+  confirmedCount: number;
+}
+
+export interface MaintenanceRequest {
+  id: string;
+  trackingNumber: string;
+  propertyAddress: string;
+  category: string;
+  description: string;
+  area: string;
+  urgency: Priority;
+  status: MaintenanceTenantStatus;
+  statusLabel: string;
+  contractorName?: string;
+  timeline: TimelineEntry[];
+  createdAt: string;
+}
+
+export interface MessageThread {
+  id: string;
+  subject: string;
+  type: MessageType;
+  propertyAddress?: string;
+  lastMessage: string;
+  lastAt: string;
+  unread: number;
+  linkedCaseId?: string;
+}
+
+export interface ThreadMessage {
+  id: string;
+  at: string;
+  from: 'tenant' | 'crossub' | 'contractor';
+  fromName: string;
+  body: string;
+}
+
+export interface RentReceipt {
+  id: string;
+  receiptNumber: string;
+  periodStart: string;
+  periodEnd: string;
+  amount: number;
+  receivedAt: string;
+  issuedAt: string;
+  pdfAvailable: boolean;
+}
+
+export interface RentReviewCase {
+  id: string;
+  propertyAddress: string;
+  currentRentWeekly: number;
+  proposedRentWeekly: number;
+  effectiveDate: string;
+  explanation?: string;
+  status: RentReviewTenantStatus;
+  counterHistory: { at: string; amount: number; by: 'tenant' | 'agent' }[];
+  moveOutDate?: string;
+}
+
+export interface RenewalDecision {
+  dueBy: string;
+  leaseEnd: string;
+  status: 'pending' | 'renew' | 'not_renew' | 'overdue';
+  selectedMoveOutDate?: string;
+}
+
+export interface VacatingCase {
+  id: string;
+  propertyAddress: string;
+  vacatingDate: string;
+  outgoingStatus:
+    | 'report_sent'
+    | 'confirmed'
+    | 'disputed'
+    | 'supporting_photos_required'
+    | 'finalized';
+  outgoingReportId?: string;
+}
+
+export interface FinalStatement {
+  id: string;
+  propertyAddress: string;
+  totalBond: number;
+  rentArrears: number;
+  unpaidBills: number;
+  deductions: number;
+  finalRefund: number;
+  finalizedAt: string;
+}
+
+export interface ArrearsNotice {
+  stage: ArrearsStage;
+  outstandingAmount: number;
+  dueDate: string;
+  message: string;
+  documentUrl?: string;
+}

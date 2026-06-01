@@ -1,0 +1,22 @@
+{
+  "name": "crossub-mobile-tenant",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CROSSUB tenant portal — mobile-first lifecycle app (consumes crossub_web API).",
+  "scripts": {
+    "preinstall": "npx -y only-allow pnpm",
+    "dev": "pnpm --filter @crossub/tenant dev",
+    "build": "pnpm --filter @crossub/tenant build",
+    "build:tenant": "pnpm --filter @crossub/tenant build",
+    "start": "pnpm --filter @crossub/tenant start",
+    "start:tenant": "pnpm --filter @crossub/tenant start",
+    "lint": "pnpm --filter @crossub/tenant lint"
+  },
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9",
+    "npm": "please-use-pnpm",
+    "yarn": "please-use-pnpm"
+  }
+}

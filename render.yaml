@@ -1,0 +1,25 @@
+# Render Blueprint — crossub_mobile_tenant
+# Docs: https://render.com/docs/blueprint-spec
+#
+# Deploy after crossub_web API is live. Set API_INTERNAL_URL to your API URL.
+
+services:
+  - type: web
+    name: crossub-mobile-tenant
+    runtime: node
+    region: singapore
+    plan: starter
+    buildCommand: corepack enable && pnpm install && pnpm build:tenant
+    startCommand: pnpm --filter @crossub/tenant start
+    healthCheckPath: /login
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_URL
+        value: /api
+      - key: API_INTERNAL_URL
+        sync: false
+      - key: NEXT_PUBLIC_AGENT_PORTAL_URL
+        sync: false
+      - key: NEXT_PUBLIC_WEB_URL
+        sync: false
