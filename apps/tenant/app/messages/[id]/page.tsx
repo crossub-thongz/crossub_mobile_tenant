@@ -6,9 +6,10 @@ import { toast } from 'sonner';
 
 import { TenantShell } from '@/components/layout/tenant-shell';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
 import { ROUTES } from '@/constants/routes';
-import { formatDateTime } from '@/lib/utils';
+import { cn, formatDateTime } from '@/lib/utils';
 
 const DEMO_MESSAGES = [
   {
@@ -33,6 +34,36 @@ export default function MessageDetailPage() {
   const thread = messages.find((m) => m.id === id);
   const [reply, setReply] = useState('');
 
+  const composeBar = (
+    <div className="flex gap-2">
+      <Input
+        className="flex-1"
+        placeholder="Reply to CROSSUB..."
+        value={reply}
+        onChange={(e) => setReply(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            if (reply.trim()) {
+              toast.success('Message sent — audit logged');
+              setReply('');
+            }
+          }
+        }}
+      />
+      <Button
+        className="shrink-0"
+        onClick={() => {
+          if (!reply.trim()) return;
+          toast.success('Message sent — audit logged');
+          setReply('');
+        }}
+      >
+        Send
+      </Button>
+    </div>
+  );
+
   if (!thread) {
     return (
       <TenantShell title="Message" backHref={ROUTES.MESSAGES}>
@@ -42,38 +73,28 @@ export default function MessageDetailPage() {
   }
 
   return (
-    <TenantShell title={thread.subject} backHref={ROUTES.MESSAGES}>
+    <TenantShell
+      title={thread.subject}
+      backHref={ROUTES.MESSAGES}
+      bottomBar={composeBar}
+    >
       <div className="space-y-3">
         {DEMO_MESSAGES.map((msg) => (
           <div
             key={msg.id}
-            className={`rounded-xl border p-3 text-sm ${
-              msg.from === 'tenant' ? 'border-primary/30 ml-6' : 'mr-6'
-            }`}
+            className={cn(
+              'max-w-[92%] rounded-xl border p-3 text-sm',
+              msg.from === 'tenant'
+                ? 'border-primary/30 ml-auto'
+                : 'mr-auto bg-card',
+            )}
           >
             <p className="text-muted-foreground text-xs">
               {msg.fromName} · {formatDateTime(msg.at)}
             </p>
-            <p className="mt-1">{msg.body}</p>
+            <p className="mt-1 leading-relaxed">{msg.body}</p>
           </div>
         ))}
-      </div>
-      <div className="mt-6 flex gap-2">
-        <input
-          className="border-input bg-background flex-1 rounded-md border px-3 py-2 text-sm"
-          placeholder="Reply to CROSSUB..."
-          value={reply}
-          onChange={(e) => setReply(e.target.value)}
-        />
-        <Button
-          onClick={() => {
-            if (!reply.trim()) return;
-            toast.success('Message sent — audit logged');
-            setReply('');
-          }}
-        >
-          Send
-        </Button>
       </div>
     </TenantShell>
   );

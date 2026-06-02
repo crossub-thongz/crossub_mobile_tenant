@@ -46,14 +46,19 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+const BOTTOM_NAV_HEIGHT = '4rem';
+
 export function TenantShell({
   children,
   title,
   backHref,
+  /** Pins a bar (e.g. message compose) directly above the bottom nav — avoids a gap under in-flow inputs. */
+  bottomBar,
 }: {
   children: React.ReactNode;
   title?: string;
   backHref?: string;
+  bottomBar?: React.ReactNode;
 }) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
@@ -74,8 +79,15 @@ export function TenantShell({
     return () => observer.disconnect();
   }, [title, moreOpen]);
 
+  const safeBottom = 'env(safe-area-inset-bottom, 0px)';
+  const navOffset = `calc(${BOTTOM_NAV_HEIGHT} + ${safeBottom})`;
+  const navClearance = `calc(${BOTTOM_NAV_HEIGHT} + ${safeBottom} + 1rem)`;
+  const mainPaddingBottom = bottomBar
+    ? `calc(${BOTTOM_NAV_HEIGHT} + 3.75rem + ${safeBottom} + 0.5rem)`
+    : navClearance;
+
   return (
-    <div className="mx-auto flex min-h-screen max-w-lg flex-col bg-background">
+    <div className="mx-auto min-h-screen max-w-lg bg-background">
       <header
         ref={headerRef}
         className="fixed top-0 left-1/2 z-40 w-full max-w-lg -translate-x-1/2 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80"
@@ -95,7 +107,7 @@ export function TenantShell({
           )}
           <div className="flex items-center gap-1">
             <Link
-              href="#"
+              href={ROUTES.NOTIFICATIONS}
               className="relative flex size-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary"
               aria-label="Notifications"
             >
@@ -108,8 +120,7 @@ export function TenantShell({
               variant="ghost"
               size="icon"
               className="size-9"
-              // onClick={() => setMoreOpen((v) => !v)}
-
+              onClick={() => setMoreOpen((v) => !v)}
             >
               <Menu className="size-5" />
             </Button>
@@ -149,12 +160,22 @@ export function TenantShell({
         )}
       </header>
       <main
-        className="flex-1 px-4 py-4 pb-24"
-        style={{ paddingTop: headerHeight + 16 }}
+        className="px-4 py-4"
+        style={{
+          paddingTop: headerHeight + 16,
+          paddingBottom: mainPaddingBottom,
+        }}
       >
-
         {children}
       </main>
+      {bottomBar && (
+        <div
+          className="fixed left-1/2 z-40 w-full max-w-lg -translate-x-1/2 border-t border-border bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/90"
+          style={{ bottom: navOffset }}
+        >
+          {bottomBar}
+        </div>
+      )}
       <nav className="fixed bottom-0 left-1/2 z-50 w-full max-w-lg -translate-x-1/2 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
         <div className="flex h-16 items-stretch justify-around px-1">
           {PRIMARY_NAV.map(({ href, label, icon: Icon }) => {
@@ -164,8 +185,7 @@ export function TenantShell({
             return (
               <Link
                 key={href}
-                href="#"
-                // href={href}
+                href={href}
                 className={cn(
                   'relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 text-[10px] font-medium',
                   active ? 'text-primary' : 'text-muted-foreground',
@@ -182,8 +202,7 @@ export function TenantShell({
             );
           })}
           <Link
-            href="#"
-            // href={ROUTES.PROFILE}
+            href={ROUTES.PROFILE}
             className={cn(
               'flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 text-[10px] font-medium',
               isActive(pathname, ROUTES.PROFILE) ? 'text-primary' : 'text-muted-foreground',

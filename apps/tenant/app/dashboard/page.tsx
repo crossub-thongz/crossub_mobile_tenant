@@ -24,7 +24,7 @@ export default function DashboardPage() {
     <TenantShell title="Home">
       <div className="space-y-5">
         {/* <LifecycleBanner /> */}
-        {/* <section className="space-y-3">
+        <section className="space-y-3">
           <h2 className="text-sm font-semibold">What you need to do now</h2>
           {loading ? (
             <p className="text-muted-foreground text-sm">Loading...</p>
@@ -50,7 +50,7 @@ export default function DashboardPage() {
               </Link>
             ))}
           </div>
-        </section> */}
+        </section>
       </div>
     </TenantShell>
   );

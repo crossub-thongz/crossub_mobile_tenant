@@ -81,7 +81,7 @@ export default function LoginPage() {
             <Label htmlFor="email">Email</Label>
             <div className="relative">
               <Mail className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input id="email" type="email" className="pl-10" {...register('email')} />
+              <Input id="email" type="email" className="pl-10" placeholder="you@agency.com" {...register('email')} />
             </div>
             {errors.email && (
               <p className="text-xs text-destructive">{errors.email.message}</p>
@@ -95,6 +95,7 @@ export default function LoginPage() {
                 id="password"
                 type={showPassword ? 'text' : 'password'}
                 className="pl-10 pr-10"
+                placeholder="Enter your password"
                 {...register('password')}
               />
               <button

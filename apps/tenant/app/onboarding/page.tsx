@@ -14,7 +14,8 @@ export default function OnboardingPage() {
   return (
     <TenantShell title="Onboarding">
       <p className="text-muted-foreground mb-4 text-sm">
-        Approved tenant checklist — deposit, bond, lease signing, account setup, ingoing report.
+        Approved tenant checklist — deposit and bond are separate payments (both required when
+        applicable), then lease signing, account setup, and ingoing report.
       </p>
       <div className="space-y-2">
         {onboardingSteps.map((step, i) => (

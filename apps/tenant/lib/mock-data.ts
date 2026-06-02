@@ -101,7 +101,8 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
   {
     id: 'bond',
     title: 'Bond proof (4 weeks)',
-    description: 'Upload bond payment proof per your jurisdiction (RBO or designated account).',
+    description:
+      'Required in addition to deposit — upload bond lodgement proof (RBO or designated account).',
     status: 'pending',
     dueAt: '2026-06-08',
     amount: 2080,
