@@ -10,10 +10,10 @@ import { useTenantData } from '@/components/providers/tenant-data-provider';
 import { ROUTES } from '@/constants/routes';
 
 const QUICK_LINKS = [
-  { href: ROUTES.LEASE, label: 'My lease' },
-  { href: ROUTES.PAYMENTS, label: 'Rent receipts' },
-  { href: ROUTES.ONBOARDING, label: 'Onboarding' },
-  { href: ROUTES.APPLICATIONS, label: 'Applications' },
+  // { href: ROUTES.LEASE, label: 'My lease' },
+  // { href: ROUTES.PAYMENTS, label: 'Rent receipts' },
+  // { href: ROUTES.ONBOARDING, label: 'Onboarding' },
+  // { href: ROUTES.APPLICATIONS, label: 'Applications' },
 ] as const;
 
 export default function DashboardPage() {
