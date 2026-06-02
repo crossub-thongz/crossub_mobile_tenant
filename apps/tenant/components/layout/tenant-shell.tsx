@@ -25,7 +25,7 @@ const PRIMARY_NAV = [
   { href: ROUTES.DASHBOARD, label: 'Home', icon: Home },
   { href: ROUTES.PROPERTIES, label: 'Browse', icon: Search },
   { href: ROUTES.MESSAGES, label: 'Messages', icon: MessageSquare },
-  { href: ROUTES.MAINTENANCE, label: 'Repairs', icon: Wrench },
+  { href: '#', label: 'Repairs', icon: Wrench },
 ] as const;
 
 const MORE_NAV = [
@@ -141,7 +141,8 @@ export function TenantShell({
               {MORE_NAV.map(({ href, label }) => (
                 <Link
                   key={href}
-                  href={href}
+                  href="#"
+                  // href={href}
                   onClick={() => setMoreOpen(false)}
                   className="rounded-lg px-3 py-2.5 text-sm hover:bg-secondary"
                 >
