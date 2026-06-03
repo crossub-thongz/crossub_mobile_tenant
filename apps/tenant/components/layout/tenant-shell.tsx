@@ -141,8 +141,7 @@ export function TenantShell({
               {MORE_NAV.map(({ href, label }) => (
                 <Link
                   key={href}
-                  // href={href}
-                  href="#"
+                  href={href}
                   onClick={() => setMoreOpen(false)}
                   className="rounded-lg px-3 py-2.5 text-sm hover:bg-secondary"
                 >
