@@ -1,6 +1,7 @@
 import { COOKIE_ACCESS, COOKIE_REFRESH } from '@/constants/auth';
 import { Role, UserStatus } from '@/constants/roles';
 import type { AuthUser } from '@/lib/auth-types';
+import { clearApiSessionUser } from '@/lib/api-session';
 import { initEmptyTenantStore } from '@/lib/tenant-store';
 
 const ACCOUNTS_KEY = 'crossub_tenant_accounts';
@@ -137,6 +138,7 @@ function startLocalSession(account: LocalAccount): void {
 export function clearLocalSession(): void {
   if (typeof window === 'undefined') return;
   sessionStorage.removeItem(SESSION_KEY);
+  clearApiSessionUser();
   document.cookie = `${COOKIE_ACCESS}=; path=/; max-age=0`;
   document.cookie = `${COOKIE_REFRESH}=; path=/; max-age=0`;
 }

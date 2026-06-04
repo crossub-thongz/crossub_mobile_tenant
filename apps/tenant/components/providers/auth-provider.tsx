@@ -9,6 +9,11 @@ import {
 } from 'react';
 
 import { api, ApiError } from '@/lib/api';
+import {
+  clearApiSessionUser,
+  getPersistedApiSessionUser,
+  persistApiSessionUser,
+} from '@/lib/api-session';
 import type { AuthUser } from '@/lib/auth-types';
 import {
   clearLocalSession,
@@ -23,6 +28,7 @@ interface AuthContextValue {
   user: AuthUser | null;
   status: AuthStatus;
   refresh: () => Promise<void>;
+  establishSession: (user: AuthUser) => void;
   logout: () => Promise<void>;
 }
 
@@ -40,9 +46,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [status, setStatus] = useState<AuthStatus>('loading');
 
+  const establishSession = useCallback((sessionUser: AuthUser) => {
+    persistApiSessionUser(sessionUser);
+    setUser(sessionUser);
+    setStatus('authed');
+  }, []);
+
   const refresh = useCallback(async () => {
     if (hasStaleLocalCookie()) {
       clearLocalSession();
+      clearApiSessionUser();
       setUser(null);
       setStatus('guest');
       return;
@@ -51,11 +64,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (isLocalAccessCookie()) {
       const localUser = getLocalSessionUser();
       if (localUser) {
+        clearApiSessionUser();
         setUser(localUser);
         setStatus('authed');
         return;
       }
       clearLocalSession();
+      clearApiSessionUser();
       setUser(null);
       setStatus('guest');
       return;
@@ -63,16 +78,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const data = await api.get<{ user: AuthUser }>('/auth/me');
+      persistApiSessionUser(data.user);
       setUser(data.user);
       setStatus('authed');
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         clearLocalSession();
+        clearApiSessionUser();
         await clearApiSession();
         setUser(null);
         setStatus('guest');
         return;
       }
+
+      const cached = getPersistedApiSessionUser();
+      if (cached) {
+        setUser(cached);
+        setStatus('authed');
+        return;
+      }
+
       setUser(null);
       setStatus('guest');
     }
@@ -80,6 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     clearLocalSession();
+    clearApiSessionUser();
     await clearApiSession();
     setUser(null);
     setStatus('guest');
@@ -93,7 +119,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [refresh]);
 
   return (
-    <AuthContext.Provider value={{ user, status, refresh, logout }}>
+    <AuthContext.Provider
+      value={{ user, status, refresh, establishSession, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );

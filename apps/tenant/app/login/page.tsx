@@ -55,7 +55,7 @@ type AuthMode = 'login' | 'register';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { refresh, status } = useAuth();
+  const { refresh, establishSession, status } = useAuth();
   const [mode, setMode] = useState<AuthMode>('login');
   const [showPassword, setShowPassword] = useState(false);
 
@@ -80,20 +80,25 @@ export default function LoginPage() {
   });
 
   const onLogin = async (values: LoginValues) => {
+    clearLocalSession();
     try {
-      clearLocalSession();
-      await api.post<{ user: AuthUser }>('/auth/login', values);
-      await refresh();
+      const data = await api.post<{ user: AuthUser }>('/auth/login', values);
+      establishSession(data.user);
+      try {
+        await refresh();
+      } catch {
+        /* Keep session from login response if /auth/me is temporarily unavailable */
+      }
       router.replace(ROUTES.DASHBOARD);
       return;
     } catch (err) {
-      if (err instanceof ApiError && err.status !== 401 && err.status >= 400) {
-        if (err.status >= 500 || err.status === 0) {
-          /* fall through to local account */
-        } else if (err.status !== 401) {
-          toast.error(`Sign in failed (${err.status}). Is crossub_web API running?`);
-          return;
-        }
+      if (err instanceof ApiError && err.status === 401) {
+        toast.error('Invalid email or password for your agency account.');
+        return;
+      }
+      if (err instanceof ApiError) {
+        toast.error(`Sign in failed (${err.status}). Check API connection on Render.`);
+        return;
       }
     }
 
@@ -101,21 +106,25 @@ export default function LoginPage() {
     if (localUser) {
       await refresh();
       router.replace(ROUTES.DASHBOARD);
+      toast.message('Signed in with device account', {
+        description: 'Use Sign in (not Register) for system@crossub.com.au agency access.',
+      });
       return;
     }
 
-    toast.error('Invalid email or password.');
+    toast.error('Could not sign in. Check password or API connection.');
   };
 
   const onRegister = async (values: RegisterValues) => {
     try {
-      registerLocalAccount({
+      const user = registerLocalAccount({
         email: values.email,
         password: values.password,
         firstName: values.firstName,
         lastName: values.lastName,
         phone: values.phone,
       });
+      establishSession(user);
       await refresh();
       toast.success('Account created — you are signed in.');
       router.replace(ROUTES.DASHBOARD);
