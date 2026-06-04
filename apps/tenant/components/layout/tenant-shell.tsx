@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
+import { AuthSessionBanner } from '@/components/tenant/auth-session-banner';
 import { ConnectionBanner } from '@/components/tenant/connection-banner';
 import { useAuth } from '@/components/providers/auth-provider';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
@@ -67,7 +68,7 @@ export function TenantShell({
   bottomBar?: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  const { user, status, logout } = useAuth();
   const [moreOpen, setMoreOpen] = useState(false);
   const headerRef = useRef<HTMLElement>(null);
   const [headerHeight, setHeaderHeight] = useState(56);
@@ -172,6 +173,8 @@ export function TenantShell({
           paddingBottom: mainPaddingBottom,
         }}
       >
+        {status === 'guest' && <AuthSessionBanner />}
+        <ConnectionBanner />
         {children}
       </main>
       {bottomBar && (

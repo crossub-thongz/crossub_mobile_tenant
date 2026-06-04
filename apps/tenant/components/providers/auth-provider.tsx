@@ -21,6 +21,8 @@ type AuthStatus = 'loading' | 'authed' | 'guest';
 interface AuthContextValue {
   user: AuthUser | null;
   status: AuthStatus;
+  /** Call after API login returns `{ user }` so profile/data load before `/auth/me` round-trip. */
+  setSession: (user: AuthUser) => void;
   refresh: () => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -31,34 +33,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [status, setStatus] = useState<AuthStatus>('loading');
 
+  const setSession = useCallback((nextUser: AuthUser) => {
+    clearLocalSession();
+    setUser(nextUser);
+    setStatus('authed');
+  }, []);
+
   const refresh = useCallback(async () => {
-    const localUser = getLocalSessionUser();
-    if (localUser && hasLocalAccessCookie()) {
-      setUser(localUser);
-      setStatus('authed');
-      return;
+    if (hasLocalAccessCookie()) {
+      const localUser = getLocalSessionUser();
+      if (localUser) {
+        setUser(localUser);
+        setStatus('authed');
+        return;
+      }
     }
+
     try {
       const data = await api.get<{ user: AuthUser }>('/auth/me');
+      clearLocalSession();
       setUser(data.user);
       setStatus('authed');
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
-        const fallback = getLocalSessionUser();
-        if (fallback && hasLocalAccessCookie()) {
-          setUser(fallback);
-          setStatus('authed');
-          return;
+        if (hasLocalAccessCookie()) {
+          const localUser = getLocalSessionUser();
+          if (localUser) {
+            setUser(localUser);
+            setStatus('authed');
+            return;
+          }
         }
         setUser(null);
         setStatus('guest');
         return;
       }
-      const fallback = getLocalSessionUser();
-      if (fallback && hasLocalAccessCookie()) {
-        setUser(fallback);
-        setStatus('authed');
-        return;
+      if (hasLocalAccessCookie()) {
+        const localUser = getLocalSessionUser();
+        if (localUser) {
+          setUser(localUser);
+          setStatus('authed');
+          return;
+        }
       }
       setUser(null);
       setStatus('guest');
@@ -85,7 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [refresh]);
 
   return (
-    <AuthContext.Provider value={{ user, status, refresh, logout }}>
+    <AuthContext.Provider value={{ user, status, setSession, refresh, logout }}>
       {children}
     </AuthContext.Provider>
   );
