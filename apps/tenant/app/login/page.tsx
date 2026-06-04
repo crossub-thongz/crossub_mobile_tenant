@@ -26,7 +26,7 @@ import { Label } from '@/components/ui/label';
 import { PASSWORD_MAX, PASSWORD_MIN } from '@/constants/auth';
 import { ROUTES } from '@/constants/routes';
 import { ApiError, api } from '@/lib/api';
-import type { AuthUser } from '@/lib/auth-types';
+import { parseAuthUserPayload } from '@/lib/parse-auth-response';
 import {
   clearLocalSession,
   loginLocalAccount,
@@ -82,13 +82,15 @@ export default function LoginPage() {
   const onLogin = async (values: LoginValues) => {
     clearLocalSession();
     try {
-      const data = await api.post<{ user: AuthUser }>('/auth/login', values);
-      establishSession(data.user);
-      try {
-        await refresh();
-      } catch {
-        /* Keep session from login response if /auth/me is temporarily unavailable */
+      const body = await api.post<unknown>('/auth/login', values);
+      const sessionUser = parseAuthUserPayload(body);
+      if (!sessionUser) {
+        toast.error(
+          'Login returned an unexpected response. Check the API proxy and try again.',
+        );
+        return;
       }
+      establishSession(sessionUser);
       router.replace(ROUTES.DASHBOARD);
       return;
     } catch (err) {
@@ -100,11 +102,15 @@ export default function LoginPage() {
         toast.error(`Sign in failed (${err.status}). Check API connection on Render.`);
         return;
       }
+      if (process.env.NODE_ENV === 'development' && err instanceof Error) {
+        toast.error(err.message);
+        return;
+      }
     }
 
     const localUser = loginLocalAccount(values.email, values.password);
     if (localUser) {
-      await refresh();
+      establishSession(localUser);
       router.replace(ROUTES.DASHBOARD);
       toast.message('Signed in with device account', {
         description: 'Use Sign in (not Register) for system@crossub.com.au agency access.',

@@ -14,6 +14,7 @@ import {
   getPersistedApiSessionUser,
   persistApiSessionUser,
 } from '@/lib/api-session';
+import { parseAuthUserPayload } from '@/lib/parse-auth-response';
 import type { AuthUser } from '@/lib/auth-types';
 import {
   clearLocalSession,
@@ -77,9 +78,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      const data = await api.get<{ user: AuthUser }>('/auth/me');
-      persistApiSessionUser(data.user);
-      setUser(data.user);
+      const data = await api.get<unknown>('/auth/me');
+      const sessionUser = parseAuthUserPayload(data);
+      if (!sessionUser) {
+        throw new Error('Invalid session response from server');
+      }
+      persistApiSessionUser(sessionUser);
+      setUser(sessionUser);
       setStatus('authed');
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
