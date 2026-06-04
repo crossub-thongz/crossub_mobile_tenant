@@ -8,12 +8,14 @@ import {
   useState,
 } from 'react';
 
+import { COOKIE_ACCESS } from '@/constants/auth';
 import { api, ApiError } from '@/lib/api';
 import type { AuthUser } from '@/lib/auth-types';
 import {
   clearLocalSession,
   getLocalSessionUser,
   hasLocalAccessCookie,
+  LOCAL_ACCESS_VALUE,
 } from '@/lib/local-auth';
 
 type AuthStatus = 'loading' | 'authed' | 'guest';
@@ -32,6 +34,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>('loading');
 
   const refresh = useCallback(async () => {
+    const hasApiSession =
+      typeof document !== 'undefined' &&
+      document.cookie.split(';').some((c) => {
+        const [name, value] = c.trim().split('=');
+        return name === COOKIE_ACCESS && value && value !== LOCAL_ACCESS_VALUE;
+      });
+
+    if (hasApiSession) {
+      try {
+        const data = await api.get<{ user: AuthUser }>('/auth/me');
+        clearLocalSession();
+        setUser(data.user);
+        setStatus('authed');
+        return;
+      } catch (err) {
+        if (!(err instanceof ApiError && err.status === 401)) {
+          const localUser = getLocalSessionUser();
+          if (localUser && hasLocalAccessCookie()) {
+            setUser(localUser);
+            setStatus('authed');
+            return;
+          }
+        }
+      }
+    }
+
     const localUser = getLocalSessionUser();
     if (localUser && hasLocalAccessCookie()) {
       setUser(localUser);

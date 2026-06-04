@@ -1,5 +1,5 @@
 import { categoryFromMessageType } from '@/lib/message-categories';
-import { isLocalRegisteredUser } from '@/lib/tenant-user';
+import type { TenantStorageKind } from '@/lib/tenant-user';
 import type {
   ArrearsNotice,
   IngoingReport,
@@ -15,11 +15,15 @@ import type {
   VacatingCase,
 } from '@/lib/types';
 
-const STORAGE_KEY_PREFIX = 'crossub_tenant_data_v1';
-const LEGACY_STORAGE_KEY = 'crossub_tenant_data_v1';
+/** v2 — separate keys per auth kind so local vs API never share a bucket. */
+const STORAGE_KEY_PREFIX = 'crossub_tenant_data_v2';
 
-export function tenantStorageKey(userId: string | null): string {
-  return userId ? `${STORAGE_KEY_PREFIX}_${userId}` : `${STORAGE_KEY_PREFIX}_guest`;
+export function tenantStorageKey(
+  userId: string | null,
+  kind: TenantStorageKind = 'guest',
+): string {
+  if (!userId || kind === 'guest') return `${STORAGE_KEY_PREFIX}_guest`;
+  return `${STORAGE_KEY_PREFIX}_${kind}_${userId}`;
 }
 
 export interface TenantPersistedData {
@@ -50,30 +54,13 @@ function emptyPersisted(): TenantPersistedData {
   };
 }
 
-/** Remove pre-per-user global blob so it is not copied onto new accounts. */
-export function clearLegacyTenantStore(): void {
-  if (typeof window === 'undefined') return;
-  localStorage.removeItem(LEGACY_STORAGE_KEY);
-}
-
-export function readTenantStore(userId: string | null = null): TenantPersistedData {
+export function readTenantStore(
+  userId: string | null,
+  kind: TenantStorageKind = 'guest',
+): TenantPersistedData {
   if (typeof window === 'undefined') return emptyPersisted();
   try {
-    const key = tenantStorageKey(userId);
-    let raw = localStorage.getItem(key);
-    // Only migrate shared legacy data for API users — never onto local tenant-* signups.
-    if (
-      !raw &&
-      userId &&
-      !isLocalRegisteredUser(userId) &&
-      localStorage.getItem(LEGACY_STORAGE_KEY)
-    ) {
-      raw = localStorage.getItem(LEGACY_STORAGE_KEY);
-      if (raw) {
-        localStorage.setItem(key, raw);
-        localStorage.removeItem(LEGACY_STORAGE_KEY);
-      }
-    }
+    const raw = localStorage.getItem(tenantStorageKey(userId, kind));
     if (!raw) return emptyPersisted();
     const parsed = JSON.parse(raw) as Partial<TenantPersistedData>;
     return { ...emptyPersisted(), ...parsed };
@@ -84,11 +71,12 @@ export function readTenantStore(userId: string | null = null): TenantPersistedDa
 
 export function writeTenantStore(
   userId: string | null,
+  kind: TenantStorageKind,
   data: TenantPersistedData,
 ): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(tenantStorageKey(userId), JSON.stringify(data));
+    localStorage.setItem(tenantStorageKey(userId, kind), JSON.stringify(data));
   } catch {
     /* quota or private mode */
   }
@@ -96,16 +84,16 @@ export function writeTenantStore(
 
 export function patchTenantStore(
   userId: string | null,
+  kind: TenantStorageKind,
   patch: Partial<TenantPersistedData>,
 ): TenantPersistedData {
-  const next = { ...readTenantStore(userId), ...patch };
-  writeTenantStore(userId, next);
+  const next = { ...readTenantStore(userId, kind), ...patch };
+  writeTenantStore(userId, kind, next);
   return next;
 }
 
 export function initEmptyTenantStore(userId: string): void {
-  clearLegacyTenantStore();
-  writeTenantStore(userId, emptyPersisted());
+  writeTenantStore(userId, 'local', emptyPersisted());
 }
 
 /** User-created repairs (prefixed) merged ahead of demo seed. */

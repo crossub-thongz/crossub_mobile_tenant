@@ -1,11 +1,11 @@
 import { COOKIE_ACCESS, COOKIE_REFRESH } from '@/constants/auth';
 import { Role, UserStatus } from '@/constants/roles';
 import type { AuthUser } from '@/lib/auth-types';
-import { clearLegacyTenantStore, initEmptyTenantStore } from '@/lib/tenant-store';
+import { initEmptyTenantStore } from '@/lib/tenant-store';
 
 const ACCOUNTS_KEY = 'crossub_tenant_accounts';
 const SESSION_KEY = 'crossub_tenant_session';
-const LOCAL_ACCESS_VALUE = 'local';
+export const LOCAL_ACCESS_VALUE = 'local';
 
 export interface LocalAccount {
   id: string;
@@ -80,26 +80,9 @@ export function hasLocalAccessCookie(): boolean {
   });
 }
 
-/** Create or update a local account (used for the shared demo tenant). */
-export function upsertLocalAccount(input: RegisterInput): AuthUser {
-  const email = input.email.trim().toLowerCase();
-  const accounts = readAccounts();
-  const index = accounts.findIndex((a) => a.email === email);
-  if (index >= 0) {
-    const existing = accounts[index];
-    const updated: LocalAccount = {
-      ...existing,
-      password: input.password,
-      firstName: input.firstName.trim(),
-      lastName: input.lastName.trim(),
-      phone: input.phone?.trim(),
-    };
-    accounts[index] = updated;
-    writeAccounts(accounts);
-    startLocalSession(updated);
-    return accountToUser(updated);
-  }
-  return registerLocalAccount(input);
+/** True when this browser tab is signed in via device registration (not API cookies). */
+export function isActiveLocalSession(): boolean {
+  return hasLocalAccessCookie() && getLocalSessionUser() !== null;
 }
 
 export function registerLocalAccount(input: RegisterInput): AuthUser {
@@ -143,20 +126,4 @@ export function clearLocalSession(): void {
   sessionStorage.removeItem(SESSION_KEY);
   document.cookie = `${COOKIE_ACCESS}=; path=/; max-age=0`;
   document.cookie = `${COOKIE_REFRESH}=; path=/; max-age=0`;
-}
-
-/** Wipe local signup storage for this browser (use if accounts still show shared data). */
-export function resetLocalTenantStorage(userId?: string): void {
-  if (typeof window === 'undefined') return;
-  clearLegacyTenantStore();
-  if (userId) {
-    localStorage.removeItem(`crossub_tenant_data_v1_${userId}`);
-  }
-  const prefix = 'crossub_tenant_data_v1_';
-  const keys: string[] = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const k = localStorage.key(i);
-    if (k?.startsWith(prefix)) keys.push(k);
-  }
-  keys.forEach((k) => localStorage.removeItem(k));
 }
