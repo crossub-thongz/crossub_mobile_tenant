@@ -69,10 +69,23 @@ Use `true` while reviewing the app with mock tenancy (12 River Lane, repairs, me
 
 `TENANT_USE_DEMO_DATA` applies on the **next page load** without rebuild. `NEXT_PUBLIC_USE_DEMO_DATA` still requires a **rebuild** if you change it.
 
+### Production demo account (recommended for walkthroughs)
+
+On the sign-in screen, use **Try demo account (full tenancy)** or sign in manually:
+
+| Field | Value |
+| --- | --- |
+| Email | `demo@crossub.com.au` |
+| Password | `CrossubDemo2026!` |
+
+This account is created in the browser (local auth) and always loads the bundled mock tenancy (12 River Lane, inspections, repairs, rent, messages) — even when `TENANT_USE_DEMO_DATA` is off. Override the email with `NEXT_PUBLIC_DEMO_TENANT_EMAIL` at build time if needed.
+
 ### Demo data missing or accounts sharing the same data?
 
-- **API login** (`system@crossub.com.au`): needs `TENANT_USE_DEMO_DATA=true` (or `NEXT_PUBLIC_USE_DEMO_DATA` at build). Local **Register** accounts never get demo tenancy (empty until they apply).
-- **Register** creates a fresh store per `tenant-*` user id. Old browser data may linger under `crossub_tenant_data_v1` (legacy) — clear site data or use a private window.
+- **Demo account** (`demo@crossub.com.au`): always shows full mock tenancy; use the button on the login page after deploy.
+- **API login** (`system@crossub.com.au`): needs `TENANT_USE_DEMO_DATA=true` (or `NEXT_PUBLIC_USE_DEMO_DATA` at build).
+- **Register** (any other email): empty tenancy by design — use the demo account for pre-loaded data.
+- Old browser data may linger under `crossub_tenant_data_v1` (legacy) — clear site data or use a private window.
 - Sign out, then in DevTools → Application → Local Storage, delete keys starting with `crossub_tenant_data_v1`.
 
 Replace URLs with your deployed services. Do **not** add `/api` to `API_INTERNAL_URL`.

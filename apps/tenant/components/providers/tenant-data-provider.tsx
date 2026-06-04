@@ -237,10 +237,12 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     [],
   );
 
+  const userEmail = user?.email ?? null;
+
   const hydrate = useCallback(() => {
-    const loaded = loadTenantState(userId, authed, demo);
+    const loaded = loadTenantState(userId, authed, demo, userEmail);
     applyLoadedState(loaded, setters);
-  }, [userId, authed, demo, setters]);
+  }, [userId, authed, demo, userEmail, setters]);
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -256,7 +258,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const loaded = loadTenantState(userId, authed, demo);
+    const loaded = loadTenantState(userId, authed, demo, userEmail);
     applyLoadedState(loaded, setters);
     const seedMaintenance = loaded.maintenance;
 
@@ -293,7 +295,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     } finally {
       setLoading(false);
     }
-  }, [userId, authed, demo, setters]);
+  }, [userId, authed, demo, userEmail, setters]);
 
   useEffect(() => {
     if (status === 'loading') return;

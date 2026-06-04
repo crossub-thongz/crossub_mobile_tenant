@@ -9,6 +9,7 @@ import {
   Loader2,
   Lock,
   Mail,
+  Sparkles,
   User,
   UserPlus,
 } from 'lucide-react';
@@ -27,6 +28,8 @@ import { PASSWORD_MAX, PASSWORD_MIN } from '@/constants/auth';
 import { ROUTES } from '@/constants/routes';
 import { ApiError, api } from '@/lib/api';
 import type { AuthUser } from '@/lib/auth-types';
+import { loginAsDemoPreviewAccount } from '@/lib/demo-account-auth';
+import { DEMO_PREVIEW_EMAIL } from '@/lib/demo-account';
 import { loginLocalAccount, registerLocalAccount } from '@/lib/local-auth';
 import { cn } from '@/lib/utils';
 
@@ -54,6 +57,7 @@ export default function LoginPage() {
   const { refresh, status } = useAuth();
   const [mode, setMode] = useState<AuthMode>('login');
   const [showPassword, setShowPassword] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
 
   useEffect(() => {
     if (status === 'authed') router.replace(ROUTES.DASHBOARD);
@@ -100,6 +104,21 @@ export default function LoginPage() {
     }
 
     toast.error('Invalid email or password.');
+  };
+
+  const onTryDemo = async () => {
+    setDemoLoading(true);
+    try {
+      if (!loginAsDemoPreviewAccount()) {
+        toast.error('Could not start the demo account.');
+        return;
+      }
+      await refresh();
+      toast.success('Signed in with the demo tenancy.');
+      router.replace(ROUTES.DASHBOARD);
+    } finally {
+      setDemoLoading(false);
+    }
   };
 
   const onRegister = async (values: RegisterValues) => {
@@ -219,7 +238,7 @@ export default function LoginPage() {
                 Forgot password?
               </Link>
             </div>
-            <Button type="submit" disabled={isSubmitting} className="w-full">
+            <Button type="submit" disabled={isSubmitting || demoLoading} className="w-full">
               {isSubmitting ? (
                 <>
                   <Loader2 className="size-4 animate-spin" /> Signing in...
@@ -230,6 +249,14 @@ export default function LoginPage() {
                 </>
               )}
             </Button>
+            <div className="relative py-1">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">or</span>
+              </div>
+            </div>
           </form>
         ) : (
           <form onSubmit={registerForm.handleSubmit(onRegister)} className="space-y-4">
