@@ -118,7 +118,10 @@ export default function RentReviewDetailPage() {
                     moveOutDate: moveOut,
                     reason: rejectReason,
                   });
-                  toast.success('Rejection recorded — vacating workflow may start');
+                  toast.success('Rejection recorded', {
+                    description: 'Vacating workflow started — see move-out services',
+                  });
+                  window.location.href = ROUTES.MOVE_OUT_SERVICES;
                 }}
               >
                 Reject and indicate move-out

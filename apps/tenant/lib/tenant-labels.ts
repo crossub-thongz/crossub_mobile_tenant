@@ -1,3 +1,4 @@
+import { MESSAGE_RECIPIENT_LABEL } from '@/lib/message-parties';
 import type {
   ApplicationStatus,
   ArrearsStage,
@@ -5,6 +6,8 @@ import type {
   MaintenanceTenantStatus,
   MessageType,
 } from '@/lib/types';
+
+export { MESSAGE_RECIPIENT_LABEL };
 
 export const APPLICATION_STATUS_LABEL: Record<ApplicationStatus, string> = {
   submitted: 'Application received and under review',

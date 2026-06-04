@@ -4,22 +4,26 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
+import { useTenantData } from '@/components/providers/tenant-data-provider';
 import { TenantShell } from '@/components/layout/tenant-shell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { submitMaintenanceRequest } from '@/lib/crossub-api/maintenance-client';
 import { ROUTES } from '@/constants/routes';
+import type { Priority } from '@/lib/types';
 import { useDemoData } from '@/lib/utils';
 
 export default function NewMaintenancePage() {
   const router = useRouter();
   const demo = useDemoData();
+  const { addRepair } = useTenantData();
   const [submitting, setSubmitting] = useState(false);
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
+    const urgency = String(fd.get('urgency')) as Priority;
     setSubmitting(true);
     try {
       if (!demo) {
@@ -28,18 +32,30 @@ export default function NewMaintenancePage() {
           description: String(fd.get('description')),
           category: String(fd.get('category')),
           area: String(fd.get('area')),
-          urgency: String(fd.get('urgency')),
+          urgency,
         });
       }
+      const created = addRepair({
+        category: String(fd.get('category')),
+        description: String(fd.get('description')),
+        area: String(fd.get('area')),
+        urgency,
+      });
       toast.success('Request submitted', {
-        description: 'Tracking number will appear in your list.',
+        description: `Tracking ${created.trackingNumber}.`,
       });
-      router.push(ROUTES.MAINTENANCE);
+      router.push(ROUTES.REPAIRS);
     } catch {
-      toast.success('Request recorded (demo)', {
-        description: 'Connect API for live maintenance workflow.',
+      const created = addRepair({
+        category: String(fd.get('category')),
+        description: String(fd.get('description')),
+        area: String(fd.get('area')),
+        urgency,
       });
-      router.push(ROUTES.MAINTENANCE);
+      toast.success('Request saved', {
+        description: `Tracking ${created.trackingNumber}.`,
+      });
+      router.push(ROUTES.REPAIRS);
     } finally {
       setSubmitting(false);
     }

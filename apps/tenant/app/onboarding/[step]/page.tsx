@@ -28,6 +28,7 @@ export default function OnboardingStepPage() {
 
   const isUpload = step.id === 'deposit' || step.id === 'bond';
   const isLease = step.id === 'lease_signing';
+  const isKeyPickup = step.id === 'key_pickup';
   const paymentCopy =
     step.id === 'deposit' || step.id === 'bond'
       ? PAYMENT_STEP_COPY[step.id]
@@ -102,6 +103,29 @@ export default function OnboardingStepPage() {
         </div>
       )}
 
+      {isKeyPickup && (
+        <form
+          className="space-y-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            toast.success('Key pickup confirmed with CROSSUB');
+          }}
+        >
+          <div className="rounded-xl border bg-card p-4 text-sm">
+            <p className="font-medium">Pickup address</p>
+            <p className="text-muted-foreground mt-1">
+              12 River Lane, Southbank — Agency office, Level 2 (confirm with your agent)
+            </p>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Preferred pickup time</label>
+            <input type="datetime-local" className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm" required />
+          </div>
+          <Button type="submit" className="w-full">
+            Confirm key collection time
+          </Button>
+        </form>
+      )}
       {step.id === 'account_setup' && (
         <form
           className="space-y-4"

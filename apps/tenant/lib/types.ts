@@ -20,6 +20,7 @@ export type OnboardingStepId =
   | 'deposit'
   | 'bond'
   | 'lease_signing'
+  | 'key_pickup'
   | 'account_setup'
   | 'ingoing_report';
 
@@ -189,14 +190,52 @@ export interface MaintenanceRequest {
   status: MaintenanceTenantStatus;
   statusLabel: string;
   contractorName?: string;
+  contractorPhone?: string;
+  scheduledAt?: string;
+  progressPercent: number;
+  completionApprovalPending?: boolean;
+  tenantCompletionApproved?: boolean;
   timeline: TimelineEntry[];
   createdAt: string;
+}
+
+export type InspectionListType = 'ingoing' | 'outgoing' | 'routine';
+
+export interface InspectionSummary {
+  id: string;
+  type: InspectionListType;
+  propertyAddress: string;
+  status: string;
+  scheduledAt?: string;
+  href: string;
+}
+
+export type MessageCategory =
+  | 'leasing'
+  | 'maintenance'
+  | 'inspection'
+  | 'accounting'
+  | 'other';
+
+/** Who the tenant is messaging — landlord, agency, or repair contractor. */
+export type MessageParty = 'landlord' | 'agent' | 'contractor';
+
+export interface TerminationNotice {
+  id: string;
+  propertyAddress: string;
+  reason: string;
+  respondBy: string;
+  vacateDeadline?: string;
 }
 
 export interface MessageThread {
   id: string;
   subject: string;
   type: MessageType;
+  /** Topic tag for inbox filtering — leasing, maintenance, inspection, accounting, other. */
+  category?: MessageCategory;
+  /** Primary party this thread was opened with. */
+  recipient: MessageParty;
   propertyAddress?: string;
   leaseId?: string;
   lastMessage: string;
@@ -204,16 +243,22 @@ export interface MessageThread {
   unread: number;
   linkedCaseId?: string;
   channel?: MessageChannel;
+  /** Maintenance threads can also message the assigned contractor. */
   contractorEnabled?: boolean;
+  contractorName?: string;
 }
 
 export interface ThreadMessage {
   id: string;
   at: string;
-  from: 'tenant' | 'crossub' | 'contractor';
+  direction: 'inbound' | 'outbound';
+  /** Sender (inbound) or recipient (outbound) party. */
+  party: MessageParty;
   fromName: string;
   body: string;
   channel?: MessageChannel;
+  /** @deprecated legacy seed — use direction + party */
+  from?: 'tenant' | 'crossub' | 'contractor' | 'landlord' | 'agent';
 }
 
 export interface PaymentProofRecord {

@@ -14,17 +14,22 @@ import { ROUTES } from '@/constants/routes';
 export default function ApplyPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { listings } = useTenantData();
+  const { listings, addApplication } = useTenantData();
   const property = listings.find((p) => p.id === id);
   const [submitting, setSubmitting] = useState(false);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!property) return;
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 800));
+    await new Promise((r) => setTimeout(r, 400));
+    const created = addApplication({
+      propertyId: property.id,
+      propertyAddress: `${property.address}, ${property.suburb}`,
+    });
     setSubmitting(false);
     toast.success('Application submitted', {
-      description: 'Reference APP-2026-NEW · Track status in Applications.',
+      description: `Reference ${created.referenceNumber} · Track status in Applications.`,
     });
     router.push(ROUTES.APPLICATIONS);
   };

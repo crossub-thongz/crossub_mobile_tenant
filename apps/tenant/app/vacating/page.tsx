@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { TenantShell } from '@/components/layout/tenant-shell';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
 import { outgoingReport, ROUTES, statementDetail } from '@/constants/routes';
+import { hrefWithFrom } from '@/lib/back-navigation';
 import { OUTGOING_STATUS_LABEL } from '@/lib/tenant-labels';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
@@ -29,7 +30,7 @@ export default function VacatingPage() {
           </p>
         )}
         <Link
-          href={outgoingReport(outgoing.id)}
+          href={hrefWithFrom(outgoingReport(outgoing.id), 'vacating')}
           className="text-primary mt-6 block text-sm font-medium"
         >
           Preview outgoing report flow (demo) →
@@ -51,7 +52,7 @@ export default function VacatingPage() {
           </p>
           {vacating.outgoingReportId && (
             <Link
-              href={outgoingReport(vacating.outgoingReportId)}
+              href={hrefWithFrom(outgoingReport(vacating.outgoingReportId), 'vacating')}
               className="text-primary mt-3 inline-block text-xs font-medium"
             >
               Review outgoing report →

@@ -1,7 +1,17 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowRight, Eye, EyeOff, KeyRound, Loader2, Lock, Mail } from 'lucide-react';
+import {
+  ArrowRight,
+  Eye,
+  EyeOff,
+  KeyRound,
+  Loader2,
+  Lock,
+  Mail,
+  User,
+  UserPlus,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -17,8 +27,10 @@ import { PASSWORD_MAX, PASSWORD_MIN } from '@/constants/auth';
 import { ROUTES } from '@/constants/routes';
 import { ApiError, api } from '@/lib/api';
 import type { AuthUser } from '@/lib/auth-types';
+import { loginLocalAccount, registerLocalAccount } from '@/lib/local-auth';
+import { cn } from '@/lib/utils';
 
-const schema = z.object({
+const loginSchema = z.object({
   email: z.string().email('Enter a valid email'),
   password: z
     .string()
@@ -26,43 +38,92 @@ const schema = z.object({
     .max(PASSWORD_MAX),
 });
 
-type FormValues = z.infer<typeof schema>;
+const registerSchema = loginSchema.extend({
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
+  phone: z.string().optional(),
+});
+
+type LoginValues = z.infer<typeof loginSchema>;
+type RegisterValues = z.infer<typeof registerSchema>;
+
+type AuthMode = 'login' | 'register';
 
 export default function LoginPage() {
   const router = useRouter();
   const { refresh, status } = useAuth();
+  const [mode, setMode] = useState<AuthMode>('login');
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (status === 'authed') router.replace(ROUTES.DASHBOARD);
   }, [status, router]);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<FormValues>({
-    resolver: zodResolver(schema),
+  const loginForm = useForm<LoginValues>({
+    resolver: zodResolver(loginSchema),
     defaultValues: { email: '', password: '' },
   });
 
-  const onSubmit = async (values: FormValues) => {
+  const registerForm = useForm<RegisterValues>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+      firstName: '',
+      lastName: '',
+      phone: '',
+    },
+  });
+
+  const onLogin = async (values: LoginValues) => {
     try {
       await api.post<{ user: AuthUser }>('/auth/login', values);
       await refresh();
       router.replace(ROUTES.DASHBOARD);
+      return;
     } catch (err) {
-      if (err instanceof ApiError && err.status === 401) {
-        toast.error('Invalid email or password.');
-        return;
+      if (err instanceof ApiError && err.status !== 401 && err.status >= 400) {
+        if (err.status >= 500 || err.status === 0) {
+          /* fall through to local account */
+        } else if (err.status !== 401) {
+          toast.error(`Sign in failed (${err.status}). Is crossub_web API running?`);
+          return;
+        }
       }
-      if (err instanceof ApiError) {
-        toast.error(`Sign in failed (${err.status}). Is crossub_web API running?`);
-        return;
-      }
-      toast.error('Something went wrong. Please try again.');
+    }
+
+    const localUser = loginLocalAccount(values.email, values.password);
+    if (localUser) {
+      await refresh();
+      router.replace(ROUTES.DASHBOARD);
+      return;
+    }
+
+    toast.error('Invalid email or password.');
+  };
+
+  const onRegister = async (values: RegisterValues) => {
+    try {
+      registerLocalAccount({
+        email: values.email,
+        password: values.password,
+        firstName: values.firstName,
+        lastName: values.lastName,
+        phone: values.phone,
+      });
+      await refresh();
+      toast.success('Account created — you are signed in.');
+      router.replace(ROUTES.DASHBOARD);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Registration failed.';
+      toast.error(message);
     }
   };
+
+  const isSubmitting =
+    mode === 'login'
+      ? loginForm.formState.isSubmitting
+      : registerForm.formState.isSubmitting;
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
@@ -76,57 +137,195 @@ export default function LoginPage() {
         </div>
       </div>
       <div className="w-full max-w-md rounded-xl border bg-card p-8 shadow-lg">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <div className="relative">
-              <Mail className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input id="email" type="email" className="pl-10" placeholder="you@agency.com" {...register('email')} />
-            </div>
-            {errors.email && (
-              <p className="text-xs text-destructive">{errors.email.message}</p>
+        <div className="bg-muted mb-6 flex rounded-lg p-1">
+          <button
+            type="button"
+            onClick={() => setMode('login')}
+            className={cn(
+              'flex flex-1 items-center justify-center gap-2 rounded-md py-2 text-sm font-medium transition-colors',
+              mode === 'login'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground',
             )}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <div className="relative">
-              <Lock className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                className="pl-10 pr-10"
-                placeholder="Enter your password"
-                {...register('password')}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground"
+          >
+            <KeyRound className="size-4" />
+            Sign in
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('register')}
+            className={cn(
+              'flex flex-1 items-center justify-center gap-2 rounded-md py-2 text-sm font-medium transition-colors',
+              mode === 'register'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground',
+            )}
+          >
+            <UserPlus className="size-4" />
+            Register
+          </button>
+        </div>
+
+        {mode === 'login' ? (
+          <form onSubmit={loginForm.handleSubmit(onLogin)} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <div className="relative">
+                <Mail className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="email"
+                  type="email"
+                  className="pl-10"
+                  placeholder="you@email.com"
+                  {...loginForm.register('email')}
+                />
+              </div>
+              {loginForm.formState.errors.email && (
+                <p className="text-xs text-destructive">
+                  {loginForm.formState.errors.email.message}
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Lock className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  className="pl-10 pr-10"
+                  placeholder="Enter your password"
+                  {...loginForm.register('password')}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground"
+                >
+                  {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              </div>
+              {loginForm.formState.errors.password && (
+                <p className="text-xs text-destructive">
+                  {loginForm.formState.errors.password.message}
+                </p>
+              )}
+            </div>
+            <div className="flex justify-end">
+              <Link
+                href={ROUTES.FORGOT_PASSWORD}
+                className="text-sm text-primary hover:underline"
               >
-                {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-              </button>
+                Forgot password?
+              </Link>
             </div>
-            {errors.password && (
-              <p className="text-xs text-destructive">{errors.password.message}</p>
-            )}
-          </div>
-          <div className="flex justify-end">
-            <Link href={ROUTES.FORGOT_PASSWORD} className="text-sm text-primary hover:underline">
-              Forgot password?
-            </Link>
-          </div>
-          <Button type="submit" disabled={isSubmitting} className="w-full">
-            {isSubmitting ? (
-              <>
-                <Loader2 className="size-4 animate-spin" /> Signing in...
-              </>
-            ) : (
-              <>
-                Sign in <ArrowRight className="size-4" />
-              </>
-            )}
-          </Button>
-        </form>
+            <Button type="submit" disabled={isSubmitting} className="w-full">
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" /> Signing in...
+                </>
+              ) : (
+                <>
+                  Sign in <ArrowRight className="size-4" />
+                </>
+              )}
+            </Button>
+          </form>
+        ) : (
+          <form onSubmit={registerForm.handleSubmit(onRegister)} className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">First name</Label>
+                <div className="relative">
+                  <User className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="firstName"
+                    className="pl-10"
+                    {...registerForm.register('firstName')}
+                  />
+                </div>
+                {registerForm.formState.errors.firstName && (
+                  <p className="text-xs text-destructive">
+                    {registerForm.formState.errors.firstName.message}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last name</Label>
+                <Input id="lastName" {...registerForm.register('lastName')} />
+                {registerForm.formState.errors.lastName && (
+                  <p className="text-xs text-destructive">
+                    {registerForm.formState.errors.lastName.message}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reg-email">Email</Label>
+              <div className="relative">
+                <Mail className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="reg-email"
+                  type="email"
+                  className="pl-10"
+                  placeholder="you@email.com"
+                  {...registerForm.register('email')}
+                />
+              </div>
+              {registerForm.formState.errors.email && (
+                <p className="text-xs text-destructive">
+                  {registerForm.formState.errors.email.message}
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone (optional)</Label>
+              <Input id="phone" type="tel" {...registerForm.register('phone')} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reg-password">Password</Label>
+              <div className="relative">
+                <Lock className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="reg-password"
+                  type={showPassword ? 'text' : 'password'}
+                  className="pl-10 pr-10"
+                  placeholder={`At least ${PASSWORD_MIN} characters`}
+                  {...registerForm.register('password')}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground"
+                >
+                  {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              </div>
+              {registerForm.formState.errors.password && (
+                <p className="text-xs text-destructive">
+                  {registerForm.formState.errors.password.message}
+                </p>
+              )}
+            </div>
+            <p className="text-muted-foreground text-xs">
+              Creates a new account on this device with your own profile and empty tenancy
+              (applications, repairs, and payments are not shared with other logins). When your
+              agency enables server registration, the same email can sign in against crossub_web.
+            </p>
+            <Button type="submit" disabled={isSubmitting} className="w-full">
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" /> Creating account...
+                </>
+              ) : (
+                <>
+                  Create account <UserPlus className="size-4" />
+                </>
+              )}
+            </Button>
+          </form>
+        )}
+
         <p className="text-muted-foreground mt-6 text-center text-xs">
           Browse listings without signing in —{' '}
           <Link href={ROUTES.PROPERTIES} className="text-primary hover:underline">

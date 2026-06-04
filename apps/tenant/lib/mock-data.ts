@@ -1,8 +1,8 @@
 import {
   applicationDetail,
   ingoingReport,
-  maintenanceDetail,
-  maintenanceNew,
+  repairDetail,
+  repairNew,
   messageDetail,
   onboardingStep,
   propertyApply,
@@ -11,6 +11,7 @@ import {
   ROUTES,
   outgoingReport,
 } from '@/constants/routes';
+import { hrefWithFrom } from '@/lib/back-navigation';
 import type {
   ArrearsNotice,
   FinalStatement,
@@ -125,6 +126,13 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     href: onboardingStep('lease_signing'),
   },
   {
+    id: 'key_pickup',
+    title: 'Key collection',
+    description: 'Confirm key pickup address and time with CROSSUB / your agent.',
+    status: 'pending',
+    href: onboardingStep('key_pickup'),
+  },
+  {
     id: 'account_setup',
     title: 'App account setup',
     description: 'Confirm your profile and link your account to this lease.',
@@ -136,7 +144,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     title: 'Ingoing report confirmation',
     description: 'Confirm each room/section of the ingoing condition report.',
     status: 'pending',
-    href: ingoingReport('ing-301'),
+    href: hrefWithFrom(ingoingReport('ing-301'), 'onboarding'),
   },
 ];
 
@@ -216,6 +224,9 @@ export const MAINTENANCE: MaintenanceRequest[] = [
     status: 'contractor_assigned',
     statusLabel: 'Contractor assigned',
     contractorName: 'QuickFix Plumbing',
+    contractorPhone: '0412 345 678',
+    scheduledAt: '2026-06-10T10:00:00+10:00',
+    progressPercent: 55,
     createdAt: '2026-05-20T08:00:00+10:00',
     timeline: [
       { id: 't1', at: '2026-05-20T08:00:00+10:00', actor: 'You', title: 'Request submitted' },
@@ -231,9 +242,13 @@ export const MAINTENANCE: MaintenanceRequest[] = [
     description: 'Bedroom 2 power outlet not working.',
     area: 'Bedroom 2',
     urgency: 'high',
-    status: 'in_progress',
-    statusLabel: 'In progress',
+    status: 'completed',
+    statusLabel: 'Completed',
     contractorName: 'Spark Electrical',
+    contractorPhone: '0423 456 789',
+    progressPercent: 100,
+    completionApprovalPending: true,
+    tenantCompletionApproved: false,
     createdAt: '2026-05-25T14:20:00+10:00',
     timeline: [
       { id: 't1', at: '2026-05-25T14:20:00+10:00', actor: 'You', title: 'Request submitted' },
@@ -248,6 +263,8 @@ export const MESSAGE_THREADS: MessageThread[] = [
     id: 'msg-600',
     subject: 'General enquiry — parking',
     type: 'general',
+    category: 'leasing',
+    recipient: 'agent',
     propertyAddress: '12 River Lane, Southbank',
     leaseId: 'lease-401',
     lastMessage: 'Thanks for confirming visitor parking rules.',
@@ -259,6 +276,8 @@ export const MESSAGE_THREADS: MessageThread[] = [
     id: 'msg-601',
     subject: 'Kitchen tap repair — access time',
     type: 'maintenance',
+    category: 'maintenance',
+    recipient: 'contractor',
     propertyAddress: '12 River Lane, Southbank',
     leaseId: 'lease-401',
     lastMessage: 'Contractor can attend Tuesday 10am–12pm. Does that work?',
@@ -267,11 +286,14 @@ export const MESSAGE_THREADS: MessageThread[] = [
     linkedCaseId: 'mnt-501',
     channel: 'app',
     contractorEnabled: true,
+    contractorName: 'QuickFix Plumbing',
   },
   {
     id: 'msg-602',
     subject: 'Rent review — proposed increase',
     type: 'rent_review',
+    category: 'leasing',
+    recipient: 'landlord',
     propertyAddress: '12 River Lane, Southbank',
     lastMessage: 'Please review the attached market report and respond by 15 June.',
     lastAt: '2026-05-27T16:00:00+10:00',
@@ -283,9 +305,11 @@ export const MESSAGE_THREADS: MessageThread[] = [
     id: 'msg-603',
     subject: 'June rent receipt',
     type: 'accounting',
+    category: 'accounting',
+    recipient: 'agent',
     propertyAddress: '12 River Lane, Southbank',
     leaseId: 'lease-401',
-    lastMessage: 'Your rent receipt for June is now available in Payments.',
+    lastMessage: 'Your rent receipt for June is now available in Accounting.',
     lastAt: '2026-06-01T08:00:00+10:00',
     unread: 0,
     channel: 'app',
@@ -405,6 +429,33 @@ export const FINAL_STATEMENT: FinalStatement | null = null;
 /** Set true in demo to preview Phase 3 vacating + final statement flows */
 export const SHOW_PHASE3_DEMO = false;
 
+export const INSPECTIONS_LIST: import('@/lib/types').InspectionSummary[] = [
+  {
+    id: 'ing-301',
+    type: 'ingoing',
+    propertyAddress: '12 River Lane, Southbank',
+    status: 'Partially confirmed',
+    href: hrefWithFrom(ingoingReport('ing-301'), 'inspections'),
+  },
+  {
+    id: 'out-401',
+    type: 'outgoing',
+    propertyAddress: '12 River Lane, Southbank',
+    status: 'Report sent',
+    href: hrefWithFrom(outgoingReport('out-401'), 'inspections'),
+  },
+  {
+    id: 'rou-101',
+    type: 'routine',
+    propertyAddress: '12 River Lane, Southbank',
+    status: 'Scheduled',
+    scheduledAt: '2026-09-15T09:00:00+10:00',
+    href: ROUTES.INSPECTIONS,
+  },
+];
+
+export const TERMINATION_NOTICE: import('@/lib/types').TerminationNotice | null = null;
+
 export const ARREARS: ArrearsNotice = {
   stage: 'late_reminder',
   outstandingAmount: 520,
@@ -433,7 +484,7 @@ export const PENDING_ACTIONS: PendingAction[] = [
     status: 'Partially confirmed',
     priority: 'high',
     dueAt: '2026-06-20',
-    href: ingoingReport('ing-301'),
+    href: hrefWithFrom(ingoingReport('ing-301'), 'dashboard'),
     updatedAt: '2026-06-15T09:00:00+10:00',
   },
   {
@@ -488,7 +539,7 @@ export const NOTIFICATIONS: TenantNotification[] = [
     body: '2 sections still need your confirmation.',
     type: 'inspection',
     read: false,
-    href: ingoingReport('ing-301'),
+    href: hrefWithFrom(ingoingReport('ing-301'), 'notifications'),
     createdAt: '2026-06-16T09:00:00+10:00',
   },
   {
@@ -506,7 +557,7 @@ export const NOTIFICATIONS: TenantNotification[] = [
     body: 'Contractor assigned for kitchen tap repair.',
     type: 'maintenance',
     read: true,
-    href: maintenanceDetail('mnt-501'),
+    href: repairDetail('mnt-501'),
     createdAt: '2026-05-22T09:30:00+10:00',
   },
   {

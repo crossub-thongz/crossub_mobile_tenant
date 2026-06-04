@@ -4,12 +4,15 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Bell,
+  Building2,
+  ClipboardList,
   Home,
   KeyRound,
   Menu,
   MessageSquare,
   Search,
   User,
+  Wallet,
   Wrench,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -23,16 +26,17 @@ import { cn, displayName } from '@/lib/utils';
 
 const PRIMARY_NAV = [
   { href: ROUTES.DASHBOARD, label: 'Home', icon: Home },
-  { href: ROUTES.PROPERTIES, label: 'Browse', icon: Search },
-  { href: ROUTES.MESSAGES, label: 'Messages', icon: MessageSquare },
-  { href: ROUTES.MAINTENANCE, label: 'Repairs', icon: Wrench },
+  { href: ROUTES.PROPERTY, label: 'Property', icon: Building2 },
+  { href: ROUTES.INSPECTIONS, label: 'Inspection', icon: ClipboardList },
+  { href: ROUTES.REPAIRS, label: 'Repair', icon: Wrench },
+  { href: ROUTES.ACCOUNTING, label: 'Accounting', icon: Wallet },
+  { href: ROUTES.MESSAGES, label: 'Message', icon: MessageSquare },
 ] as const;
 
 const MORE_NAV = [
+  { href: ROUTES.PROPERTIES, label: 'Browse listings' },
   { href: ROUTES.APPLICATIONS, label: 'Applications' },
   { href: ROUTES.ONBOARDING, label: 'Onboarding' },
-  { href: ROUTES.LEASE, label: 'My lease' },
-  { href: ROUTES.PAYMENTS, label: 'Payments & receipts' },
   { href: ROUTES.RENT_REVIEW, label: 'Rent review' },
   { href: ROUTES.RENEWAL, label: 'Lease renewal' },
   { href: ROUTES.VACATING, label: 'Vacating' },
@@ -40,6 +44,7 @@ const MORE_NAV = [
   { href: ROUTES.DOCUMENTS, label: 'Documents' },
   { href: ROUTES.SETTINGS, label: 'Settings' },
   { href: ROUTES.PROFILE, label: 'Profile' },
+  { href: ROUTES.TUTORIAL, label: 'App tutorial' },
 ] as const;
 
 function isActive(pathname: string, href: string): boolean {
@@ -202,16 +207,6 @@ export function TenantShell({
               </Link>
             );
           })}
-          <Link
-            href={ROUTES.PROFILE}
-            className={cn(
-              'flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 text-[10px] font-medium',
-              isActive(pathname, ROUTES.PROFILE) ? 'text-primary' : 'text-muted-foreground',
-            )}
-          >
-            <User className={cn('size-5', isActive(pathname, ROUTES.PROFILE) && 'stroke-[2.5]')} />
-            <span>Profile</span>
-          </Link>
         </div>
       </nav>
     </div>

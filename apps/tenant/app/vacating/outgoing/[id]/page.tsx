@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 
 import { TenantShell } from '@/components/layout/tenant-shell';
 import { FileUploadField } from '@/components/tenant/file-upload-field';
@@ -8,16 +8,19 @@ import { ReportSectionCard } from '@/components/tenant/report-section-card';
 import { StatusBadge } from '@/components/tenant/status-badge';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
 import { ROUTES } from '@/constants/routes';
+import { resolveBackHref } from '@/lib/back-navigation';
 import { OUTGOING_STATUS_LABEL } from '@/lib/tenant-labels';
 import { toast } from 'sonner';
 
 export default function OutgoingReportPage() {
   const { id } = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
+  const backHref = resolveBackHref(searchParams.get('from'), ROUTES.VACATING);
   const { outgoingReport, confirmOutgoingSection } = useTenantData();
 
   if (!outgoingReport || outgoingReport.id !== id) {
     return (
-      <TenantShell title="Outgoing report" backHref={ROUTES.VACATING}>
+      <TenantShell title="Outgoing report" backHref={backHref}>
         <p className="text-sm text-muted-foreground">Report not found.</p>
       </TenantShell>
     );
@@ -26,7 +29,7 @@ export default function OutgoingReportPage() {
   const needsPhotos = outgoingReport.status === 'supporting_photos_required';
 
   return (
-    <TenantShell title="Outgoing report" backHref={ROUTES.VACATING}>
+    <TenantShell title="Outgoing report" backHref={backHref}>
       <p className="text-muted-foreground mb-4 text-sm">{outgoingReport.propertyAddress}</p>
       <StatusBadge
         label={OUTGOING_STATUS_LABEL[outgoingReport.status]}

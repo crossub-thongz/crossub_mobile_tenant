@@ -10,6 +10,11 @@ import {
 
 import { api, ApiError } from '@/lib/api';
 import type { AuthUser } from '@/lib/auth-types';
+import {
+  clearLocalSession,
+  getLocalSessionUser,
+  hasLocalAccessCookie,
+} from '@/lib/local-auth';
 
 type AuthStatus = 'loading' | 'authed' | 'guest';
 
@@ -27,14 +32,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>('loading');
 
   const refresh = useCallback(async () => {
+    const localUser = getLocalSessionUser();
+    if (localUser && hasLocalAccessCookie()) {
+      setUser(localUser);
+      setStatus('authed');
+      return;
+    }
     try {
       const data = await api.get<{ user: AuthUser }>('/auth/me');
       setUser(data.user);
       setStatus('authed');
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
+        const fallback = getLocalSessionUser();
+        if (fallback && hasLocalAccessCookie()) {
+          setUser(fallback);
+          setStatus('authed');
+          return;
+        }
         setUser(null);
         setStatus('guest');
+        return;
+      }
+      const fallback = getLocalSessionUser();
+      if (fallback && hasLocalAccessCookie()) {
+        setUser(fallback);
+        setStatus('authed');
         return;
       }
       setUser(null);
@@ -43,8 +66,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
+    clearLocalSession();
     try {
       await api.post('/auth/logout');
+    } catch {
+      /* API may be offline */
     } finally {
       setUser(null);
       setStatus('guest');

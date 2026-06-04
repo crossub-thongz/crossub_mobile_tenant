@@ -1,8 +1,12 @@
 'use client';
 
+import { FileText } from 'lucide-react';
+
 import { TenantShell } from '@/components/layout/tenant-shell';
+import { DocumentActions } from '@/components/tenant/document-actions';
 import { StatusBadge } from '@/components/tenant/status-badge';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
+import { getTenantDocument } from '@/lib/tenant-documents';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
 export default function LeasePage() {
@@ -37,15 +41,37 @@ export default function LeasePage() {
         </div>
         <section>
           <h2 className="text-sm font-semibold">Documents</h2>
-          <ul className="mt-2 space-y-2">
-            {lease.documents.map((d) => (
-              <li key={d.id} className="rounded-lg border bg-card px-3 py-2 text-sm">
-                {d.name}
-                <span className="text-muted-foreground block text-xs">
-                  {formatDate(d.uploadedAt)}
-                </span>
-              </li>
-            ))}
+          <ul className="mt-2 space-y-3">
+            {lease.documents.map((d) => {
+              const available = Boolean(getTenantDocument(d.id));
+              return (
+                <li key={d.id} className="rounded-lg border bg-card p-3">
+                  <div className="flex items-start gap-3">
+                    <div className="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-lg">
+                      <FileText className="size-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium">{d.name}</p>
+                      <span className="text-muted-foreground text-xs">
+                        Uploaded {formatDate(d.uploadedAt)}
+                      </span>
+                      {available ? (
+                        <DocumentActions
+                          documentId={d.id}
+                          fileName={d.name}
+                          className="mt-3"
+                          compact
+                        />
+                      ) : (
+                        <p className="text-muted-foreground mt-2 text-xs">
+                          Preview not available for this file yet.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </section>
       </div>

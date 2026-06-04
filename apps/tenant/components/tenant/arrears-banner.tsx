@@ -27,8 +27,11 @@ export function ArrearsBanner() {
         Outstanding: <strong>{formatCurrency(arrears.outstandingAmount)}</strong> · Due{' '}
         {formatDate(arrears.dueDate)}
       </p>
-      <Link href={ROUTES.PAYMENTS} className="text-primary mt-2 inline-block text-xs font-medium">
-        View payment details →
+      <Link
+        href={`${ROUTES.ACCOUNTING}#pay-rent`}
+        className="text-primary mt-2 inline-block text-xs font-medium"
+      >
+        Pay rent now →
       </Link>
     </div>
   );

@@ -5,19 +5,27 @@ export const ROUTES = {
   PROPERTIES: '/properties',
   APPLICATIONS: '/applications',
   ONBOARDING: '/onboarding',
-  LEASE: '/lease',
-  MAINTENANCE: '/maintenance',
+  PROPERTY: '/property',
+  INSPECTIONS: '/inspections',
+  REPAIRS: '/repairs',
+  ACCOUNTING: '/accounting',
   MESSAGES: '/messages',
-  PAYMENTS: '/payments',
+  /** @deprecated use REPAIRS — kept for redirects */
+  MAINTENANCE: '/repairs',
+  LEASE: '/lease',
+  PAYMENTS: '/accounting',
   RENT_REVIEW: '/rent-review',
   RENEWAL: '/renewal',
   VACATING: '/vacating',
+  MOVE_OUT_SERVICES: '/vacating/services',
+  TERMINATION: '/termination',
   NOTIFICATIONS: '/notifications',
   PROFILE: '/profile',
   SETTINGS: '/settings',
   MESSAGES_NEW: '/messages/new',
-  STATEMENT: '/payments/statement',
+  STATEMENT: '/accounting/statement',
   DOCUMENTS: '/documents',
+  TUTORIAL: '/tutorial',
 } as const;
 
 export const PUBLIC_ROUTE_PATTERNS = [
@@ -34,10 +42,14 @@ export const propertyDetail = (id: string) => `/properties/${id}`;
 export const propertyApply = (id: string) => `/properties/${id}/apply`;
 export const applicationDetail = (id: string) => `/applications/${id}`;
 export const onboardingStep = (step: string) => `/onboarding/${step}`;
-export const maintenanceDetail = (id: string) => `/maintenance/${id}`;
-export const maintenanceNew = () => `/maintenance/new`;
+export const repairDetail = (id: string) => `/repairs/${id}`;
+export const repairNew = () => `/repairs/new`;
+/** @deprecated */
+export const maintenanceDetail = repairDetail;
+export const maintenanceNew = repairNew;
 export const messageDetail = (id: string) => `/messages/${id}`;
 export const rentReviewDetail = (id: string) => `/rent-review/${id}`;
 export const ingoingReport = (id: string) => `/inspections/ingoing/${id}`;
 export const outgoingReport = (id: string) => `/vacating/outgoing/${id}`;
 export const statementDetail = () => ROUTES.STATEMENT;
+export const leaseDocumentView = (id: string) => `/lease/documents/${id}`;
