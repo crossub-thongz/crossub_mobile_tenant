@@ -27,11 +27,7 @@ import { PASSWORD_MAX, PASSWORD_MIN } from '@/constants/auth';
 import { ROUTES } from '@/constants/routes';
 import { ApiError, api } from '@/lib/api';
 import type { AuthUser } from '@/lib/auth-types';
-import {
-  clearLocalSession,
-  loginLocalAccount,
-  registerLocalAccount,
-} from '@/lib/local-auth';
+import { loginLocalAccount, registerLocalAccount } from '@/lib/local-auth';
 import { cn } from '@/lib/utils';
 
 const loginSchema = z.object({
@@ -55,7 +51,7 @@ type AuthMode = 'login' | 'register';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { refresh, establishSession, status } = useAuth();
+  const { refresh, status } = useAuth();
   const [mode, setMode] = useState<AuthMode>('login');
   const [showPassword, setShowPassword] = useState(false);
 
@@ -81,15 +77,8 @@ export default function LoginPage() {
 
   const onLogin = async (values: LoginValues) => {
     try {
-      clearLocalSession();
-      const { user: apiUser } = await api.post<{ user: AuthUser }>('/auth/login', values);
-      establishSession(apiUser);
-      try {
-        const me = await api.get<{ user: AuthUser }>('/auth/me');
-        establishSession(me.user);
-      } catch {
-        /* Keep login response user if /auth/me is not ready yet (cookies still settling). */
-      }
+      await api.post<{ user: AuthUser }>('/auth/login', values);
+      await refresh();
       router.replace(ROUTES.DASHBOARD);
       return;
     } catch (err) {

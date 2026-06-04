@@ -17,9 +17,6 @@ services:
         value: production
       - key: NEXT_PUBLIC_API_URL
         value: /api
-      # Keep true until tenant lifecycle APIs exist on crossub_web (demo lease, repairs, etc.)
-      - key: NEXT_PUBLIC_USE_DEMO_DATA
-        value: 'true'
       - key: API_INTERNAL_URL
         sync: false
       - key: NEXT_PUBLIC_AGENT_PORTAL_URL

@@ -2,11 +2,9 @@ import { type NextRequest, NextResponse } from 'next/server';
 
 import { COOKIE_ACCESS } from '@/constants/auth';
 import { ROUTES, isPublicRoute } from '@/constants/routes';
-import { isLocalAccessCookieValue } from '@/lib/local-auth';
 
 export function proxy(req: NextRequest) {
-  const access = req.cookies.get(COOKIE_ACCESS)?.value;
-  const hasAccess = Boolean(access && !isLocalAccessCookieValue(access));
+  const hasAccess = req.cookies.has(COOKIE_ACCESS);
   const path = req.nextUrl.pathname;
   const publicRoute = isPublicRoute(path);
 
