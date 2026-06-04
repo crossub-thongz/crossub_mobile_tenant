@@ -55,7 +55,7 @@ type AuthMode = 'login' | 'register';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { refresh, status } = useAuth();
+  const { signIn, refresh, status } = useAuth();
   const [mode, setMode] = useState<AuthMode>('login');
   const [showPassword, setShowPassword] = useState(false);
 
@@ -82,8 +82,8 @@ export default function LoginPage() {
   const onLogin = async (values: LoginValues) => {
     try {
       clearLocalSession();
-      await api.post<{ user: AuthUser }>('/auth/login', values);
-      await refresh();
+      const { user } = await api.post<{ user: AuthUser }>('/auth/login', values);
+      signIn(user);
       router.replace(ROUTES.DASHBOARD);
       return;
     } catch (err) {
@@ -99,7 +99,7 @@ export default function LoginPage() {
 
     const localUser = loginLocalAccount(values.email, values.password);
     if (localUser) {
-      await refresh();
+      signIn(localUser);
       router.replace(ROUTES.DASHBOARD);
       return;
     }
@@ -114,14 +114,14 @@ export default function LoginPage() {
       } catch {
         /* clear any prior API session on this device */
       }
-      registerLocalAccount({
+      const newUser = registerLocalAccount({
         email: values.email,
         password: values.password,
         firstName: values.firstName,
         lastName: values.lastName,
         phone: values.phone,
       });
-      await refresh();
+      signIn(newUser);
       toast.success('Account created — you are signed in.');
       router.replace(ROUTES.DASHBOARD);
     } catch (e) {
