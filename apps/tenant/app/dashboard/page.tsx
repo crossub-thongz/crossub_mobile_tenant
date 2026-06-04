@@ -2,7 +2,6 @@
 
 import { HomeSummaryCard } from '@/components/tenant/home-summary-card';
 import { ArrearsBanner } from '@/components/tenant/arrears-banner';
-import { DemoTenancyBanner } from '@/components/tenant/demo-tenancy-banner';
 import { TenantShell } from '@/components/layout/tenant-shell';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
 import {
@@ -82,7 +81,6 @@ export default function DashboardPage() {
         <p className="text-muted-foreground text-sm">
           Summary of your tenancy — tap a section for full details.
         </p>
-        <DemoTenancyBanner />
         <ArrearsBanner />
 
         {terminationNotice && (

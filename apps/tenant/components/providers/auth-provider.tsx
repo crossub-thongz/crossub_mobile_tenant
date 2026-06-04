@@ -14,9 +14,7 @@ import {
   clearLocalSession,
   getLocalSessionUser,
   hasLocalAccessCookie,
-  purgeLocalAccountForEmail,
 } from '@/lib/local-auth';
-import { isDemoTenantEmail } from '@/lib/tenant-user';
 
 type AuthStatus = 'loading' | 'authed' | 'guest';
 
@@ -34,26 +32,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>('loading');
 
   const refresh = useCallback(async () => {
-    try {
-      const data = await api.get<{ user: AuthUser }>('/auth/me');
-      if (isDemoTenantEmail(data.user.email)) {
-        purgeLocalAccountForEmail(data.user.email);
-      }
-      clearLocalSession();
-      setUser(data.user);
+    const localUser = getLocalSessionUser();
+    if (localUser && hasLocalAccessCookie()) {
+      setUser(localUser);
       setStatus('authed');
       return;
+    }
+    try {
+      const data = await api.get<{ user: AuthUser }>('/auth/me');
+      setUser(data.user);
+      setStatus('authed');
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
-        const localUser = getLocalSessionUser();
-        if (localUser && hasLocalAccessCookie()) {
-          if (isDemoTenantEmail(localUser.email)) {
-            clearLocalSession();
-            setUser(null);
-            setStatus('guest');
-            return;
-          }
-          setUser(localUser);
+        const fallback = getLocalSessionUser();
+        if (fallback && hasLocalAccessCookie()) {
+          setUser(fallback);
           setStatus('authed');
           return;
         }
@@ -61,15 +54,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setStatus('guest');
         return;
       }
-      const localUser = getLocalSessionUser();
-      if (localUser && hasLocalAccessCookie()) {
-        if (isDemoTenantEmail(localUser.email)) {
-          clearLocalSession();
-          setUser(null);
-          setStatus('guest');
-          return;
-        }
-        setUser(localUser);
+      const fallback = getLocalSessionUser();
+      if (fallback && hasLocalAccessCookie()) {
+        setUser(fallback);
         setStatus('authed');
         return;
       }

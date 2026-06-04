@@ -1,4 +1,4 @@
-import { isDemoTenantEmail } from '@/lib/tenant-user';
+import { categoryFromMessageType } from '@/lib/message-categories';
 import type {
   ArrearsNotice,
   IngoingReport,
@@ -17,13 +17,7 @@ import type {
 const STORAGE_KEY_PREFIX = 'crossub_tenant_data_v1';
 const LEGACY_STORAGE_KEY = 'crossub_tenant_data_v1';
 
-export function tenantStorageKey(
-  userId: string | null,
-  email?: string | null,
-): string {
-  if (email && isDemoTenantEmail(email)) {
-    return `${STORAGE_KEY_PREFIX}_seed_${email.trim().toLowerCase()}`;
-  }
+export function tenantStorageKey(userId: string | null): string {
   return userId ? `${STORAGE_KEY_PREFIX}_${userId}` : `${STORAGE_KEY_PREFIX}_guest`;
 }
 
@@ -55,13 +49,10 @@ function emptyPersisted(): TenantPersistedData {
   };
 }
 
-export function readTenantStore(
-  userId: string | null = null,
-  email?: string | null,
-): TenantPersistedData {
+export function readTenantStore(userId: string | null = null): TenantPersistedData {
   if (typeof window === 'undefined') return emptyPersisted();
   try {
-    const key = tenantStorageKey(userId, email);
+    const key = tenantStorageKey(userId);
     let raw = localStorage.getItem(key);
     if (!raw && userId && localStorage.getItem(LEGACY_STORAGE_KEY)) {
       raw = localStorage.getItem(LEGACY_STORAGE_KEY);
@@ -81,11 +72,10 @@ export function readTenantStore(
 export function writeTenantStore(
   userId: string | null,
   data: TenantPersistedData,
-  email?: string | null,
 ): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(tenantStorageKey(userId, email), JSON.stringify(data));
+    localStorage.setItem(tenantStorageKey(userId), JSON.stringify(data));
   } catch {
     /* quota or private mode */
   }
@@ -94,15 +84,14 @@ export function writeTenantStore(
 export function patchTenantStore(
   userId: string | null,
   patch: Partial<TenantPersistedData>,
-  email?: string | null,
 ): TenantPersistedData {
-  const next = { ...readTenantStore(userId, email), ...patch };
-  writeTenantStore(userId, next, email);
+  const next = { ...readTenantStore(userId), ...patch };
+  writeTenantStore(userId, next);
   return next;
 }
 
-export function initEmptyTenantStore(userId: string, email?: string | null): void {
-  writeTenantStore(userId, emptyPersisted(), email);
+export function initEmptyTenantStore(userId: string): void {
+  writeTenantStore(userId, emptyPersisted());
 }
 
 /** User-created repairs (prefixed) merged ahead of demo seed. */

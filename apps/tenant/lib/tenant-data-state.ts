@@ -92,10 +92,9 @@ export function loadTenantState(
   userId: string | null,
   authed: boolean,
   demoEnv: boolean,
-  userEmail?: string | null,
 ): LoadedTenantState {
-  const stored = readTenantStore(userId, userEmail);
-  const showDemoTenancy = shouldShowDemoTenancy(userId, authed, demoEnv, userEmail);
+  const stored = readTenantStore(userId);
+  const showDemoTenancy = shouldShowDemoTenancy(userId, authed, demoEnv);
 
   if (!showDemoTenancy) {
     return {
