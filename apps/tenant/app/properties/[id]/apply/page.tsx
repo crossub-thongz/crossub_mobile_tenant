@@ -62,7 +62,19 @@ export default function ApplyPage() {
           <Input required placeholder="Employer, role, annual income" />
         </div>
         <div className="space-y-2">
+          <Label>Rental history (summary)</Label>
+          <Input placeholder="Previous address, landlord, duration" />
+        </div>
+        <div className="space-y-2">
+          <Label>References</Label>
+          <Input placeholder="Name and contact — employer or previous agent" />
+        </div>
+        <div className="space-y-2">
           <Label>Upload ID (PDF/image)</Label>
+          <Input type="file" accept="image/*,.pdf" />
+        </div>
+        <div className="space-y-2">
+          <Label>Income proof (PDF/image)</Label>
           <Input type="file" accept="image/*,.pdf" />
         </div>
         <Button type="submit" disabled={submitting} className="w-full">

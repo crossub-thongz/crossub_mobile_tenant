@@ -14,6 +14,8 @@ import { fetchMaintenanceState } from '@/lib/crossub-api/maintenance-client';
 import {
   APPLICATIONS,
   ARREARS,
+  DEMO_FINAL_STATEMENT,
+  DEMO_VACATING,
   FINAL_STATEMENT,
   INGOING_REPORT,
   LEASE,
@@ -22,10 +24,14 @@ import {
   MESSAGE_THREADS,
   NOTIFICATIONS as DEMO_NOTIFICATIONS,
   ONBOARDING_STEPS,
+  OUTGOING_REPORT,
+  OUTSTANDING_BALANCE,
+  PAYMENT_PROOFS,
   PENDING_ACTIONS,
   RENEWAL,
   RENT_RECEIPTS,
   RENT_REVIEWS,
+  SHOW_PHASE3_DEMO,
   TENANT_PHASE,
   VACATING,
 } from '@/lib/mock-data';
@@ -38,6 +44,9 @@ import type {
   MaintenanceRequest,
   MessageThread,
   OnboardingStep,
+  OutgoingReport,
+  OutstandingBalance,
+  PaymentProofRecord,
   PendingAction,
   RenewalDecision,
   RentReceipt,
@@ -69,8 +78,14 @@ interface TenantDataContextValue {
   vacating: VacatingCase | null;
   finalStatement: FinalStatement | null;
   arrears: ArrearsNotice | null;
+  paymentProofs: PaymentProofRecord[];
+  outstandingBalance: OutstandingBalance | null;
+  outgoingReport: OutgoingReport;
+  showPhase3Demo: boolean;
+  storedDocuments: { id: string; name: string; category: string; uploadedAt: string }[];
   markNotificationRead: (id: string) => void;
   confirmIngoingSection: (sectionId: string, dispute?: string) => void;
+  confirmOutgoingSection: (sectionId: string, dispute?: string) => void;
   respondRentReview: (
     id: string,
     action: 'accept' | 'reject' | 'counter',
@@ -89,6 +104,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
   const [maintenance, setMaintenance] = useState(DEMO_MAINTENANCE);
   const [ingoing, setIngoing] = useState(INGOING_REPORT);
   const [rentReviews, setRentReviews] = useState(RENT_REVIEWS);
+  const [outgoing, setOutgoing] = useState(OUTGOING_REPORT);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -159,6 +175,29 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     });
   }, []);
 
+  const confirmOutgoingSection = useCallback((sectionId: string, dispute?: string) => {
+    setOutgoing((prev) => {
+      const sections = prev.sections.map((s) =>
+        s.id === sectionId
+          ? {
+              ...s,
+              tenantConfirmed: !dispute,
+              tenantDispute: dispute,
+              confirmedAt: dispute ? undefined : new Date().toISOString(),
+            }
+          : s,
+      );
+      const confirmedCount = sections.filter((s) => s.tenantConfirmed).length;
+      const hasDispute = sections.some((s) => s.tenantDispute);
+      let status = prev.status;
+      if (hasDispute) status = 'disputed';
+      else if (sections.every((s) => s.tenantConfirmed || s.tenantDispute)) {
+        status = 'confirmed';
+      }
+      return { ...prev, sections, confirmedCount, status };
+    });
+  }, []);
+
   const respondRentReview = useCallback(
     (
       id: string,
@@ -212,11 +251,28 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       rentReceipts: RENT_RECEIPTS,
       rentReviews,
       renewal: RENEWAL,
-      vacating: VACATING,
-      finalStatement: FINAL_STATEMENT,
+      vacating: SHOW_PHASE3_DEMO ? DEMO_VACATING : VACATING,
+      finalStatement: SHOW_PHASE3_DEMO ? DEMO_FINAL_STATEMENT : FINAL_STATEMENT,
       arrears: ARREARS,
+      paymentProofs: PAYMENT_PROOFS,
+      outstandingBalance: OUTSTANDING_BALANCE,
+      outgoingReport: outgoing,
+      showPhase3Demo: SHOW_PHASE3_DEMO,
+      storedDocuments: [
+        ...LEASE.documents.map((d) => ({
+          ...d,
+          category: 'Lease',
+        })),
+        ...PAYMENT_PROOFS.filter((p) => p.fileName).map((p) => ({
+          id: p.id,
+          name: p.fileName!,
+          category: p.type === 'deposit' ? 'Deposit proof' : 'Bond proof',
+          uploadedAt: p.uploadedAt ?? '—',
+        })),
+      ],
       markNotificationRead,
       confirmIngoingSection,
+      confirmOutgoingSection,
       respondRentReview,
     }),
     [
@@ -226,9 +282,11 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       notifications,
       maintenance,
       ingoing,
+      outgoing,
       rentReviews,
       markNotificationRead,
       confirmIngoingSection,
+      confirmOutgoingSection,
       respondRentReview,
     ],
   );

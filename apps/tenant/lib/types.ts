@@ -58,6 +58,19 @@ export type ArrearsStage =
   | 'termination_notice'
   | 'resolved';
 
+export type OutgoingReportStatus =
+  | 'report_sent'
+  | 'confirmed'
+  | 'disputed'
+  | 'supporting_photos_required'
+  | 'finalized';
+
+export type MessageChannel = 'app' | 'email';
+
+export type PaymentProofType = 'deposit' | 'bond';
+
+export type PaymentProofStatus = 'pending' | 'uploaded' | 'approved' | 'rejected';
+
 export interface TimelineEntry {
   id: string;
   at: string;
@@ -185,10 +198,13 @@ export interface MessageThread {
   subject: string;
   type: MessageType;
   propertyAddress?: string;
+  leaseId?: string;
   lastMessage: string;
   lastAt: string;
   unread: number;
   linkedCaseId?: string;
+  channel?: MessageChannel;
+  contractorEnabled?: boolean;
 }
 
 export interface ThreadMessage {
@@ -197,6 +213,30 @@ export interface ThreadMessage {
   from: 'tenant' | 'crossub' | 'contractor';
   fromName: string;
   body: string;
+  channel?: MessageChannel;
+}
+
+export interface PaymentProofRecord {
+  id: string;
+  type: PaymentProofType;
+  amount: number;
+  uploadedAt?: string;
+  status: PaymentProofStatus;
+  fileName?: string;
+}
+
+export interface OutstandingBalance {
+  amount: number;
+  reason: string;
+  dueDate: string;
+}
+
+export interface OutgoingReport {
+  id: string;
+  propertyAddress: string;
+  status: OutgoingReportStatus;
+  sections: ReportSection[];
+  confirmedCount: number;
 }
 
 export interface RentReceipt {
@@ -217,6 +257,7 @@ export interface RentReviewCase {
   proposedRentWeekly: number;
   effectiveDate: string;
   explanation?: string;
+  reportAttachmentName?: string;
   status: RentReviewTenantStatus;
   counterHistory: { at: string; amount: number; by: 'tenant' | 'agent' }[];
   moveOutDate?: string;
@@ -251,6 +292,15 @@ export interface FinalStatement {
   deductions: number;
   finalRefund: number;
   finalizedAt: string;
+  pdfAvailable?: boolean;
+}
+
+export interface PropertyFilters {
+  suburb: string;
+  minRent: number;
+  maxRent: number;
+  propertyType: string;
+  hasOpenInspection: boolean;
 }
 
 export interface ArrearsNotice {

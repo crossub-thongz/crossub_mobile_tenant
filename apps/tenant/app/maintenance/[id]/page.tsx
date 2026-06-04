@@ -49,14 +49,21 @@ export default function MaintenanceDetailPage() {
             ))}
           </ul>
         </section>
-        {thread && (
-          <Link
-            href={messageDetail(thread.id)}
-            className="text-primary block text-center text-sm font-medium"
-          >
-            Open maintenance messages →
-          </Link>
-        )}
+        <div className="flex flex-col gap-2">
+          {thread && (
+            <Link
+              href={messageDetail(thread.id)}
+              className="text-primary block text-center text-sm font-medium"
+            >
+              Message CROSSUB about this repair →
+            </Link>
+          )}
+          {request.contractorName && thread?.contractorEnabled && (
+            <p className="text-muted-foreground text-center text-xs">
+              Contractor messaging enabled — open thread and switch to Contractor tab
+            </p>
+          )}
+        </div>
       </div>
     </TenantShell>
   );

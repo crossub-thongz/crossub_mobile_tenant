@@ -37,6 +37,7 @@ const MORE_NAV = [
   { href: ROUTES.RENEWAL, label: 'Lease renewal' },
   { href: ROUTES.VACATING, label: 'Vacating' },
   { href: ROUTES.NOTIFICATIONS, label: 'Notifications' },
+  { href: ROUTES.DOCUMENTS, label: 'Documents' },
   { href: ROUTES.SETTINGS, label: 'Settings' },
   { href: ROUTES.PROFILE, label: 'Profile' },
 ] as const;

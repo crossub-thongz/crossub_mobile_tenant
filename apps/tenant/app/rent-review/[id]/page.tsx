@@ -17,6 +17,7 @@ export default function RentReviewDetailPage() {
   const review = rentReviews.find((r) => r.id === id);
   const [counter, setCounter] = useState('');
   const [moveOut, setMoveOut] = useState('');
+  const [rejectReason, setRejectReason] = useState('');
 
   if (!review) {
     return (
@@ -42,6 +43,15 @@ export default function RentReviewDetailPage() {
           </p>
           {review.explanation && (
             <p className="text-muted-foreground mt-2 text-sm">{review.explanation}</p>
+          )}
+          {review.reportAttachmentName && (
+            <button
+              type="button"
+              className="text-primary mt-2 text-xs font-medium"
+              onClick={() => alert(`Open: ${review.reportAttachmentName}`)}
+            >
+              View attached report →
+            </button>
           )}
           <p className="mt-2 text-xs font-medium capitalize">Status: {review.status}</p>
         </div>
@@ -91,13 +101,23 @@ export default function RentReviewDetailPage() {
             </div>
             <div className="space-y-2 rounded-xl border p-4">
               <p className="text-sm font-medium">Reject</p>
+              <textarea
+                className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm"
+                placeholder="Reason for rejection (required)"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+              />
               <Input type="date" value={moveOut} onChange={(e) => setMoveOut(e.target.value)} />
               <Button
                 variant="destructive"
                 className="w-full"
                 onClick={() => {
+                  if (!rejectReason.trim()) return toast.error('Provide a reason');
                   if (!moveOut) return toast.error('Select intended move-out date');
-                  respondRentReview(review.id, 'reject', { moveOutDate: moveOut });
+                  respondRentReview(review.id, 'reject', {
+                    moveOutDate: moveOut,
+                    reason: rejectReason,
+                  });
                   toast.success('Rejection recorded — vacating workflow may start');
                 }}
               >

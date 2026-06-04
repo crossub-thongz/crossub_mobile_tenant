@@ -15,6 +15,9 @@ export const ROUTES = {
   NOTIFICATIONS: '/notifications',
   PROFILE: '/profile',
   SETTINGS: '/settings',
+  MESSAGES_NEW: '/messages/new',
+  STATEMENT: '/payments/statement',
+  DOCUMENTS: '/documents',
 } as const;
 
 export const PUBLIC_ROUTE_PATTERNS = [
@@ -37,3 +40,4 @@ export const messageDetail = (id: string) => `/messages/${id}`;
 export const rentReviewDetail = (id: string) => `/rent-review/${id}`;
 export const ingoingReport = (id: string) => `/inspections/ingoing/${id}`;
 export const outgoingReport = (id: string) => `/vacating/outgoing/${id}`;
+export const statementDetail = () => ROUTES.STATEMENT;

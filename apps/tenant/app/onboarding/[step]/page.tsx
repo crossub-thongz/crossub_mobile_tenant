@@ -103,9 +103,41 @@ export default function OnboardingStepPage() {
       )}
 
       {step.id === 'account_setup' && (
-        <p className="text-sm text-muted-foreground">
-          Profile linked to lease record when you sign in with your tenant account.
-        </p>
+        <form
+          className="space-y-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            toast.success('Profile confirmed — account linked to lease');
+          }}
+        >
+          <p className="text-sm text-muted-foreground">
+            Confirm your details and link this login to your property/lease record.
+          </p>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Phone</label>
+            <input
+              className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm"
+              type="tel"
+              placeholder="+61 ..."
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Confirm email</label>
+            <input
+              className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm"
+              type="email"
+              required
+            />
+          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" required className="accent-primary size-4" />
+            I confirm this account is for my approved tenancy at 12 River Lane
+          </label>
+          <Button type="submit" className="w-full">
+            Complete account setup
+          </Button>
+        </form>
       )}
 
       {step.id === 'ingoing_report' && (

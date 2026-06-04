@@ -86,6 +86,15 @@ export const APPLICATIONS: RentalApplication[] = [
     status: 'under_review',
     submittedAt: '2026-05-28T16:05:00+10:00',
   },
+  {
+    id: 'app-203',
+    referenceNumber: 'APP-2026-0211',
+    propertyId: 'prop-103',
+    propertyAddress: 'Unit 4 / 55 King Rd, Clayton',
+    status: 'missing_information',
+    submittedAt: '2026-06-01T11:00:00+10:00',
+    missingDocuments: ['Proof of income (last 2 payslips)', 'Photo ID (passport or licence)'],
+  },
 ];
 
 export const ONBOARDING_STEPS: OnboardingStep[] = [
@@ -157,7 +166,7 @@ export const INGOING_REPORT: IngoingReport = {
       id: 'sec-lounge',
       room: 'Lounge',
       description: 'Walls good; carpet light wear near entry.',
-      photos: [],
+      photos: ['lounge-1'],
       tenantConfirmed: true,
       confirmedAt: '2026-06-14T10:00:00+10:00',
     },
@@ -165,7 +174,7 @@ export const INGOING_REPORT: IngoingReport = {
       id: 'sec-kitchen',
       room: 'Kitchen',
       description: 'Benchtops intact; rangehood clean.',
-      photos: [],
+      photos: ['kitchen-1', 'kitchen-2'],
       tenantConfirmed: true,
       confirmedAt: '2026-06-14T10:05:00+10:00',
     },
@@ -236,14 +245,28 @@ export const MAINTENANCE: MaintenanceRequest[] = [
 
 export const MESSAGE_THREADS: MessageThread[] = [
   {
+    id: 'msg-600',
+    subject: 'General enquiry — parking',
+    type: 'general',
+    propertyAddress: '12 River Lane, Southbank',
+    leaseId: 'lease-401',
+    lastMessage: 'Thanks for confirming visitor parking rules.',
+    lastAt: '2026-05-15T14:00:00+10:00',
+    unread: 0,
+    channel: 'app',
+  },
+  {
     id: 'msg-601',
     subject: 'Kitchen tap repair — access time',
     type: 'maintenance',
     propertyAddress: '12 River Lane, Southbank',
+    leaseId: 'lease-401',
     lastMessage: 'Contractor can attend Tuesday 10am–12pm. Does that work?',
     lastAt: '2026-05-28T09:15:00+10:00',
     unread: 1,
     linkedCaseId: 'mnt-501',
+    channel: 'app',
+    contractorEnabled: true,
   },
   {
     id: 'msg-602',
@@ -254,17 +277,62 @@ export const MESSAGE_THREADS: MessageThread[] = [
     lastAt: '2026-05-27T16:00:00+10:00',
     unread: 1,
     linkedCaseId: 'rr-701',
+    channel: 'email',
   },
   {
     id: 'msg-603',
     subject: 'June rent receipt',
     type: 'accounting',
     propertyAddress: '12 River Lane, Southbank',
+    leaseId: 'lease-401',
     lastMessage: 'Your rent receipt for June is now available in Payments.',
     lastAt: '2026-06-01T08:00:00+10:00',
     unread: 0,
+    channel: 'app',
   },
 ];
+
+export const PAYMENT_PROOFS: import('@/lib/types').PaymentProofRecord[] = [
+  {
+    id: 'pp-dep',
+    type: 'deposit',
+    amount: 1040,
+    uploadedAt: '2026-06-04T10:00:00+10:00',
+    status: 'approved',
+    fileName: 'deposit-transfer.pdf',
+  },
+  {
+    id: 'pp-bond',
+    type: 'bond',
+    amount: 2080,
+    status: 'pending',
+  },
+];
+
+export const OUTSTANDING_BALANCE: import('@/lib/types').OutstandingBalance | null = null;
+
+export const OUTGOING_REPORT: import('@/lib/types').OutgoingReport = {
+  id: 'out-401',
+  propertyAddress: '12 River Lane, Southbank',
+  status: 'report_sent',
+  confirmedCount: 0,
+  sections: [
+    {
+      id: 'out-lounge',
+      room: 'Lounge',
+      description: 'Fair wear; carpet professionally cleaned.',
+      photos: ['out-lounge'],
+      tenantConfirmed: false,
+    },
+    {
+      id: 'out-kitchen',
+      room: 'Kitchen',
+      description: 'Benchtops wiped; minor grease behind stove noted.',
+      photos: ['out-kitchen'],
+      tenantConfirmed: false,
+    },
+  ],
+};
 
 export const RENT_RECEIPTS: RentReceipt[] = [
   {
@@ -297,10 +365,32 @@ export const RENT_REVIEWS: RentReviewCase[] = [
     proposedRentWeekly: 545,
     effectiveDate: '2026-08-01',
     explanation: 'Annual rent review based on market conditions.',
+    reportAttachmentName: 'Market rent report — Southbank 2 bed.pdf',
     status: 'pending',
     counterHistory: [],
   },
 ];
+
+// Demo vacating + statement (Phase 3) — visible on Vacating / Payments when enabled
+export const DEMO_VACATING: VacatingCase = {
+  id: 'vac-901',
+  propertyAddress: '12 River Lane, Southbank',
+  vacatingDate: '2027-07-15',
+  outgoingStatus: 'supporting_photos_required',
+  outgoingReportId: 'out-401',
+};
+
+export const DEMO_FINAL_STATEMENT: FinalStatement = {
+  id: 'fs-001',
+  propertyAddress: '12 River Lane, Southbank',
+  totalBond: 2080,
+  rentArrears: 0,
+  unpaidBills: 85,
+  deductions: 320,
+  finalRefund: 1675,
+  finalizedAt: '2027-08-01',
+  pdfAvailable: true,
+};
 
 export const RENEWAL: RenewalDecision = {
   dueBy: '2026-04-02',
@@ -312,7 +402,16 @@ export const VACATING: VacatingCase | null = null;
 
 export const FINAL_STATEMENT: FinalStatement | null = null;
 
-export const ARREARS: ArrearsNotice | null = null;
+/** Set true in demo to preview Phase 3 vacating + final statement flows */
+export const SHOW_PHASE3_DEMO = false;
+
+export const ARREARS: ArrearsNotice = {
+  stage: 'late_reminder',
+  outstandingAmount: 520,
+  dueDate: '2026-06-08',
+  message:
+    'Rent is 7+ days overdue. Please pay outstanding rent or contact CROSSUB Accounting. Confirm reminder logic with Tony/Jason Guan.',
+};
 
 export const PENDING_ACTIONS: PendingAction[] = [
   {
@@ -359,6 +458,17 @@ export const PENDING_ACTIONS: PendingAction[] = [
     href: ROUTES.RENEWAL,
     updatedAt: '2026-06-01T08:00:00+10:00',
   },
+  {
+    id: 'pa-5',
+    module: 'payment',
+    title: 'Late rent payment',
+    subtitle: 'Outstanding $520 · due 8 Jun',
+    status: 'Payment reminder',
+    priority: 'urgent',
+    dueAt: '2026-06-08',
+    href: ROUTES.PAYMENTS,
+    updatedAt: '2026-06-02T08:00:00+10:00',
+  },
 ];
 
 export const NOTIFICATIONS: TenantNotification[] = [
@@ -398,6 +508,26 @@ export const NOTIFICATIONS: TenantNotification[] = [
     read: true,
     href: maintenanceDetail('mnt-501'),
     createdAt: '2026-05-22T09:30:00+10:00',
+  },
+  {
+    id: 'n-5',
+    title: 'Bond proof due',
+    body: 'Upload bond payment proof by 8 June.',
+    type: 'onboarding',
+    read: false,
+    href: onboardingStep('bond'),
+    createdAt: '2026-06-02T08:00:00+10:00',
+    actionRequired: 'Upload proof',
+  },
+  {
+    id: 'n-6',
+    title: 'Rent arrears reminder',
+    body: 'Outstanding rent — please pay or contact CROSSUB.',
+    type: 'payment',
+    read: false,
+    href: ROUTES.PAYMENTS,
+    createdAt: '2026-06-02T08:00:00+10:00',
+    actionRequired: 'View payment instructions',
   },
 ];
 
