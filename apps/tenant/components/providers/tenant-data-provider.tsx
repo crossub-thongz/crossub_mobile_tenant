@@ -176,7 +176,6 @@ function applyLoadedState(
 export function TenantDataProvider({ children }: { children: React.ReactNode }) {
   const { user, status } = useAuth();
   const userId = user?.id ?? null;
-  const userEmail = user?.email ?? null;
   const demo = useDemoData();
   const authed = status === 'authed';
 
@@ -239,9 +238,9 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
   );
 
   const hydrate = useCallback(() => {
-    const loaded = loadTenantState(userId, authed, demo, userEmail);
+    const loaded = loadTenantState(userId, authed, demo);
     applyLoadedState(loaded, setters);
-  }, [userId, userEmail, authed, demo, setters]);
+  }, [userId, authed, demo, setters]);
 
   useEffect(() => {
     hydrate();
@@ -256,7 +255,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const loaded = loadTenantState(userId, authed, demo, userEmail);
+    const loaded = loadTenantState(userId, authed, demo);
     applyLoadedState(loaded, setters);
     const seedMaintenance = loaded.maintenance;
 
@@ -293,7 +292,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     } finally {
       setLoading(false);
     }
-  }, [userId, userEmail, authed, demo, setters]);
+  }, [userId, authed, demo, setters]);
 
   useEffect(() => {
     void refresh();

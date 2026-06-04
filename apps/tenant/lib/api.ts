@@ -13,12 +13,6 @@ export class ApiError extends Error {
 
 const isAuthPath = (path: string): boolean => path.startsWith('/auth/');
 
-/** /auth/me should still attempt refresh when the access cookie expired. */
-const shouldAttemptRefresh = (path: string, status: number): boolean =>
-  status === 401 &&
-  typeof window !== 'undefined' &&
-  (path === '/auth/me' || !isAuthPath(path));
-
 const onPublicPage = (): boolean => {
   if (typeof window === 'undefined') return false;
   return isPublicRoute(window.location.pathname);
@@ -65,7 +59,11 @@ const clearSessionAndRedirectToLogin = async (): Promise<void> => {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let res = await doFetch(path, init);
 
-  if (shouldAttemptRefresh(path, res.status)) {
+  if (
+    res.status === 401 &&
+    typeof window !== 'undefined' &&
+    !isAuthPath(path)
+  ) {
     const refreshed = await fetch(`${API_URL}/auth/refresh`, {
       method: 'POST',
       credentials: 'include',

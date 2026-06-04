@@ -5,7 +5,7 @@ import { initEmptyTenantStore } from '@/lib/tenant-store';
 
 const ACCOUNTS_KEY = 'crossub_tenant_accounts';
 const SESSION_KEY = 'crossub_tenant_session';
-export const LOCAL_ACCESS_VALUE = 'local';
+const LOCAL_ACCESS_VALUE = 'local';
 
 export interface LocalAccount {
   id: string;
@@ -72,12 +72,29 @@ export function getLocalSessionUser(): AuthUser | null {
   }
 }
 
+export function getAccessCookieValue(): string | null {
+  if (typeof window === 'undefined') return null;
+  for (const part of document.cookie.split(';')) {
+    const trimmed = part.trim();
+    if (trimmed.startsWith(`${COOKIE_ACCESS}=`)) {
+      return trimmed.slice(COOKIE_ACCESS.length + 1) || null;
+    }
+  }
+  return null;
+}
+
+export function isLocalAccessCookie(): boolean {
+  return getAccessCookieValue() === LOCAL_ACCESS_VALUE;
+}
+
+/** @deprecated use isLocalAccessCookie */
 export function hasLocalAccessCookie(): boolean {
-  if (typeof window === 'undefined') return false;
-  return document.cookie.split(';').some((c) => {
-    const [name, value] = c.trim().split('=');
-    return name === COOKIE_ACCESS && value === LOCAL_ACCESS_VALUE;
-  });
+  return isLocalAccessCookie();
+}
+
+/** Device signup cookie without sessionStorage — middleware still allows access. */
+export function hasStaleLocalCookie(): boolean {
+  return isLocalAccessCookie() && !getLocalSessionUser();
 }
 
 export function registerLocalAccount(input: RegisterInput): AuthUser {
@@ -86,6 +103,7 @@ export function registerLocalAccount(input: RegisterInput): AuthUser {
   if (accounts.some((a) => a.email === email)) {
     throw new Error('An account with this email already exists.');
   }
+  clearLocalSession();
   const account: LocalAccount = {
     id: `tenant-${Date.now()}`,
     email,

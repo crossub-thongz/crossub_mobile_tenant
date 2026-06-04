@@ -1,4 +1,5 @@
 import { categoryFromMessageType } from '@/lib/message-categories';
+import { isLocalRegisteredUser } from '@/lib/tenant-user';
 import type {
   ArrearsNotice,
   IngoingReport,
@@ -16,6 +17,7 @@ import type {
 
 const STORAGE_KEY_PREFIX = 'crossub_tenant_data_v1';
 const LEGACY_STORAGE_KEY = 'crossub_tenant_data_v1';
+const LEGACY_MIGRATED_KEY = 'crossub_tenant_legacy_migrated_v1';
 
 export function tenantStorageKey(userId: string | null): string {
   return userId ? `${STORAGE_KEY_PREFIX}_${userId}` : `${STORAGE_KEY_PREFIX}_guest`;
@@ -54,11 +56,18 @@ export function readTenantStore(userId: string | null = null): TenantPersistedDa
   try {
     const key = tenantStorageKey(userId);
     let raw = localStorage.getItem(key);
-    if (!raw && userId && localStorage.getItem(LEGACY_STORAGE_KEY)) {
+    if (
+      !raw &&
+      userId &&
+      !isLocalRegisteredUser(userId) &&
+      !localStorage.getItem(LEGACY_MIGRATED_KEY) &&
+      localStorage.getItem(LEGACY_STORAGE_KEY)
+    ) {
       raw = localStorage.getItem(LEGACY_STORAGE_KEY);
       if (raw) {
         localStorage.setItem(key, raw);
         localStorage.removeItem(LEGACY_STORAGE_KEY);
+        localStorage.setItem(LEGACY_MIGRATED_KEY, userId);
       }
     }
     if (!raw) return emptyPersisted();

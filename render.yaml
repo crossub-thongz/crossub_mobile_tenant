@@ -17,13 +17,11 @@ services:
         value: production
       - key: NEXT_PUBLIC_API_URL
         value: /api
+      - key: NEXT_PUBLIC_USE_DEMO_DATA
+        value: "true"
       - key: API_INTERNAL_URL
         sync: false
       - key: NEXT_PUBLIC_AGENT_PORTAL_URL
         sync: false
       - key: NEXT_PUBLIC_WEB_URL
         sync: false
-      - key: NEXT_PUBLIC_USE_DEMO_DATA
-        value: "true"
-      - key: TENANT_USE_DEMO_DATA
-        value: "true"
