@@ -2,6 +2,7 @@ import { COOKIE_ACCESS, COOKIE_REFRESH } from '@/constants/auth';
 import { Role, UserStatus } from '@/constants/roles';
 import type { AuthUser } from '@/lib/auth-types';
 import { initEmptyTenantStore } from '@/lib/tenant-store';
+import { isDemoTenantEmail } from '@/lib/tenant-user';
 
 const ACCOUNTS_KEY = 'crossub_tenant_accounts';
 const SESSION_KEY = 'crossub_tenant_session';
@@ -82,6 +83,11 @@ export function hasLocalAccessCookie(): boolean {
 
 export function registerLocalAccount(input: RegisterInput): AuthUser {
   const email = input.email.trim().toLowerCase();
+  if (isDemoTenantEmail(email)) {
+    throw new Error(
+      'This email is a CROSSUB agency account. Use Sign in with your agency password — not Register.',
+    );
+  }
   const accounts = readAccounts();
   if (accounts.some((a) => a.email === email)) {
     throw new Error('An account with this email already exists.');
@@ -103,6 +109,9 @@ export function registerLocalAccount(input: RegisterInput): AuthUser {
 
 export function loginLocalAccount(email: string, password: string): AuthUser | null {
   const normalized = email.trim().toLowerCase();
+  if (isDemoTenantEmail(normalized)) {
+    return null;
+  }
   const account = readAccounts().find(
     (a) => a.email === normalized && a.password === password,
   );
@@ -121,4 +130,16 @@ export function clearLocalSession(): void {
   sessionStorage.removeItem(SESSION_KEY);
   document.cookie = `${COOKIE_ACCESS}=; path=/; max-age=0`;
   document.cookie = `${COOKIE_REFRESH}=; path=/; max-age=0`;
+}
+
+/** Remove device-only account so API login can use agency credentials. */
+export function purgeLocalAccountForEmail(email: string): void {
+  if (typeof window === 'undefined') return;
+  const normalized = email.trim().toLowerCase();
+  const accounts = readAccounts().filter((a) => a.email !== normalized);
+  writeAccounts(accounts);
+  const session = getLocalSessionUser();
+  if (session?.email.trim().toLowerCase() === normalized) {
+    clearLocalSession();
+  }
 }

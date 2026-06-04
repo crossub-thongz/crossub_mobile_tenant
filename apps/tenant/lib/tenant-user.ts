@@ -38,7 +38,8 @@ export function shouldShowDemoTenancy(
   email?: string | null,
 ): boolean {
   if (!authed || !userId) return false;
-  if (isLocalRegisteredUser(userId)) return false;
+  /** Demo agency accounts always get seed data — even if they were created via Register tab. */
   if (isDemoTenantEmail(email)) return true;
+  if (isLocalRegisteredUser(userId)) return false;
   return demoEnv;
 }

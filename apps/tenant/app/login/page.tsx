@@ -27,7 +27,13 @@ import { PASSWORD_MAX, PASSWORD_MIN } from '@/constants/auth';
 import { ROUTES } from '@/constants/routes';
 import { ApiError, api } from '@/lib/api';
 import type { AuthUser } from '@/lib/auth-types';
-import { loginLocalAccount, registerLocalAccount } from '@/lib/local-auth';
+import {
+  clearLocalSession,
+  loginLocalAccount,
+  purgeLocalAccountForEmail,
+  registerLocalAccount,
+} from '@/lib/local-auth';
+import { isDemoTenantEmail } from '@/lib/tenant-user';
 import { cn } from '@/lib/utils';
 
 const loginSchema = z.object({
@@ -76,12 +82,28 @@ export default function LoginPage() {
   });
 
   const onLogin = async (values: LoginValues) => {
+    const email = values.email.trim().toLowerCase();
+    const isDemo = isDemoTenantEmail(email);
+
+    if (isDemo) {
+      purgeLocalAccountForEmail(email);
+      clearLocalSession();
+    }
+
     try {
       await api.post<{ user: AuthUser }>('/auth/login', values);
+      clearLocalSession();
+      if (isDemo) purgeLocalAccountForEmail(email);
       await refresh();
       router.replace(ROUTES.DASHBOARD);
       return;
     } catch (err) {
+      if (isDemo) {
+        toast.error(
+          'Agency sign-in failed. Use your CROSSUB password (Sign in, not Register). Check API is reachable from this app.',
+        );
+        return;
+      }
       if (err instanceof ApiError && err.status !== 401 && err.status >= 400) {
         if (err.status >= 500 || err.status === 0) {
           /* fall through to local account */
