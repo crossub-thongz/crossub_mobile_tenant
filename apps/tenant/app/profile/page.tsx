@@ -13,13 +13,15 @@ import Link from 'next/link';
 import { displayName } from '@/lib/utils';
 
 export default function ProfilePage() {
-  const { user } = useAuth();
+  const { user, status } = useAuth();
   const [emergencyName, setEmergencyName] = useState('');
   const [emergencyPhone, setEmergencyPhone] = useState('');
 
   return (
     <TenantShell title="Profile">
-      {user ? (
+      {status === 'loading' ? (
+        <p className="text-muted-foreground text-sm">Loading profile…</p>
+      ) : user ? (
         <div className="space-y-5 text-sm">
           <div className="rounded-xl border bg-card p-4">
             <p className="font-semibold">{displayName(user)}</p>

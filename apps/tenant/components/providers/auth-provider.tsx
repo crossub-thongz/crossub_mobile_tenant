@@ -22,6 +22,8 @@ interface AuthContextValue {
   user: AuthUser | null;
   status: AuthStatus;
   refresh: () => Promise<void>;
+  /** Call after a successful API login so profile works even if /auth/me is briefly unavailable. */
+  establishSession: (user: AuthUser) => void;
   logout: () => Promise<void>;
 }
 
@@ -31,6 +33,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [status, setStatus] = useState<AuthStatus>('loading');
 
+  const establishSession = useCallback((nextUser: AuthUser) => {
+    setUser(nextUser);
+    setStatus('authed');
+  }, []);
+
   const refresh = useCallback(async () => {
     const localUser = getLocalSessionUser();
     if (localUser && hasLocalAccessCookie()) {
@@ -38,6 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setStatus('authed');
       return;
     }
+
     try {
       const data = await api.get<{ user: AuthUser }>('/auth/me');
       setUser(data.user);
@@ -60,8 +68,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setStatus('authed');
         return;
       }
-      setUser(null);
-      setStatus('guest');
+      // Keep existing session on transient errors (network, 502).
+      setUser((prev) => {
+        if (prev) {
+          setStatus('authed');
+          return prev;
+        }
+        setStatus('guest');
+        return null;
+      });
     }
   }, []);
 
@@ -85,7 +100,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [refresh]);
 
   return (
-    <AuthContext.Provider value={{ user, status, refresh, logout }}>
+    <AuthContext.Provider
+      value={{ user, status, refresh, establishSession, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );

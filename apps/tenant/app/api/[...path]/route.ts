@@ -49,8 +49,17 @@ const proxy = async (
   });
 
   const cookies = upstream.headers.getSetCookie?.() ?? [];
-  for (const cookie of cookies) {
-    response.headers.append('set-cookie', rewriteSetCookie(cookie));
+  if (cookies.length > 0) {
+    for (const cookie of cookies) {
+      response.headers.append('set-cookie', rewriteSetCookie(cookie));
+    }
+  } else {
+    const combined = upstream.headers.get('set-cookie');
+    if (combined) {
+      for (const cookie of combined.split(/,(?=\s*[\w-]+=)/)) {
+        response.headers.append('set-cookie', rewriteSetCookie(cookie.trim()));
+      }
+    }
   }
 
   return response;
