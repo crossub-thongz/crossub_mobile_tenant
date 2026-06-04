@@ -243,8 +243,9 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
   }, [userId, authed, demo, setters]);
 
   useEffect(() => {
+    if (status === 'loading') return;
     hydrate();
-  }, [hydrate]);
+  }, [hydrate, status]);
 
   const persistMaintenance = useCallback(
     (next: MaintenanceRequest[]) => {
@@ -295,8 +296,9 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
   }, [userId, authed, demo, setters]);
 
   useEffect(() => {
+    if (status === 'loading') return;
     void refresh();
-  }, [refresh]);
+  }, [refresh, status]);
 
   const propertyAddress = lease?.propertyAddress ?? 'Your property';
   const leaseId = lease?.id;

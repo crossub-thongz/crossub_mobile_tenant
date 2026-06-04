@@ -1,7 +1,7 @@
 import { COOKIE_ACCESS, COOKIE_REFRESH } from '@/constants/auth';
 import { Role, UserStatus } from '@/constants/roles';
 import type { AuthUser } from '@/lib/auth-types';
-import { initEmptyTenantStore } from '@/lib/tenant-store';
+import { clearLegacyTenantStore, initEmptyTenantStore } from '@/lib/tenant-store';
 
 const ACCOUNTS_KEY = 'crossub_tenant_accounts';
 const SESSION_KEY = 'crossub_tenant_session';
@@ -121,4 +121,20 @@ export function clearLocalSession(): void {
   sessionStorage.removeItem(SESSION_KEY);
   document.cookie = `${COOKIE_ACCESS}=; path=/; max-age=0`;
   document.cookie = `${COOKIE_REFRESH}=; path=/; max-age=0`;
+}
+
+/** Wipe local signup storage for this browser (use if accounts still show shared data). */
+export function resetLocalTenantStorage(userId?: string): void {
+  if (typeof window === 'undefined') return;
+  clearLegacyTenantStore();
+  if (userId) {
+    localStorage.removeItem(`crossub_tenant_data_v1_${userId}`);
+  }
+  const prefix = 'crossub_tenant_data_v1_';
+  const keys: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k?.startsWith(prefix)) keys.push(k);
+  }
+  keys.forEach((k) => localStorage.removeItem(k));
 }

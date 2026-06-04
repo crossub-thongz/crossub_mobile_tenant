@@ -46,5 +46,9 @@ export function formatCurrency(amount: number): string {
   return `$${amount.toLocaleString('en-AU')}`;
 }
 
+import { resolveUseDemoData } from '@/lib/demo-mode';
+import { getClientRuntimeConfig } from '@/lib/runtime-config';
+
+/** Demo lifecycle enabled (mock tenancy for API users). */
 export const useDemoData = (): boolean =>
-  process.env.NEXT_PUBLIC_USE_DEMO_DATA !== 'false';
+  resolveUseDemoData(getClientRuntimeConfig());

@@ -48,7 +48,8 @@ Open [http://localhost:3003](http://localhost:3003). Browse **Available properti
 | `API_INTERNAL_URL` | `http://localhost:3001` | Server proxy → crossub_web Nest API |
 | `NEXT_PUBLIC_WEB_URL` | `http://localhost:3000` | Staff web (optional links) |
 | `NEXT_PUBLIC_AGENT_PORTAL_URL` | `http://localhost:3002` | Agent portal (optional links) |
-| `NEXT_PUBLIC_USE_DEMO_DATA` | `true` | Mock lifecycle when API/tenant role not ready |
+| `NEXT_PUBLIC_USE_DEMO_DATA` | `true` | Mock lifecycle (build-time) |
+| `TENANT_USE_DEMO_DATA` | `true` | Mock lifecycle (runtime on server — no rebuild to toggle) |
 
 ### Render (tenant Web Service)
 
@@ -61,11 +62,18 @@ API_INTERNAL_URL=https://your-crossub-api.onrender.com
 NEXT_PUBLIC_WEB_URL=https://your-crossub-web.onrender.com
 NEXT_PUBLIC_AGENT_PORTAL_URL=https://crossub-mobile-agent.onrender.com
 NEXT_PUBLIC_USE_DEMO_DATA=true
+TENANT_USE_DEMO_DATA=true
 ```
 
-Use `true` while reviewing the app with mock tenancy (12 River Lane, repairs, messages, etc.). Set `false` when tenant lifecycle APIs return real data per user.
+Use `true` while reviewing the app with mock tenancy (12 River Lane, repairs, messages, etc.). Set both to `false` when tenant lifecycle APIs return real data per user.
 
-**Important:** `NEXT_PUBLIC_USE_DEMO_DATA` is embedded at **build time**. After changing it in Render, trigger a **new deploy** (rebuild), not only a restart.
+`TENANT_USE_DEMO_DATA` applies on the **next page load** without rebuild. `NEXT_PUBLIC_USE_DEMO_DATA` still requires a **rebuild** if you change it.
+
+### Demo data missing or accounts sharing the same data?
+
+- **API login** (`system@crossub.com.au`): needs `TENANT_USE_DEMO_DATA=true` (or `NEXT_PUBLIC_USE_DEMO_DATA` at build). Local **Register** accounts never get demo tenancy (empty until they apply).
+- **Register** creates a fresh store per `tenant-*` user id. Old browser data may linger under `crossub_tenant_data_v1` (legacy) — clear site data or use a private window.
+- Sign out, then in DevTools → Application → Local Storage, delete keys starting with `crossub_tenant_data_v1`.
 
 Replace URLs with your deployed services. Do **not** add `/api` to `API_INTERNAL_URL`.
 

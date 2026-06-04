@@ -1,4 +1,5 @@
 import { categoryFromMessageType } from '@/lib/message-categories';
+import { isLocalRegisteredUser } from '@/lib/tenant-user';
 import type {
   ArrearsNotice,
   IngoingReport,
@@ -49,12 +50,24 @@ function emptyPersisted(): TenantPersistedData {
   };
 }
 
+/** Remove pre-per-user global blob so it is not copied onto new accounts. */
+export function clearLegacyTenantStore(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(LEGACY_STORAGE_KEY);
+}
+
 export function readTenantStore(userId: string | null = null): TenantPersistedData {
   if (typeof window === 'undefined') return emptyPersisted();
   try {
     const key = tenantStorageKey(userId);
     let raw = localStorage.getItem(key);
-    if (!raw && userId && localStorage.getItem(LEGACY_STORAGE_KEY)) {
+    // Only migrate shared legacy data for API users — never onto local tenant-* signups.
+    if (
+      !raw &&
+      userId &&
+      !isLocalRegisteredUser(userId) &&
+      localStorage.getItem(LEGACY_STORAGE_KEY)
+    ) {
       raw = localStorage.getItem(LEGACY_STORAGE_KEY);
       if (raw) {
         localStorage.setItem(key, raw);
@@ -91,6 +104,7 @@ export function patchTenantStore(
 }
 
 export function initEmptyTenantStore(userId: string): void {
+  clearLegacyTenantStore();
   writeTenantStore(userId, emptyPersisted());
 }
 
