@@ -71,9 +71,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     if (refreshed.ok) {
       res = await doFetch(path, init);
     } else {
-      if (!onPublicPage()) {
-        await clearSessionAndRedirectToLogin();
-      }
+      await clearSessionAndRedirectToLogin();
       throw new ApiError(401, await parseBody(refreshed));
     }
   }

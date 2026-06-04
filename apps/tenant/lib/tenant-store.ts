@@ -1,5 +1,4 @@
 import { categoryFromMessageType } from '@/lib/message-categories';
-import { isLocalRegisteredUser } from '@/lib/tenant-user';
 import type {
   ArrearsNotice,
   IngoingReport,
@@ -15,13 +14,7 @@ import type {
   VacatingCase,
 } from '@/lib/types';
 
-const STORAGE_KEY_PREFIX = 'crossub_tenant_data_v1';
-const LEGACY_STORAGE_KEY = 'crossub_tenant_data_v1';
-const LEGACY_MIGRATED_KEY = 'crossub_tenant_legacy_migrated_v1';
-
-export function tenantStorageKey(userId: string | null): string {
-  return userId ? `${STORAGE_KEY_PREFIX}_${userId}` : `${STORAGE_KEY_PREFIX}_guest`;
-}
+const STORAGE_KEY = 'crossub_tenant_data_v1';
 
 export interface TenantPersistedData {
   maintenance: MaintenanceRequest[];
@@ -51,25 +44,10 @@ function emptyPersisted(): TenantPersistedData {
   };
 }
 
-export function readTenantStore(userId: string | null = null): TenantPersistedData {
+export function readTenantStore(): TenantPersistedData {
   if (typeof window === 'undefined') return emptyPersisted();
   try {
-    const key = tenantStorageKey(userId);
-    let raw = localStorage.getItem(key);
-    if (
-      !raw &&
-      userId &&
-      !isLocalRegisteredUser(userId) &&
-      !localStorage.getItem(LEGACY_MIGRATED_KEY) &&
-      localStorage.getItem(LEGACY_STORAGE_KEY)
-    ) {
-      raw = localStorage.getItem(LEGACY_STORAGE_KEY);
-      if (raw) {
-        localStorage.setItem(key, raw);
-        localStorage.removeItem(LEGACY_STORAGE_KEY);
-        localStorage.setItem(LEGACY_MIGRATED_KEY, userId);
-      }
-    }
+    const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return emptyPersisted();
     const parsed = JSON.parse(raw) as Partial<TenantPersistedData>;
     return { ...emptyPersisted(), ...parsed };
@@ -78,29 +56,21 @@ export function readTenantStore(userId: string | null = null): TenantPersistedDa
   }
 }
 
-export function writeTenantStore(
-  userId: string | null,
-  data: TenantPersistedData,
-): void {
+export function writeTenantStore(data: TenantPersistedData): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(tenantStorageKey(userId), JSON.stringify(data));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch {
     /* quota or private mode */
   }
 }
 
 export function patchTenantStore(
-  userId: string | null,
   patch: Partial<TenantPersistedData>,
 ): TenantPersistedData {
-  const next = { ...readTenantStore(userId), ...patch };
-  writeTenantStore(userId, next);
+  const next = { ...readTenantStore(), ...patch };
+  writeTenantStore(next);
   return next;
-}
-
-export function initEmptyTenantStore(userId: string): void {
-  writeTenantStore(userId, emptyPersisted());
 }
 
 /** User-created repairs (prefixed) merged ahead of demo seed. */

@@ -1,9 +1,6 @@
 import { COOKIE_ACCESS, COOKIE_REFRESH } from '@/constants/auth';
 import { Role, UserStatus } from '@/constants/roles';
 import type { AuthUser } from '@/lib/auth-types';
-import { clearApiSessionUser } from '@/lib/api-session';
-import { initEmptyTenantStore } from '@/lib/tenant-store';
-
 const ACCOUNTS_KEY = 'crossub_tenant_accounts';
 const SESSION_KEY = 'crossub_tenant_session';
 const LOCAL_ACCESS_VALUE = 'local';
@@ -73,29 +70,12 @@ export function getLocalSessionUser(): AuthUser | null {
   }
 }
 
-export function getAccessCookieValue(): string | null {
-  if (typeof window === 'undefined') return null;
-  for (const part of document.cookie.split(';')) {
-    const trimmed = part.trim();
-    if (trimmed.startsWith(`${COOKIE_ACCESS}=`)) {
-      return trimmed.slice(COOKIE_ACCESS.length + 1) || null;
-    }
-  }
-  return null;
-}
-
-export function isLocalAccessCookie(): boolean {
-  return getAccessCookieValue() === LOCAL_ACCESS_VALUE;
-}
-
-/** @deprecated use isLocalAccessCookie */
 export function hasLocalAccessCookie(): boolean {
-  return isLocalAccessCookie();
-}
-
-/** Device signup cookie without sessionStorage — middleware still allows access. */
-export function hasStaleLocalCookie(): boolean {
-  return isLocalAccessCookie() && !getLocalSessionUser();
+  if (typeof window === 'undefined') return false;
+  return document.cookie.split(';').some((c) => {
+    const [name, value] = c.trim().split('=');
+    return name === COOKIE_ACCESS && value === LOCAL_ACCESS_VALUE;
+  });
 }
 
 export function registerLocalAccount(input: RegisterInput): AuthUser {
@@ -104,7 +84,6 @@ export function registerLocalAccount(input: RegisterInput): AuthUser {
   if (accounts.some((a) => a.email === email)) {
     throw new Error('An account with this email already exists.');
   }
-  clearLocalSession();
   const account: LocalAccount = {
     id: `tenant-${Date.now()}`,
     email,
@@ -115,7 +94,6 @@ export function registerLocalAccount(input: RegisterInput): AuthUser {
     createdAt: new Date().toISOString(),
   };
   writeAccounts([...accounts, account]);
-  initEmptyTenantStore(account.id);
   startLocalSession(account);
   return accountToUser(account);
 }
@@ -135,10 +113,19 @@ function startLocalSession(account: LocalAccount): void {
   setAccessCookie();
 }
 
+/** Removes device-only access cookie when sessionStorage was cleared (fixes stuck middleware). */
+export function clearOrphanLocalAccessCookie(): void {
+  if (typeof window === 'undefined') return;
+  if (hasLocalAccessCookie() && !getLocalSessionUser()) {
+    document.cookie = `${COOKIE_ACCESS}=; path=/; max-age=0`;
+  }
+}
+
 export function clearLocalSession(): void {
   if (typeof window === 'undefined') return;
   sessionStorage.removeItem(SESSION_KEY);
-  clearApiSessionUser();
-  document.cookie = `${COOKIE_ACCESS}=; path=/; max-age=0`;
+  if (hasLocalAccessCookie()) {
+    document.cookie = `${COOKIE_ACCESS}=; path=/; max-age=0`;
+  }
   document.cookie = `${COOKIE_REFRESH}=; path=/; max-age=0`;
 }

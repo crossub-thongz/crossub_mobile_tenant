@@ -28,9 +28,7 @@ import {
   mergeMessages,
   mergeNotifications,
   readTenantStore,
-  type TenantPersistedData,
 } from '@/lib/tenant-store';
-import { shouldShowDemoTenancy } from '@/lib/tenant-user';
 import type {
   ArrearsNotice,
   FinalStatement,
@@ -54,7 +52,6 @@ import type {
 } from '@/lib/types';
 
 export interface LoadedTenantState {
-  showDemoTenancy: boolean;
   maintenance: MaintenanceRequest[];
   applications: RentalApplication[];
   messages: MessageThread[];
@@ -88,51 +85,11 @@ function mergeRentReceipts(
   return [...added, ...seed];
 }
 
-export function loadTenantState(
-  userId: string | null,
-  authed: boolean,
-  demoEnv: boolean,
-): LoadedTenantState {
-  const stored = readTenantStore(userId);
-  const showDemoTenancy = shouldShowDemoTenancy(userId, authed, demoEnv);
-
-  if (!showDemoTenancy) {
-    return {
-      showDemoTenancy: false,
-      maintenance: stored.maintenance,
-      applications: stored.applications,
-      messages: stored.messages,
-      notifications: stored.notifications,
-      ingoing: stored.ingoingReport,
-      outgoing:
-        stored.outgoingReport ??
-        ({
-          id: 'out-empty',
-          propertyAddress: '—',
-          status: 'report_sent',
-          sections: [],
-          confirmedCount: 0,
-        } as OutgoingReport),
-      rentReviews: stored.rentReviews,
-      vacatingState: stored.vacating,
-      lease: null,
-      rentReceipts: stored.rentReceipts ?? [],
-      arrears: stored.arrears ?? null,
-      outstandingBalance: stored.outstandingBalance ?? null,
-      paymentProofs: [],
-      onboardingSteps: [],
-      pendingActions: [],
-      inspections: [],
-      renewal: null,
-      terminationNotice: null,
-      finalStatement: null,
-      showPhase3Demo: false,
-      vacating: stored.vacating,
-    };
-  }
+/** Shared demo tenancy + per-browser persisted changes (all signed-in users). */
+export function loadInitialState(): LoadedTenantState {
+  const stored = readTenantStore();
 
   return {
-    showDemoTenancy: true,
     maintenance: mergeMaintenance(DEMO_MAINTENANCE, stored.maintenance),
     applications: mergeApplications(APPLICATIONS, stored.applications),
     messages: mergeMessages(MESSAGE_THREADS, stored.messages),
@@ -159,4 +116,3 @@ export function loadTenantState(
     vacating: SHOW_PHASE3_DEMO ? DEMO_VACATING : stored.vacating ?? VACATING,
   };
 }
-

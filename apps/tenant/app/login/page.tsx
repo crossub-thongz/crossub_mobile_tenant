@@ -26,12 +26,8 @@ import { Label } from '@/components/ui/label';
 import { PASSWORD_MAX, PASSWORD_MIN } from '@/constants/auth';
 import { ROUTES } from '@/constants/routes';
 import { ApiError, api } from '@/lib/api';
-import { parseAuthUserPayload } from '@/lib/parse-auth-response';
-import {
-  clearLocalSession,
-  loginLocalAccount,
-  registerLocalAccount,
-} from '@/lib/local-auth';
+import type { AuthUser } from '@/lib/auth-types';
+import { loginLocalAccount, registerLocalAccount } from '@/lib/local-auth';
 import { cn } from '@/lib/utils';
 
 const loginSchema = z.object({
@@ -55,7 +51,7 @@ type AuthMode = 'login' | 'register';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { refresh, establishSession, status } = useAuth();
+  const { refresh, status } = useAuth();
   const [mode, setMode] = useState<AuthMode>('login');
   const [showPassword, setShowPassword] = useState(false);
 
@@ -80,57 +76,41 @@ export default function LoginPage() {
   });
 
   const onLogin = async (values: LoginValues) => {
-    clearLocalSession();
     try {
-      const body = await api.post<unknown>('/auth/login', values);
-      const sessionUser = parseAuthUserPayload(body);
-      if (!sessionUser) {
-        toast.error(
-          'Login returned an unexpected response. Check the API proxy and try again.',
-        );
-        return;
-      }
-      establishSession(sessionUser);
+      await api.post<{ user: AuthUser }>('/auth/login', values);
+      await refresh();
       router.replace(ROUTES.DASHBOARD);
       return;
     } catch (err) {
-      if (err instanceof ApiError && err.status === 401) {
-        toast.error('Invalid email or password for your agency account.');
-        return;
-      }
-      if (err instanceof ApiError) {
-        toast.error(`Sign in failed (${err.status}). Check API connection on Render.`);
-        return;
-      }
-      if (process.env.NODE_ENV === 'development' && err instanceof Error) {
-        toast.error(err.message);
-        return;
+      if (err instanceof ApiError && err.status !== 401 && err.status >= 400) {
+        if (err.status >= 500 || err.status === 0) {
+          /* fall through to local account */
+        } else if (err.status !== 401) {
+          toast.error(`Sign in failed (${err.status}). Is crossub_web API running?`);
+          return;
+        }
       }
     }
 
     const localUser = loginLocalAccount(values.email, values.password);
     if (localUser) {
-      establishSession(localUser);
+      await refresh();
       router.replace(ROUTES.DASHBOARD);
-      toast.message('Signed in with device account', {
-        description: 'Use Sign in (not Register) for system@crossub.com.au agency access.',
-      });
       return;
     }
 
-    toast.error('Could not sign in. Check password or API connection.');
+    toast.error('Invalid email or password.');
   };
 
   const onRegister = async (values: RegisterValues) => {
     try {
-      const user = registerLocalAccount({
+      registerLocalAccount({
         email: values.email,
         password: values.password,
         firstName: values.firstName,
         lastName: values.lastName,
         phone: values.phone,
       });
-      establishSession(user);
       await refresh();
       toast.success('Account created — you are signed in.');
       router.replace(ROUTES.DASHBOARD);
@@ -328,9 +308,8 @@ export default function LoginPage() {
               )}
             </div>
             <p className="text-muted-foreground text-xs">
-              Creates a new account on this device with your own profile and empty tenancy
-              (applications, repairs, and payments are not shared with other logins). When your
-              agency enables server registration, the same email can sign in against crossub_web.
+              Creates a tenant account on this device. When your agency enables server
+              registration, the same email can sign in against crossub_web.
             </p>
             <Button type="submit" disabled={isSubmitting} className="w-full">
               {isSubmitting ? (

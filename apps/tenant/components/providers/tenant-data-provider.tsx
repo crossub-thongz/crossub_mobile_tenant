@@ -14,7 +14,7 @@ import { fetchMaintenanceState } from '@/lib/crossub-api/maintenance-client';
 import { LEASE, LISTING_PROPERTIES, TENANT_PHASE } from '@/lib/mock-data';
 import { categoryToMessageType } from '@/lib/message-categories';
 import { SEED_THREAD_MESSAGES, mergeThreadMessages } from '@/lib/message-threads';
-import { loadTenantState, type LoadedTenantState } from '@/lib/tenant-data-state';
+import { loadInitialState, type LoadedTenantState } from '@/lib/tenant-data-state';
 import {
   nextApplicationRef,
   nextTrackingNumber,
@@ -174,10 +174,8 @@ function applyLoadedState(
 }
 
 export function TenantDataProvider({ children }: { children: React.ReactNode }) {
-  const { user, status } = useAuth();
-  const userId = user?.id ?? null;
+  const { status } = useAuth();
   const demo = useDemoData();
-  const authed = status === 'authed';
 
   const [loading, setLoading] = useState(true);
   const [apiConnected, setApiConnected] = useState(false);
@@ -238,28 +236,24 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
   );
 
   const hydrate = useCallback(() => {
-    const loaded = loadTenantState(userId, authed, demo);
-    applyLoadedState(loaded, setters);
-  }, [userId, authed, demo, setters]);
+    applyLoadedState(loadInitialState(), setters);
+  }, [setters]);
 
   useEffect(() => {
     hydrate();
   }, [hydrate]);
 
-  const persistMaintenance = useCallback(
-    (next: MaintenanceRequest[]) => {
-      patchTenantStore(userId, { maintenance: next });
-    },
-    [userId],
-  );
+  const persistMaintenance = useCallback((next: MaintenanceRequest[]) => {
+    patchTenantStore({ maintenance: next });
+  }, []);
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const loaded = loadTenantState(userId, authed, demo);
+    const loaded = loadInitialState();
     applyLoadedState(loaded, setters);
     const seedMaintenance = loaded.maintenance;
 
-    if (!authed || !loaded.showDemoTenancy) {
+    if (demo || status !== 'authed') {
       setApiConnected(false);
       setLoading(false);
       return;
@@ -292,7 +286,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     } finally {
       setLoading(false);
     }
-  }, [userId, authed, demo, setters]);
+  }, [demo, status, setters]);
 
   useEffect(() => {
     void refresh();
@@ -347,20 +341,20 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       };
       setApplications((prev) => {
         const next = [item, ...prev];
-        patchTenantStore(userId, { applications: next });
+        patchTenantStore( { applications: next });
         return next;
       });
       return item;
     },
-    [userId],
+    [],
   );
 
   const getThreadMessages = useCallback(
     (threadId: string): ThreadMessage[] => {
-      const stored = readTenantStore(userId);
+      const stored = readTenantStore();
       return mergeThreadMessages(threadId, SEED_THREAD_MESSAGES, stored.threadMessages);
     },
-    [userId],
+    [],
   );
 
   const sendThreadMessage = useCallback(
@@ -378,7 +372,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
         body: trimmed,
         channel: 'app',
       };
-      const stored = readTenantStore(userId);
+      const stored = readTenantStore();
       const threadMessages = {
         ...(stored.threadMessages ?? {}),
         [threadId]: [...(stored.threadMessages?.[threadId] ?? []), outbound],
@@ -401,11 +395,11 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
           }
           return updated;
         });
-        patchTenantStore(userId, { messages: next, threadMessages });
+        patchTenantStore( { messages: next, threadMessages });
         return next;
       });
     },
-    [userId, messages],
+    [messages],
   );
 
   const addMessageThread = useCallback(
@@ -439,19 +433,19 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
         body: trimmedBody,
         channel: 'app',
       };
-      const stored = readTenantStore(userId);
+      const stored = readTenantStore();
       const threadMessages = {
         ...(stored.threadMessages ?? {}),
         [id]: [outbound],
       };
       setMessages((prev) => {
         const next = [item, ...prev];
-        patchTenantStore(userId, { messages: next, threadMessages });
+        patchTenantStore( { messages: next, threadMessages });
         return next;
       });
       return item;
     },
-    [userId, lease, leaseId],
+    [lease, leaseId],
   );
 
   const recordRentPayment = useCallback(
@@ -473,7 +467,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       };
       setRentReceipts((prev) => {
         const next = [receipt, ...prev];
-        patchTenantStore(userId, {
+        patchTenantStore( {
           rentReceipts: next,
           arrears: null,
           outstandingBalance: null,
@@ -484,18 +478,18 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       setOutstandingBalance(null);
       return receipt;
     },
-    [userId],
+    [],
   );
 
   const markNotificationRead = useCallback(
     (id: string) => {
       setNotifications((prev) => {
         const next = prev.map((n) => (n.id === id ? { ...n, read: true } : n));
-        patchTenantStore(userId, { notifications: next });
+        patchTenantStore( { notifications: next });
         return next;
       });
     },
-    [userId],
+    [],
   );
 
   const confirmIngoingSection = useCallback(
@@ -520,11 +514,11 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
         else if (allConfirmed) reportStatus = 'confirmed';
         else if (confirmedCount > 0) reportStatus = 'partially_confirmed';
         const next = { ...prev, sections, confirmedCount, status: reportStatus };
-        patchTenantStore(userId, { ingoingReport: next });
+        patchTenantStore( { ingoingReport: next });
         return next;
       });
     },
-    [userId],
+    [],
   );
 
   const confirmOutgoingSection = useCallback(
@@ -548,11 +542,11 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
           status = 'confirmed';
         }
         const next = { ...prev, sections, confirmedCount, status };
-        patchTenantStore(userId, { outgoingReport: next });
+        patchTenantStore( { outgoingReport: next });
         return next;
       });
     },
-    [userId],
+    [],
   );
 
   const approveRepairCompletion = useCallback(
@@ -588,9 +582,9 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       };
       setVacatingState(next);
       setVacatingDisplay(next);
-      patchTenantStore(userId, { vacating: next });
+      patchTenantStore( { vacating: next });
     },
-    [userId, propertyAddress],
+    [propertyAddress],
   );
 
   const respondRentReview = useCallback(
@@ -623,11 +617,11 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
             ],
           };
         });
-        patchTenantStore(userId, { rentReviews: next });
+        patchTenantStore( { rentReviews: next });
         return next;
       });
     },
-    [userId],
+    [],
   );
 
   const phase: TenantLifecyclePhase = lease ? TENANT_PHASE : 'searching';

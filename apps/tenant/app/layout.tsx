@@ -3,7 +3,6 @@ import { Inter } from 'next/font/google';
 
 import { AuthProvider } from '@/components/providers/auth-provider';
 import { TenantDataProvider } from '@/components/providers/tenant-data-provider';
-import { AuthSessionGate } from '@/components/tenant/auth-session-gate';
 import { TutorialGate } from '@/components/tenant/tutorial-gate';
 import { Toaster } from '@/components/ui/sonner';
 import './globals.css';
@@ -35,7 +34,6 @@ export default function RootLayout({
       <body className={`${inter.variable} font-sans antialiased`}>
         <AuthProvider>
           <TenantDataProvider>
-            <AuthSessionGate />
             <TutorialGate />
             {children}
           </TenantDataProvider>
