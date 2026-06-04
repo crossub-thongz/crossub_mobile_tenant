@@ -19,11 +19,11 @@ services:
         value: /api
       - key: API_INTERNAL_URL
         sync: false
-      # Required for demo tenancy (12 River Lane, repairs, etc.) when using crossub_web login.
-      # Set to "false" only after real tenant APIs replace mock data.
-      - key: NEXT_PUBLIC_USE_DEMO_DATA
-        value: "true"
       - key: NEXT_PUBLIC_AGENT_PORTAL_URL
         sync: false
       - key: NEXT_PUBLIC_WEB_URL
         sync: false
+      - key: NEXT_PUBLIC_USE_DEMO_DATA
+        value: "true"
+      - key: TENANT_USE_DEMO_DATA
+        value: "true"

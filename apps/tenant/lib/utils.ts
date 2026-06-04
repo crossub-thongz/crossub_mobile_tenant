@@ -46,5 +46,6 @@ export function formatCurrency(amount: number): string {
   return `$${amount.toLocaleString('en-AU')}`;
 }
 
-export const useDemoData = (): boolean =>
-  process.env.NEXT_PUBLIC_USE_DEMO_DATA !== 'false';
+import { resolveUseDemoData } from '@/lib/demo-mode';
+
+export const useDemoData = (): boolean => resolveUseDemoData();

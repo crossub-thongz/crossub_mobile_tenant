@@ -5,7 +5,7 @@ import { initEmptyTenantStore } from '@/lib/tenant-store';
 
 const ACCOUNTS_KEY = 'crossub_tenant_accounts';
 const SESSION_KEY = 'crossub_tenant_session';
-const LOCAL_ACCESS_VALUE = 'local';
+export const LOCAL_ACCESS_VALUE = 'local';
 
 export interface LocalAccount {
   id: string;
