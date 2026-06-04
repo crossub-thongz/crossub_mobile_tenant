@@ -29,7 +29,7 @@ import { ROUTES } from '@/constants/routes';
 import { ApiError, api } from '@/lib/api';
 import type { AuthUser } from '@/lib/auth-types';
 import { loginAsDemoPreviewAccount } from '@/lib/demo-account-auth';
-import { DEMO_PREVIEW_EMAIL } from '@/lib/demo-account';
+import { DEMO_PREVIEW_EMAIL, DEMO_PREVIEW_PASSWORD, isDemoPreviewAccount } from '@/lib/demo-account';
 import { loginLocalAccount, registerLocalAccount } from '@/lib/local-auth';
 import { cn } from '@/lib/utils';
 
@@ -80,6 +80,24 @@ export default function LoginPage() {
   });
 
   const onLogin = async (values: LoginValues) => {
+    const email = values.email.trim().toLowerCase();
+
+    if (isDemoPreviewAccount(email)) {
+      if (values.password !== DEMO_PREVIEW_PASSWORD) {
+        toast.error(
+          `Use password ${DEMO_PREVIEW_PASSWORD} for the demo account, or tap "Try demo account".`,
+        );
+        return;
+      }
+      if (!loginAsDemoPreviewAccount()) {
+        toast.error('Could not start the demo account.');
+        return;
+      }
+      await refresh();
+      router.replace(ROUTES.DASHBOARD);
+      return;
+    }
+
     try {
       await api.post<{ user: AuthUser }>('/auth/login', values);
       await refresh();

@@ -80,6 +80,28 @@ export function hasLocalAccessCookie(): boolean {
   });
 }
 
+/** Create or update a local account (used for the shared demo tenant). */
+export function upsertLocalAccount(input: RegisterInput): AuthUser {
+  const email = input.email.trim().toLowerCase();
+  const accounts = readAccounts();
+  const index = accounts.findIndex((a) => a.email === email);
+  if (index >= 0) {
+    const existing = accounts[index];
+    const updated: LocalAccount = {
+      ...existing,
+      password: input.password,
+      firstName: input.firstName.trim(),
+      lastName: input.lastName.trim(),
+      phone: input.phone?.trim(),
+    };
+    accounts[index] = updated;
+    writeAccounts(accounts);
+    startLocalSession(updated);
+    return accountToUser(updated);
+  }
+  return registerLocalAccount(input);
+}
+
 export function registerLocalAccount(input: RegisterInput): AuthUser {
   const email = input.email.trim().toLowerCase();
   const accounts = readAccounts();

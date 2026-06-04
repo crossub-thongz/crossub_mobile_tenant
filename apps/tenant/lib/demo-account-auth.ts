@@ -5,22 +5,22 @@ import {
 } from '@/lib/demo-account';
 import {
   loginLocalAccount,
-  registerLocalAccount,
+  upsertLocalAccount,
   type RegisterInput,
 } from '@/lib/local-auth';
+
+const demoRegisterInput = (): RegisterInput => ({
+  email: DEMO_PREVIEW_EMAIL,
+  password: DEMO_PREVIEW_PASSWORD,
+  firstName: 'Demo',
+  lastName: 'Tenant',
+  phone: '',
+});
 
 /** Ensures the shared production demo account exists in this browser. */
 export function ensureDemoPreviewAccount(): void {
   if (loginLocalAccount(DEMO_PREVIEW_EMAIL, DEMO_PREVIEW_PASSWORD)) return;
-
-  const input: RegisterInput = {
-    email: DEMO_PREVIEW_EMAIL,
-    password: DEMO_PREVIEW_PASSWORD,
-    firstName: 'Demo',
-    lastName: 'Tenant',
-    phone: '',
-  };
-  registerLocalAccount(input);
+  upsertLocalAccount(demoRegisterInput());
 }
 
 /** Sign in as the production demo tenant (full mock tenancy). */
