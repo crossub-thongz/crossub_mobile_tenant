@@ -5,7 +5,7 @@ import { initEmptyTenantStore } from '@/lib/tenant-store';
 
 const ACCOUNTS_KEY = 'crossub_tenant_accounts';
 const SESSION_KEY = 'crossub_tenant_session';
-export const LOCAL_ACCESS_VALUE = 'local';
+const LOCAL_ACCESS_VALUE = 'local';
 
 export interface LocalAccount {
   id: string;
@@ -78,11 +78,6 @@ export function hasLocalAccessCookie(): boolean {
     const [name, value] = c.trim().split('=');
     return name === COOKIE_ACCESS && value === LOCAL_ACCESS_VALUE;
   });
-}
-
-/** True when this browser tab is signed in via device registration (not API cookies). */
-export function isActiveLocalSession(): boolean {
-  return hasLocalAccessCookie() && getLocalSessionUser() !== null;
 }
 
 export function registerLocalAccount(input: RegisterInput): AuthUser {

@@ -23,7 +23,3 @@ services:
         sync: false
       - key: NEXT_PUBLIC_WEB_URL
         sync: false
-      # Baked in at build time. Use "true" to show demo lease/repairs/messages for API logins (e.g. system@).
-      # Set "false" once real tenant APIs are wired. Changing this requires a redeploy/rebuild.
-      - key: NEXT_PUBLIC_USE_DEMO_DATA
-        value: 'true'

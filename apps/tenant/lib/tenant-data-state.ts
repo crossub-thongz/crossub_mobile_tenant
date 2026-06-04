@@ -30,12 +30,7 @@ import {
   readTenantStore,
   type TenantPersistedData,
 } from '@/lib/tenant-store';
-import {
-  shouldShowDemoTenancy,
-  tenantStorageKind,
-  type TenantStorageKind,
-} from '@/lib/tenant-user';
-import type { AuthUser } from '@/lib/auth-types';
+import { shouldShowDemoTenancy } from '@/lib/tenant-user';
 import type {
   ArrearsNotice,
   FinalStatement,
@@ -94,15 +89,12 @@ function mergeRentReceipts(
 }
 
 export function loadTenantState(
-  user: Pick<AuthUser, 'id' | 'email'> | null,
+  userId: string | null,
   authed: boolean,
   demoEnv: boolean,
-  isLocalSession: boolean,
 ): LoadedTenantState {
-  const userId = user?.id ?? null;
-  const kind: TenantStorageKind = tenantStorageKind(user, isLocalSession);
-  const stored = readTenantStore(userId, kind);
-  const showDemoTenancy = shouldShowDemoTenancy(user, authed, demoEnv, isLocalSession);
+  const stored = readTenantStore(userId);
+  const showDemoTenancy = shouldShowDemoTenancy(userId, authed, demoEnv);
 
   if (!showDemoTenancy) {
     return {

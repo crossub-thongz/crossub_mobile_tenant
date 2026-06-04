@@ -60,12 +60,8 @@ NEXT_PUBLIC_API_URL=/api
 API_INTERNAL_URL=https://your-crossub-api.onrender.com
 NEXT_PUBLIC_WEB_URL=https://your-crossub-web.onrender.com
 NEXT_PUBLIC_AGENT_PORTAL_URL=https://crossub-mobile-agent.onrender.com
-NEXT_PUBLIC_USE_DEMO_DATA=true
+NEXT_PUBLIC_USE_DEMO_DATA=false
 ```
-
-Use `true` while reviewing the app with mock tenancy (12 River Lane, repairs, messages, etc.). Set `false` when tenant lifecycle APIs return real data per user.
-
-**Important:** `NEXT_PUBLIC_USE_DEMO_DATA` is embedded at **build time**. After changing it in Render, trigger a **new deploy** (rebuild), not only a restart.
 
 Replace URLs with your deployed services. Do **not** add `/api` to `API_INTERNAL_URL`.
 
