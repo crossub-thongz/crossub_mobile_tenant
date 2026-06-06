@@ -460,8 +460,7 @@ export const ARREARS: ArrearsNotice = {
   stage: 'late_reminder',
   outstandingAmount: 520,
   dueDate: '2026-06-08',
-  message:
-    'Rent is 7+ days overdue. Please pay outstanding rent or contact CROSSUB Accounting. Confirm reminder logic with Tony/Jason Guan.',
+  message: '',
 };
 
 export const PENDING_ACTIONS: PendingAction[] = [
