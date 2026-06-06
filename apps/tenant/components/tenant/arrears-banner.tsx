@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { AlertCircle } from 'lucide-react';
 
 import { useTenantData } from '@/components/providers/tenant-data-provider';
 import { ROUTES } from '@/constants/routes';
@@ -15,12 +16,16 @@ export function ArrearsBanner() {
 
   return (
     <div
-      className={`rounded-xl border p-4 text-sm ${
+      className={`flex gap-3 rounded-2xl border p-4 text-sm ${
         urgent
           ? 'border-destructive/50 bg-destructive/10'
           : 'border-amber-500/40 bg-amber-500/10'
       }`}
     >
+      <AlertCircle
+        className={`size-5 shrink-0 ${urgent ? 'text-destructive' : 'text-amber-400'}`}
+      />
+      <div className="min-w-0 flex-1">
       <p className="font-semibold">{ARREARS_STAGE_LABEL[arrears.stage]}</p>
       <p className="text-muted-foreground mt-1">{arrears.message}</p>
       <p className="mt-2">
@@ -33,6 +38,7 @@ export function ArrearsBanner() {
       >
         Pay rent now →
       </Link>
+      </div>
     </div>
   );
 }

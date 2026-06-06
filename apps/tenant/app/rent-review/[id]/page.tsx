@@ -2,9 +2,12 @@
 
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
+import { ArrowRight, TrendingUp, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { TenantShell } from '@/components/layout/tenant-shell';
+import { InfoCard } from '@/components/tenant/info-card';
+import { StatusBadge } from '@/components/tenant/status-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
@@ -27,68 +30,87 @@ export default function RentReviewDetailPage() {
     );
   }
 
+  const increase = review.proposedRentWeekly - review.currentRentWeekly;
+
   return (
     <TenantShell title="Rent review notice" backHref={ROUTES.RENT_REVIEW}>
-      <div className="space-y-4">
-        <div className="rounded-xl border bg-card p-4">
+      <div className="space-y-5">
+        <InfoCard icon={TrendingUp} label="Proposed rent change" accent="primary">
           <p className="text-sm">{review.propertyAddress}</p>
-          <p className="mt-2">
-            Current {formatCurrency(review.currentRentWeekly)} → Proposed{' '}
-            <strong className="text-primary">
-              {formatCurrency(review.proposedRentWeekly)}
-            </strong>
-          </p>
-          <p className="text-muted-foreground text-xs">
+          <div className="mt-4 flex items-end gap-3">
+            <div>
+              <p className="text-muted-foreground text-xs">Current</p>
+              <p className="text-lg font-semibold">
+                {formatCurrency(review.currentRentWeekly)}
+                <span className="text-muted-foreground text-sm font-normal">/wk</span>
+              </p>
+            </div>
+            <ArrowRight className="text-muted-foreground mb-1 size-4" />
+            <div>
+              <p className="text-muted-foreground text-xs">Proposed</p>
+              <p className="text-primary text-xl font-bold">
+                {formatCurrency(review.proposedRentWeekly)}
+                <span className="text-base font-normal">/wk</span>
+              </p>
+            </div>
+          </div>
+          {increase > 0 && (
+            <p className="text-muted-foreground mt-2 text-xs">
+              +{formatCurrency(increase)}/week increase
+            </p>
+          )}
+          <p className="text-muted-foreground mt-3 text-xs">
             Effective {formatDate(review.effectiveDate)}
           </p>
           {review.explanation && (
-            <p className="text-muted-foreground mt-2 text-sm">{review.explanation}</p>
+            <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+              {review.explanation}
+            </p>
           )}
-          {review.reportAttachmentName && (
-            <button
-              type="button"
-              className="text-primary mt-2 text-xs font-medium"
-              onClick={() => alert(`Open: ${review.reportAttachmentName}`)}
-            >
-              View attached report →
-            </button>
-          )}
-          <p className="mt-2 text-xs font-medium capitalize">Status: {review.status}</p>
-        </div>
+          <StatusBadge label={review.status} className="mt-3" variant="action" />
+        </InfoCard>
+
         {review.counterHistory.length > 0 && (
-          <section>
+          <section className="rounded-2xl border bg-card p-4">
             <h2 className="text-sm font-semibold">Counter offer history</h2>
-            <ul className="mt-2 space-y-1 text-xs">
+            <ul className="mt-3 space-y-2">
               {review.counterHistory.map((h, i) => (
-                <li key={i}>
-                  {h.by} {formatCurrency(h.amount)} · {formatDateTime(h.at)}
+                <li key={i} className="text-muted-foreground text-sm">
+                  <span className="text-foreground font-medium capitalize">{h.by}</span>{' '}
+                  {formatCurrency(h.amount)} · {formatDateTime(h.at)}
                 </li>
               ))}
             </ul>
           </section>
         )}
+
         {review.status === 'pending' && (
-          <div className="space-y-3">
+          <div className="space-y-4">
             <Button
-              className="w-full"
+              className="h-12 w-full text-base"
               onClick={() => {
                 respondRentReview(review.id, 'accept');
                 toast.success('Acceptance recorded — sent to agent workflow');
               }}
             >
-              Accept proposed rent
+              Approve new rent
             </Button>
-            <div className="space-y-2 rounded-xl border p-4">
-              <p className="text-sm font-medium">Counter offer</p>
+
+            <div className="rounded-2xl border bg-card p-4">
+              <p className="font-semibold">Submit counter offer</p>
+              <p className="text-muted-foreground mt-1 text-xs">
+                Propose a different weekly rent amount.
+              </p>
               <Input
                 type="number"
-                placeholder="Proposed $/week"
+                className="mt-3"
+                placeholder="Your proposed $/week"
                 value={counter}
                 onChange={(e) => setCounter(e.target.value)}
               />
               <Button
                 variant="outline"
-                className="w-full"
+                className="mt-3 w-full"
                 onClick={() => {
                   const amount = Number(counter);
                   if (!amount) return toast.error('Enter an amount');
@@ -99,18 +121,30 @@ export default function RentReviewDetailPage() {
                 Submit counter offer
               </Button>
             </div>
-            <div className="space-y-2 rounded-xl border p-4">
-              <p className="text-sm font-medium">Reject</p>
+
+            <div className="rounded-2xl border border-destructive/25 bg-destructive/5 p-4">
+              <div className="flex items-center gap-2">
+                <XCircle className="text-destructive size-4" />
+                <p className="font-semibold">Decline & vacate</p>
+              </div>
+              <p className="text-muted-foreground mt-1 text-xs">
+                If you do not accept the new rent, provide a reason and move-out date.
+              </p>
               <textarea
-                className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm"
-                placeholder="Reason for rejection (required)"
+                className="border-input bg-background mt-3 w-full rounded-xl border px-3 py-2 text-sm"
+                placeholder="Reason for declining (required)"
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
               />
-              <Input type="date" value={moveOut} onChange={(e) => setMoveOut(e.target.value)} />
+              <Input
+                type="date"
+                className="mt-2"
+                value={moveOut}
+                onChange={(e) => setMoveOut(e.target.value)}
+              />
               <Button
                 variant="destructive"
-                className="w-full"
+                className="mt-3 w-full"
                 onClick={() => {
                   if (!rejectReason.trim()) return toast.error('Provide a reason');
                   if (!moveOut) return toast.error('Select intended move-out date');
@@ -124,7 +158,7 @@ export default function RentReviewDetailPage() {
                   window.location.href = ROUTES.MOVE_OUT_SERVICES;
                 }}
               >
-                Reject and indicate move-out
+                Decline rent & indicate move-out
               </Button>
             </div>
           </div>

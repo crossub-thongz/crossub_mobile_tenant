@@ -2,9 +2,11 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { Plus } from 'lucide-react';
+import { MessageSquare, Plus } from 'lucide-react';
 
 import { TenantShell } from '@/components/layout/tenant-shell';
+import { EmptyState } from '@/components/tenant/empty-state';
+import { PageIntro, SectionTitle } from '@/components/tenant/page-intro';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/tenant/status-badge';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
@@ -46,29 +48,28 @@ export default function MessagesPage() {
 
   return (
     <TenantShell title="Communication hub">
-      <p className="text-muted-foreground mb-4 text-sm">
-        Message your <strong>landlord</strong>, <strong>agent</strong>, or{' '}
-        <strong>contractor</strong> — filter by topic below.
-      </p>
-      <Button asChild className="mb-4 w-full">
+      <PageIntro description="Message your landlord, agent, or contractor. Filter by leasing, maintenance, inspection, accounting, or other." />
+
+      <Button asChild className="mb-4 w-full shadow-lg shadow-primary/10">
         <Link href={ROUTES.MESSAGES_NEW}>
           <Plus className="size-4" /> New message
         </Link>
       </Button>
-      <div className="mb-4 grid grid-cols-3 gap-2">
-        <Button variant="outline" size="sm" asChild className="text-xs">
-          <Link href={`${ROUTES.MESSAGES_NEW}?to=landlord`}>Landlord</Link>
-        </Button>
-        <Button variant="outline" size="sm" asChild className="text-xs">
-          <Link href={`${ROUTES.MESSAGES_NEW}?to=agent`}>Agent</Link>
-        </Button>
-        <Button variant="outline" size="sm" asChild className="text-xs">
-          <Link href={`${ROUTES.MESSAGES_NEW}?to=contractor`}>Contractor</Link>
-        </Button>
+
+      <SectionTitle>Quick contact</SectionTitle>
+      <div className="mb-5 grid grid-cols-3 gap-2">
+        {(['landlord', 'agent', 'contractor'] as const).map((to) => (
+          <Button key={to} variant="outline" size="sm" asChild className="rounded-xl text-xs">
+            <Link href={`${ROUTES.MESSAGES_NEW}?to=${to}`}>
+              {MESSAGE_RECIPIENT_LABEL[to]}
+            </Link>
+          </Button>
+        ))}
       </div>
 
-      <div className="mb-4 -mx-1 overflow-x-auto px-1 pb-1">
-        <div className="flex min-w-max gap-1.5">
+      <SectionTitle>Category</SectionTitle>
+      <div className="mb-5 -mx-1 overflow-x-auto px-1 pb-1">
+        <div className="flex min-w-max gap-2">
           {MESSAGE_TOPIC_FILTERS.map((f) => {
             const active = topicFilter === f.value;
             const count = counts[f.value];
@@ -79,10 +80,10 @@ export default function MessagesPage() {
                 onClick={() => setTopicFilter(f.value)}
                 aria-pressed={active}
                 className={cn(
-                  'shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide transition-colors',
+                  'shrink-0 rounded-full border px-3.5 py-2 text-xs font-semibold tracking-wide transition-all',
                   active
-                    ? 'border-primary bg-primary text-primary-foreground'
-                    : 'border-border bg-card text-muted-foreground hover:bg-secondary',
+                    ? 'border-primary bg-primary text-primary-foreground shadow-sm shadow-primary/20'
+                    : 'border-border bg-card text-muted-foreground hover:border-primary/30',
                 )}
               >
                 {f.tag}
@@ -99,21 +100,26 @@ export default function MessagesPage() {
 
       <div className="space-y-2">
         {filtered.length === 0 ? (
-          <p className="text-muted-foreground rounded-xl border border-dashed p-6 text-center text-sm">
-            No messages in this category yet.
-            {topicFilter !== 'all' && (
-              <>
-                {' '}
-                <button
-                  type="button"
-                  className="text-primary font-medium"
-                  onClick={() => setTopicFilter('all')}
-                >
+          <EmptyState
+            icon={MessageSquare}
+            title="No messages in this category"
+            description={
+              topicFilter === 'all'
+                ? 'Start a conversation with your landlord, agent, or contractor.'
+                : 'Try another category or compose a new message.'
+            }
+            action={
+              topicFilter === 'all' ? (
+                <Button asChild size="sm">
+                  <Link href={ROUTES.MESSAGES_NEW}>New message</Link>
+                </Button>
+              ) : (
+                <Button size="sm" variant="outline" onClick={() => setTopicFilter('all')}>
                   Show all
-                </button>
-              </>
-            )}
-          </p>
+                </Button>
+              )
+            }
+          />
         ) : (
           filtered.map((m) => {
             const cat = threadCategory(m);
@@ -121,33 +127,25 @@ export default function MessagesPage() {
               <Link
                 key={m.id}
                 href={messageDetail(m.id)}
-                className="block rounded-xl border bg-card p-4"
+                className="group block rounded-2xl border border-border bg-card p-4 transition-colors hover:border-primary/25"
               >
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="bg-secondary text-foreground rounded px-2 py-0.5 text-[10px] font-bold tracking-wider">
+                  <span className="bg-primary/15 text-primary rounded-md px-2 py-0.5 text-[10px] font-bold tracking-wider">
                     {MESSAGE_CATEGORY_TAG[cat]}
                   </span>
                   <StatusBadge
                     label={MESSAGE_RECIPIENT_LABEL[m.recipient] ?? m.recipient}
                     variant="action"
                   />
-                  {m.channel && (
-                    <span className="text-muted-foreground text-[10px] uppercase">
-                      {m.channel === 'email' ? 'Email' : 'App'}
-                    </span>
-                  )}
                   {m.unread > 0 && (
-                    <span className="bg-destructive rounded-full px-2 py-0.5 text-[10px] text-white">
-                      {m.unread}
+                    <span className="bg-destructive ml-auto rounded-full px-2 py-0.5 text-[10px] font-medium text-white">
+                      {m.unread} new
                     </span>
                   )}
                 </div>
-                {m.propertyAddress && (
-                  <p className="text-muted-foreground mt-1 truncate text-xs">{m.propertyAddress}</p>
-                )}
-                <p className="mt-2 font-semibold">{m.subject}</p>
+                <p className="mt-2 font-semibold group-hover:text-primary">{m.subject}</p>
                 <p className="text-muted-foreground line-clamp-2 text-sm">{m.lastMessage}</p>
-                <p className="text-muted-foreground mt-1 text-xs">{formatRelative(m.lastAt)}</p>
+                <p className="text-muted-foreground mt-2 text-xs">{formatRelative(m.lastAt)}</p>
               </Link>
             );
           })
