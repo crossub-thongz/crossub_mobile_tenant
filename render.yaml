@@ -9,8 +9,8 @@ services:
     runtime: node
     region: singapore
     plan: starter
-    buildCommand: corepack enable && pnpm install && pnpm build:tenant
-    startCommand: pnpm --filter @crossub/tenant start
+    buildCommand: corepack pnpm install --frozen-lockfile && corepack pnpm build:tenant
+    startCommand: corepack pnpm --filter @crossub/tenant start
     healthCheckPath: /login
     envVars:
       - key: NODE_ENV
