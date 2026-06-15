@@ -8,7 +8,6 @@ import { TenantShell } from '@/components/layout/tenant-shell';
 import { EmptyState } from '@/components/tenant/empty-state';
 import { PageIntro, SectionTitle } from '@/components/tenant/page-intro';
 import { Button } from '@/components/ui/button';
-import { StatusBadge } from '@/components/tenant/status-badge';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
 import { messageDetail, ROUTES } from '@/constants/routes';
 import {
@@ -18,7 +17,6 @@ import {
   threadMatchesFilter,
   type MessageTopicFilter,
 } from '@/lib/message-categories';
-import { MESSAGE_RECIPIENT_LABEL } from '@/lib/message-parties';
 import { cn, formatRelative } from '@/lib/utils';
 
 export default function MessagesPage() {
@@ -48,24 +46,13 @@ export default function MessagesPage() {
 
   return (
     <TenantShell title="Communication hub">
-      <PageIntro description="Message your landlord, agent, or contractor. Filter by leasing, maintenance, inspection, accounting, or other." />
+      <PageIntro description="Send and view messages with CROSSUB. Filter by leasing, maintenance, inspection, accounting, or other." />
 
-      <Button asChild className="mb-4 w-full shadow-lg shadow-primary/10">
+      <Button asChild className="mb-5 w-full shadow-lg shadow-primary/10">
         <Link href={ROUTES.MESSAGES_NEW}>
           <Plus className="size-4" /> New message
         </Link>
       </Button>
-
-      <SectionTitle>Quick contact</SectionTitle>
-      <div className="mb-5 grid grid-cols-3 gap-2">
-        {(['landlord', 'agent', 'contractor'] as const).map((to) => (
-          <Button key={to} variant="outline" size="sm" asChild className="rounded-xl text-xs">
-            <Link href={`${ROUTES.MESSAGES_NEW}?to=${to}`}>
-              {MESSAGE_RECIPIENT_LABEL[to]}
-            </Link>
-          </Button>
-        ))}
-      </div>
 
       <SectionTitle>Category</SectionTitle>
       <div className="mb-5 -mx-1 overflow-x-auto px-1 pb-1">
@@ -105,7 +92,7 @@ export default function MessagesPage() {
             title="No messages in this category"
             description={
               topicFilter === 'all'
-                ? 'Start a conversation with your landlord, agent, or contractor.'
+                ? 'Start a conversation with CROSSUB about your tenancy.'
                 : 'Try another category or compose a new message.'
             }
             action={
@@ -133,10 +120,6 @@ export default function MessagesPage() {
                   <span className="bg-primary/15 text-primary rounded-md px-2 py-0.5 text-[10px] font-bold tracking-wider">
                     {MESSAGE_CATEGORY_TAG[cat]}
                   </span>
-                  <StatusBadge
-                    label={MESSAGE_RECIPIENT_LABEL[m.recipient] ?? m.recipient}
-                    variant="action"
-                  />
                   {m.unread > 0 && (
                     <span className="bg-destructive ml-auto rounded-full px-2 py-0.5 text-[10px] font-medium text-white">
                       {m.unread} new

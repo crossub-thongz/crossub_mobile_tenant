@@ -9,16 +9,9 @@ import { toast } from 'sonner';
 import { TenantShell } from '@/components/layout/tenant-shell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { StatusBadge } from '@/components/tenant/status-badge';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
 import { maintenanceDetail, rentReviewDetail, ROUTES } from '@/constants/routes';
 import { MESSAGE_CATEGORY_TAG, threadCategory } from '@/lib/message-categories';
-import {
-  MESSAGE_RECIPIENT_LABEL,
-  partiesForThread,
-  recipientDisplayName,
-} from '@/lib/message-parties';
-import type { MessageParty } from '@/lib/types';
 import { cn, formatDateTime } from '@/lib/utils';
 
 export default function MessageDetailPage() {
@@ -30,61 +23,29 @@ export default function MessageDetailPage() {
     [id, getThreadMessages],
   );
 
-  const allowedParties = useMemo(
-    () => (thread ? partiesForThread(thread) : (['landlord', 'agent', 'contractor'] as MessageParty[])),
-    [thread],
-  );
-
   const [reply, setReply] = useState('');
-  const [recipient, setRecipient] = useState<MessageParty>(
-    thread?.recipient ?? 'agent',
-  );
 
   const composeBar = thread ? (
-    <div className="space-y-2">
-      <p className="text-muted-foreground text-xs font-medium">Send to</p>
-      {allowedParties.length > 1 ? (
-        <div className="flex gap-1 rounded-lg bg-secondary p-1">
-          {allowedParties.map((party) => (
-            <button
-              key={party}
-              type="button"
-              onClick={() => setRecipient(party)}
-              className={cn(
-                'flex-1 rounded-md py-1.5 text-xs font-medium',
-                recipient === party ? 'bg-background' : 'text-muted-foreground',
-              )}
-            >
-              {MESSAGE_RECIPIENT_LABEL[party]}
-            </button>
-          ))}
-        </div>
-      ) : (
-        <p className="text-muted-foreground text-xs">
-          To: {MESSAGE_RECIPIENT_LABEL[allowedParties[0]!]}
-        </p>
-      )}
-      <div className="flex gap-2">
-        <Input
-          className="flex-1"
-          placeholder={`Message ${recipientDisplayName(recipient, thread.contractorName).toLowerCase()}…`}
-          value={reply}
-          onChange={(e) => setReply(e.target.value)}
-        />
-        <Button
-          className="shrink-0"
-          onClick={() => {
-            if (!reply.trim()) return;
-            sendThreadMessage(thread.id, reply, recipient);
-            toast.success('Message sent', {
-              description: `Sent to ${recipientDisplayName(recipient, thread.contractorName)}.`,
-            });
-            setReply('');
-          }}
-        >
-          Send
-        </Button>
-      </div>
+    <div className="flex gap-2">
+      <Input
+        className="flex-1"
+        placeholder="Write a reply to CROSSUB…"
+        value={reply}
+        onChange={(e) => setReply(e.target.value)}
+      />
+      <Button
+        className="shrink-0"
+        onClick={() => {
+          if (!reply.trim()) return;
+          sendThreadMessage(thread.id, reply, 'agent');
+          toast.success('Message sent', {
+            description: 'Sent to CROSSUB.',
+          });
+          setReply('');
+        }}
+      >
+        Send
+      </Button>
     </div>
   ) : null;
 
@@ -114,13 +75,6 @@ export default function MessageDetailPage() {
           <span className="bg-secondary text-foreground rounded px-2 py-0.5 text-[10px] font-bold tracking-wider">
             {MESSAGE_CATEGORY_TAG[threadCategory(thread)]}
           </span>
-          <StatusBadge
-            label={`To: ${MESSAGE_RECIPIENT_LABEL[thread.recipient]}`}
-            variant="action"
-          />
-          {thread.contractorName && (
-            <span className="text-muted-foreground">Contractor: {thread.contractorName}</span>
-          )}
         </div>
         {thread.propertyAddress && <p>{thread.propertyAddress}</p>}
         {thread.leaseId && (
@@ -138,9 +92,7 @@ export default function MessageDetailPage() {
         ) : (
           threadMessages.map((msg) => {
             const isOutbound = msg.direction === 'outbound';
-            const label = isOutbound
-              ? `You → ${MESSAGE_RECIPIENT_LABEL[msg.party]}`
-              : recipientDisplayName(msg.party, thread.contractorName);
+            const label = isOutbound ? 'You' : 'CROSSUB';
             return (
               <div
                 key={msg.id}
