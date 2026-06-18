@@ -108,6 +108,43 @@ export function loginLocalAccount(email: string, password: string): AuthUser | n
   return accountToUser(account);
 }
 
+/** Signs in using an account provisioned via Agent PC Portal (server-side store). */
+export async function loginProvisionedAccount(
+  email: string,
+  password: string,
+): Promise<AuthUser | null> {
+  try {
+    const res = await fetch('/api/tenant-accounts/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      user: {
+        id: string;
+        email: string;
+        firstName: string;
+        lastName: string;
+        phone?: string;
+      };
+    };
+    const account: LocalAccount = {
+      id: data.user.id,
+      email: data.user.email,
+      password,
+      firstName: data.user.firstName,
+      lastName: data.user.lastName,
+      phone: data.user.phone,
+      createdAt: new Date().toISOString(),
+    };
+    startLocalSession(account);
+    return accountToUser(account);
+  } catch {
+    return null;
+  }
+}
+
 function startLocalSession(account: LocalAccount): void {
   sessionStorage.setItem(SESSION_KEY, JSON.stringify({ userId: account.id }));
   setAccessCookie();
