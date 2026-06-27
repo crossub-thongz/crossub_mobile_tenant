@@ -10,8 +10,17 @@ import {
 } from 'react';
 
 import { useAuth } from '@/components/providers/auth-provider';
-import { fetchMaintenanceState } from '@/lib/crossub-api/maintenance-client';
-import { LEASE, LISTING_PROPERTIES, TENANT_PHASE } from '@/lib/mock-data';
+import {
+  fetchLedger,
+  fetchMaintenanceRequests,
+  fetchTenancies,
+} from '@/lib/crossub-api/tenant-account-client';
+import {
+  toLeaseSummary,
+  toRentPaymentReceipts,
+  toTenantMaintenanceRequests,
+} from '@/lib/crossub-api/tenant-mappers';
+import { LISTING_PROPERTIES, TENANT_PHASE } from '@/lib/mock-data';
 import { categoryToMessageType } from '@/lib/message-categories';
 import { SEED_THREAD_MESSAGES, mergeThreadMessages } from '@/lib/message-threads';
 import { loadInitialState, type LoadedTenantState } from '@/lib/tenant-data-state';
@@ -251,7 +260,6 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     setLoading(true);
     const loaded = loadInitialState();
     applyLoadedState(loaded, setters);
-    const seedMaintenance = loaded.maintenance;
 
     if (demo || status !== 'authed') {
       setApiConnected(false);
@@ -259,33 +267,48 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       return;
     }
 
-    try {
-      const state = await fetchMaintenanceState();
-      setApiConnected(true);
-      if (state.requests?.length) {
-        const fromApi: MaintenanceRequest[] = state.requests.map((r) => ({
-          id: r.id,
-          trackingNumber: r.trackingNumber ?? r.id,
-          propertyAddress: r.propertyAddress ?? LEASE.propertyAddress,
-          category: 'General',
-          description: r.description ?? r.title ?? '',
-          area: '—',
-          urgency: 'normal' as const,
-          status: 'submitted' as const,
-          statusLabel: r.status ?? 'Submitted',
-          progressPercent: 10,
-          createdAt: r.createdAt ?? new Date().toISOString(),
-          timeline: [],
-        }));
-        const apiIds = new Set(fromApi.map((r) => r.id));
-        const localOnly = seedMaintenance.filter((m) => !apiIds.has(m.id));
-        setMaintenance([...localOnly, ...fromApi]);
-      }
-    } catch {
-      setApiConnected(false);
-    } finally {
-      setLoading(false);
+    // Pull every facade-backed screen (lease, ledger, repairs) in parallel. A 403
+    // (tenant not yet linked to a Person/tenancy) or a network error on any one leaves
+    // that screen on its seed data — the app stays usable rather than going blank.
+    const [tenancies, ledger, requests] = await Promise.allSettled([
+      fetchTenancies(),
+      fetchLedger(),
+      fetchMaintenanceRequests(),
+    ]);
+
+    let connected = false;
+
+    if (tenancies.status === 'fulfilled') {
+      connected = true;
+      // Powers both the Lease and Property screens (both read `lease`).
+      setLease(toLeaseSummary(tenancies.value));
     }
+
+    if (ledger.status === 'fulfilled') {
+      connected = true;
+      setRentReceipts(toRentPaymentReceipts(ledger.value));
+      // The thin ledger carries no reliable arrears signal, so clear the seed banners
+      // rather than show demo arrears alongside real payments.
+      setArrears(null);
+      setOutstandingBalance(null);
+    }
+
+    if (requests.status === 'fulfilled') {
+      connected = true;
+      const fromApi = toTenantMaintenanceRequests(
+        requests.value,
+        loaded.lease?.propertyAddress,
+      );
+      // Keep the tenant's own locally-created (optimistic) repairs, drop demo seeds.
+      const apiIds = new Set(fromApi.map((r) => r.id));
+      const localOnly = readTenantStore().maintenance.filter(
+        (m) => !apiIds.has(m.id),
+      );
+      setMaintenance([...localOnly, ...fromApi]);
+    }
+
+    setApiConnected(connected);
+    setLoading(false);
   }, [demo, status, setters]);
 
   useEffect(() => {

@@ -21,10 +21,6 @@ export interface ApiMaintenanceState {
   requests: ApiMaintenanceRequest[];
 }
 
-export async function fetchMaintenanceState(): Promise<ApiMaintenanceState> {
-  return api.get<ApiMaintenanceState>('/maintenance/state');
-}
-
 export async function submitMaintenanceRequest(body: {
   title: string;
   description: string;

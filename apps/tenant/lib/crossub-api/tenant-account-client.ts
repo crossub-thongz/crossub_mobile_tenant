@@ -7,6 +7,8 @@ export type TenantLedgerEntry = components['schemas']['TenantLedgerEntryResponse
 export type TenantProperty = components['schemas']['TenantPropertyResponseDto'];
 export type TenantMaintenanceRequest =
   components['schemas']['TenantMaintenanceRequestResponseDto'];
+export type TenantMaintenanceRequestSummary =
+  components['schemas']['TenantMaintenanceRequestSummaryDto'];
 export type CreateTenantMaintenanceRequest =
   components['schemas']['CreateTenantMaintenanceRequestDto'];
 
@@ -28,6 +30,15 @@ export async function fetchLedger(): Promise<TenantLedgerEntry[]> {
 export async function fetchTenantProperties(): Promise<TenantProperty[]> {
   const { data, error } = await crossub.GET('/tenant/properties');
   if (error || !data) throw new Error('Failed to load properties');
+  return data.items;
+}
+
+/** Maintenance requests the signed-in tenant has filed (`GET /api/v1/tenant/maintenance-requests`). */
+export async function fetchMaintenanceRequests(): Promise<
+  TenantMaintenanceRequestSummary[]
+> {
+  const { data, error } = await crossub.GET('/tenant/maintenance-requests');
+  if (error || !data) throw new Error('Failed to load maintenance requests');
   return data.items;
 }
 
