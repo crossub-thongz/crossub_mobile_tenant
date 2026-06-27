@@ -25,7 +25,7 @@ import { PASSWORD_MAX, PASSWORD_MIN } from '@/constants/auth';
 import { ROUTES } from '@/constants/routes';
 import { ApiError, api } from '@/lib/api';
 import type { AuthUser } from '@/lib/auth-types';
-import { loginLocalAccount, loginProvisionedAccount } from '@/lib/local-auth';
+import { loginLocalAccount } from '@/lib/local-auth';
 
 const loginSchema = z.object({
   email: z.string().email('Enter a valid email'),
@@ -63,19 +63,12 @@ export default function LoginPage() {
     } catch (err) {
       if (err instanceof ApiError && err.status !== 401 && err.status >= 400) {
         if (err.status >= 500 || err.status === 0) {
-          /* fall through to provisioned / local account */
+          /* API unreachable — fall through to the local demo account */
         } else if (err.status !== 401) {
           toast.error(`Sign in failed (${err.status}). Is crossub_web API running?`);
           return;
         }
       }
-    }
-
-    const provisionedUser = await loginProvisionedAccount(values.email, values.password);
-    if (provisionedUser) {
-      await refresh();
-      router.replace(ROUTES.DASHBOARD);
-      return;
     }
 
     const localUser = loginLocalAccount(values.email, values.password);
