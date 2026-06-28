@@ -230,6 +230,13 @@ export interface TerminationNotice {
 
 export interface MessageThread {
   id: string;
+  /**
+   * Server conversation id, stamped after a real `POST /tenant/messages` reconciles an
+   * optimistic thread (whose `id` is a local temp). Replies route to this id; the inbox
+   * still keys off `id` so the open detail view keeps working. Equals `id` for threads
+   * fetched from the API.
+   */
+  serverThreadId?: string;
   subject: string;
   type: MessageType;
   /** Topic tag for inbox filtering — leasing, maintenance, inspection, accounting, other. */

@@ -11,12 +11,17 @@ import {
 
 import { useAuth } from '@/components/providers/auth-provider';
 import {
+  createTenantMessageThread,
   fetchLedger,
   fetchMaintenanceRequests,
   fetchTenancies,
+  fetchTenantMessages,
+  replyToTenantMessageThread,
 } from '@/lib/crossub-api/tenant-account-client';
 import {
+  categoryToDepartment,
   toLeaseSummary,
+  toMessageThreads,
   toRentPaymentReceipts,
   toTenantMaintenanceRequests,
 } from '@/lib/crossub-api/tenant-mappers';
@@ -64,6 +69,13 @@ export interface NewRepairInput {
   area: string;
   urgency: Priority;
   propertyAddress?: string;
+  /**
+   * Server-assigned id/tracking from a successful real `POST /tenant/maintenance-requests`.
+   * When present, the optimistic card uses them so the next `refresh()` reconciles to the
+   * same row (no duplicate). Omitted in demo mode → a local id is generated.
+   */
+  id?: string;
+  trackingNumber?: string;
 }
 
 export interface NewApplicationInput {
@@ -192,6 +204,11 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
   const [maintenance, setMaintenance] = useState<MaintenanceRequest[]>([]);
   const [applications, setApplications] = useState<RentalApplication[]>([]);
   const [messages, setMessages] = useState<MessageThread[]>([]);
+  // Live-mode per-thread message history (keyed by thread id, incl. optimistic temp ids).
+  // Empty in demo mode — there the screens read from the mock SEED/store instead.
+  const [threadMessagesById, setThreadMessagesById] = useState<
+    Record<string, ThreadMessage[]>
+  >({});
   const [ingoing, setIngoing] = useState<IngoingReport | null>(null);
   const [rentReviews, setRentReviews] = useState<RentReviewCase[]>([]);
   const [outgoing, setOutgoing] = useState<OutgoingReport>({
@@ -267,13 +284,14 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       return;
     }
 
-    // Pull every facade-backed screen (lease, ledger, repairs) in parallel. A 403
-    // (tenant not yet linked to a Person/tenancy) or a network error on any one leaves
+    // Pull every facade-backed screen (lease, ledger, repairs, messages) in parallel. A
+    // 403 (tenant not yet linked to a Person/tenancy) or a network error on any one leaves
     // that screen on its seed data — the app stays usable rather than going blank.
-    const [tenancies, ledger, requests] = await Promise.allSettled([
+    const [tenancies, ledger, requests, threads] = await Promise.allSettled([
       fetchTenancies(),
       fetchLedger(),
       fetchMaintenanceRequests(),
+      fetchTenantMessages(),
     ]);
 
     let connected = false;
@@ -307,6 +325,15 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       setMaintenance([...localOnly, ...fromApi]);
     }
 
+    if (threads.status === 'fulfilled') {
+      connected = true;
+      // Real threads REPLACE the demo inbox (the API list carries each thread's full
+      // message history, so both the inbox and each detail are filled from one fetch).
+      const { threads: mapped, messagesById } = toMessageThreads(threads.value);
+      setMessages(mapped);
+      setThreadMessagesById(messagesById);
+    }
+
     setApiConnected(connected);
     setLoading(false);
   }, [demo, status, setters]);
@@ -322,8 +349,8 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     (input: NewRepairInput): MaintenanceRequest => {
       const createdAt = new Date().toISOString();
       const item: MaintenanceRequest = {
-        id: `repair-${Date.now()}`,
-        trackingNumber: nextTrackingNumber(),
+        id: input.id ?? `repair-${Date.now()}`,
+        trackingNumber: input.trackingNumber ?? nextTrackingNumber(),
         propertyAddress: input.propertyAddress ?? propertyAddress,
         category: input.category,
         description: input.description,
@@ -374,10 +401,13 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
 
   const getThreadMessages = useCallback(
     (threadId: string): ThreadMessage[] => {
+      // Live mode: the thread's history was loaded with the inbox (or appended
+      // optimistically). Demo mode: read from the mock seed + per-browser store.
+      if (!demo) return threadMessagesById[threadId] ?? [];
       const stored = readTenantStore();
       return mergeThreadMessages(threadId, SEED_THREAD_MESSAGES, stored.threadMessages);
     },
-    [],
+    [demo, threadMessagesById],
   );
 
   const sendThreadMessage = useCallback(
@@ -385,7 +415,6 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       const trimmed = body.trim();
       if (!trimmed) return;
       const now = new Date().toISOString();
-      const thread = messages.find((m) => m.id === threadId);
       const outbound: ThreadMessage = {
         id: `tm-${Date.now()}`,
         at: now,
@@ -395,6 +424,38 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
         body: trimmed,
         channel: 'app',
       };
+
+      if (!demo) {
+        // Optimistic append to the live history + bump the inbox row, then POST the reply
+        // to the real conversation (via serverThreadId for a just-created thread) and
+        // re-sync the history from the server's authoritative response.
+        setThreadMessagesById((prev) => ({
+          ...prev,
+          [threadId]: [...(prev[threadId] ?? []), outbound],
+        }));
+        setMessages((prev) =>
+          prev.map((t) =>
+            t.id === threadId
+              ? { ...t, lastMessage: trimmed, lastAt: now, unread: 0 }
+              : t,
+          ),
+        );
+        const thread = messages.find((m) => m.id === threadId);
+        const realId = thread?.serverThreadId ?? threadId;
+        void replyToTenantMessageThread(realId, { body: trimmed })
+          .then((updated) => {
+            const { messagesById } = toMessageThreads([updated]);
+            setThreadMessagesById((prev) => ({
+              ...prev,
+              [threadId]: messagesById[updated.id] ?? prev[threadId],
+            }));
+          })
+          .catch(() => {
+            /* keep the optimistic message; a later refresh reconciles */
+          });
+        return;
+      }
+
       const stored = readTenantStore();
       const threadMessages = {
         ...(stored.threadMessages ?? {}),
@@ -422,7 +483,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
         return next;
       });
     },
-    [messages],
+    [demo, messages],
   );
 
   const addMessageThread = useCallback(
@@ -456,6 +517,38 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
         body: trimmedBody,
         channel: 'app',
       };
+
+      if (!demo) {
+        // Optimistic thread (temp id) so the compose screen can navigate immediately, then
+        // POST the real conversation and stamp serverThreadId for subsequent replies. The
+        // inbox keeps keying off the temp id so the just-opened detail view keeps working.
+        setMessages((prev) => [item, ...prev]);
+        setThreadMessagesById((prev) => ({ ...prev, [id]: [outbound] }));
+        void createTenantMessageThread({
+          subject: item.subject,
+          body: trimmedBody,
+          department: categoryToDepartment(input.category),
+        })
+          .then((created) => {
+            setMessages((prev) =>
+              prev.map((t) =>
+                t.id === id
+                  ? { ...t, serverThreadId: created.id, lastAt: created.lastAt ?? t.lastAt }
+                  : t,
+              ),
+            );
+            const { messagesById } = toMessageThreads([created]);
+            setThreadMessagesById((prev) => ({
+              ...prev,
+              [id]: messagesById[created.id] ?? prev[id],
+            }));
+          })
+          .catch(() => {
+            /* keep optimistic; a later refresh reconciles */
+          });
+        return item;
+      }
+
       const stored = readTenantStore();
       const threadMessages = {
         ...(stored.threadMessages ?? {}),
@@ -468,7 +561,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       });
       return item;
     },
-    [lease, leaseId],
+    [demo, lease, leaseId],
   );
 
   const recordRentPayment = useCallback(

@@ -48,3 +48,25 @@ export function formatCurrency(amount: number): string {
 
 export const useDemoData = (): boolean =>
   process.env.NEXT_PUBLIC_USE_DEMO_DATA !== 'false';
+
+/**
+ * Read a browser File into raw base64 (no `data:<mime>;base64,` prefix) for the
+ * base64-through-API photo upload. The API's UploadTenantPhotoDto expects raw base64, so
+ * the data-URI prefix the FileReader produces is stripped here.
+ */
+export function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result !== 'string') {
+        reject(new Error('Unexpected file read result'));
+        return;
+      }
+      const comma = result.indexOf(',');
+      resolve(comma >= 0 ? result.slice(comma + 1) : result);
+    };
+    reader.onerror = () => reject(reader.error ?? new Error('Failed to read file'));
+    reader.readAsDataURL(file);
+  });
+}

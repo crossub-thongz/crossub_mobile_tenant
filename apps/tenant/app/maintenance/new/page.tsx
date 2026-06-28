@@ -9,7 +9,10 @@ import { TenantShell } from '@/components/layout/tenant-shell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { submitMaintenanceRequest } from '@/lib/crossub-api/maintenance-client';
+import {
+  submitMaintenanceRequest as apiSubmitMaintenanceRequest,
+  uploadRepairPhotos,
+} from '@/lib/crossub-api/tenant-account-client';
 import { ROUTES } from '@/constants/routes';
 import type { Priority } from '@/lib/types';
 import { useDemoData } from '@/lib/utils';
@@ -23,35 +26,58 @@ export default function NewMaintenancePage() {
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
+    const category = String(fd.get('category'));
+    const area = String(fd.get('area'));
+    const description = String(fd.get('description'));
     const urgency = String(fd.get('urgency')) as Priority;
+    const urgent = urgency === 'urgent' || urgency === 'high';
+    const files = fd
+      .getAll('photos')
+      .filter((f): f is File => f instanceof File && f.size > 0);
     setSubmitting(true);
     try {
       if (!demo) {
-        await submitMaintenanceRequest({
-          title: String(fd.get('category')),
-          description: String(fd.get('description')),
-          category: String(fd.get('category')),
-          area: String(fd.get('area')),
-          urgency,
+        // Stage photos FIRST so a failed upload blocks the submit (evidence is never lost),
+        // then create the request with the staged urls — no orphan request.
+        let photos: string[] = [];
+        try {
+          photos = await uploadRepairPhotos(files);
+        } catch {
+          toast.error('Photo upload failed', {
+            description: 'Please retry — your request was not submitted.',
+          });
+          setSubmitting(false);
+          return;
+        }
+        const created = await apiSubmitMaintenanceRequest({
+          category,
+          description,
+          urgent,
+          ...(photos.length ? { photos } : {}),
         });
+        const item = addRepair({
+          category,
+          description,
+          area,
+          urgency,
+          id: created.id,
+          // orderNumber is typed `string | {}` by the contract's nullable rendering — guard it.
+          trackingNumber:
+            typeof created.orderNumber === 'string' ? created.orderNumber : undefined,
+        });
+        toast.success('Request submitted', {
+          description: `Tracking ${item.trackingNumber}.`,
+        });
+        router.push(ROUTES.REPAIRS);
+        return;
       }
-      const created = addRepair({
-        category: String(fd.get('category')),
-        description: String(fd.get('description')),
-        area: String(fd.get('area')),
-        urgency,
-      });
+      const created = addRepair({ category, description, area, urgency });
       toast.success('Request submitted', {
         description: `Tracking ${created.trackingNumber}.`,
       });
       router.push(ROUTES.REPAIRS);
     } catch {
-      const created = addRepair({
-        category: String(fd.get('category')),
-        description: String(fd.get('description')),
-        area: String(fd.get('area')),
-        urgency,
-      });
+      const created = addRepair({ category, description, area, urgency });
       toast.success('Request saved', {
         description: `Tracking ${created.trackingNumber}.`,
       });
@@ -91,7 +117,7 @@ export default function NewMaintenancePage() {
         </div>
         <div className="space-y-2">
           <Label>Photos / videos</Label>
-          <Input type="file" accept="image/*,video/*" multiple />
+          <Input name="photos" type="file" accept="image/*,video/*" multiple />
         </div>
         <div className="space-y-2">
           <Label>Access availability (optional)</Label>

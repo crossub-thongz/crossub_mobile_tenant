@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-06-28
+
+### Added
+- `fileToBase64` in `lib/utils.ts` (reads a File to raw base64 for the photo upload).
+- Tenant-account client: `uploadMaintenancePhoto` + `uploadRepairPhotos` (stage repair photos to R2 before create), `submitMaintenanceRequest` (the typed contract writer), and the messaging fns `fetchTenantMessages` / `createTenantMessageThread` / `replyToTenantMessageThread`.
+- `tenant-mappers.ts`: `toMessageThreads` (API threads → `MessageThread[]` + per-thread `ThreadMessage[]`) and `categoryToDepartment`; `constants/api-enums.ts` gains `COMM_DEPARTMENT` + `COMM_CHANNEL`.
+
+### Changed
+- New repair screens (`repairs/new`, `maintenance/new`) now submit through the typed v1 writer `POST /tenant/maintenance-requests` and upload photos first via the staging endpoint (a failed upload blocks the submit so evidence is never lost); the optimistic card reuses the server id/order number so the next refresh reconciles cleanly.
+- Messages render live data: the inbox, each thread's history, compose, and reply all flow through `/api/v1/tenant/messages` when signed in, with optimistic writes reconciled via `serverThreadId` and per-domain fallback to demo seeds on error. No screen component changed (the `TenantDataProvider` refresh seam + mappers do the work). Demo mode still uses the local seed/store.
+
+### Removed
+- Legacy `lib/crossub-api/maintenance-client.ts` (the bypassed `POST /maintenance/requests` writer the new-repair screens used) — replaced by the typed v1 tenant writer.
+
 ## 2026-06-27
 
 ### Added

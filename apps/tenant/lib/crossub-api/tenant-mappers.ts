@@ -5,6 +5,8 @@
  * the provider swaps seed data for these mapped results with no component changes.
  */
 import {
+  COMM_CHANNEL,
+  COMM_DEPARTMENT,
   LEASE_STATUS,
   LEDGER_DIRECTION,
   LEDGER_ENTRY_TYPE,
@@ -14,12 +16,17 @@ import type {
   LeaseSummary,
   MaintenanceRequest,
   MaintenanceTenantStatus,
+  MessageCategory,
+  MessageThread,
+  MessageType,
   RentReceipt,
+  ThreadMessage,
 } from '@/lib/types';
 
 import type {
   TenantLedgerEntry,
   TenantMaintenanceRequestSummary,
+  TenantMessageThread,
   TenantTenancy,
 } from './tenant-account-client';
 
@@ -178,4 +185,101 @@ export function toTenantMaintenanceRequests(
     timeline: [],
     createdAt: asString(s.createdAt) ?? '',
   }));
+}
+
+/** Map the API conversation department onto the app's inbox category tag. */
+function departmentToCategory(
+  department: TenantMessageThread['department'],
+): MessageCategory {
+  switch (department) {
+    case COMM_DEPARTMENT.MAINTENANCE:
+      return 'maintenance';
+    case COMM_DEPARTMENT.INSPECTION:
+      return 'inspection';
+    case COMM_DEPARTMENT.ACCOUNTING:
+      return 'accounting';
+    case COMM_DEPARTMENT.LEASING:
+      return 'leasing';
+    default:
+      return 'other';
+  }
+}
+
+/** Map the API conversation department onto the app's MessageType (drives linked-case routing). */
+function departmentToType(
+  department: TenantMessageThread['department'],
+): MessageType {
+  switch (department) {
+    case COMM_DEPARTMENT.MAINTENANCE:
+      return 'maintenance';
+    case COMM_DEPARTMENT.INSPECTION:
+      return 'inspection';
+    case COMM_DEPARTMENT.ACCOUNTING:
+      return 'accounting';
+    default:
+      return 'general';
+  }
+}
+
+/** Map the app's compose category onto the API conversation department for a new thread. */
+export function categoryToDepartment(
+  category: MessageCategory,
+): TenantMessageThread['department'] {
+  switch (category) {
+    case 'maintenance':
+      return COMM_DEPARTMENT.MAINTENANCE;
+    case 'inspection':
+      return COMM_DEPARTMENT.INSPECTION;
+    case 'accounting':
+      return COMM_DEPARTMENT.ACCOUNTING;
+    case 'leasing':
+      return COMM_DEPARTMENT.LEASING;
+    default:
+      return COMM_DEPARTMENT.GENERAL;
+  }
+}
+
+/** Project one API message onto the app's ThreadMessage (perspective via `fromSelf`). */
+function toThreadMessage(
+  m: TenantMessageThread['messages'][number],
+): ThreadMessage {
+  return {
+    id: m.id,
+    at: asString(m.at) ?? '',
+    direction: m.fromSelf ? 'outbound' : 'inbound',
+    // Tenant threads are with CROSSUB staff; the app models the counterpart as `agent`.
+    party: 'agent',
+    fromName: asString(m.from) ?? (m.fromSelf ? 'You' : 'CROSSUB'),
+    body: asString(m.body) ?? '',
+    channel: m.channel === COMM_CHANNEL.EMAIL ? 'email' : 'app',
+  };
+}
+
+/**
+ * Project the tenant's API message threads onto the app's MessageThread cards, returning
+ * the threads plus a per-thread map of their nested messages (the list response carries
+ * the full history, so a single fetch fills both the inbox and each thread detail). The
+ * tenant always converses with CROSSUB staff, so every thread's `recipient` is `agent`.
+ */
+export function toMessageThreads(threads: TenantMessageThread[]): {
+  threads: MessageThread[];
+  messagesById: Record<string, ThreadMessage[]>;
+} {
+  const messagesById: Record<string, ThreadMessage[]> = {};
+  const mapped: MessageThread[] = threads.map((t) => {
+    messagesById[t.id] = (t.messages ?? []).map(toThreadMessage);
+    return {
+      id: t.id,
+      subject: asString(t.subject) ?? 'Conversation',
+      type: departmentToType(t.department),
+      category: departmentToCategory(t.department),
+      recipient: 'agent',
+      propertyAddress: asString(t.propertyAddress) ?? undefined,
+      lastMessage: asString(t.lastMessage) ?? '',
+      lastAt: asString(t.lastAt) ?? '',
+      unread: asNumber(t.unread) ?? 0,
+      channel: 'app',
+    };
+  });
+  return { threads: mapped, messagesById };
 }
