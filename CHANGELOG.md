@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-06-29
+
+### Added
+- Tenant-account client: `fetchTenantNotifications`, `markTenantNotificationRead`, `markAllTenantNotificationsRead` (`/api/v1/tenant/notifications` trio).
+- `tenant-mappers.ts`: `toTenantNotifications` (API notifications → `TenantNotification[]`, enum `type` → app category); `constants/api-enums.ts` gains `TENANT_NOTIFICATION_TYPE`.
+
+### Changed
+- Notifications render live data: the list is loaded from `GET /tenant/notifications` on refresh, and tapping a notification marks it read against the real `PATCH /tenant/notifications/:id/read` (optimistic, with fallback to demo seeds on error). No screen component changed (the `TenantDataProvider` refresh seam + mapper do the work). Demo mode still uses the local seed/store.
+
 ## 2026-06-28
 
 ### Added

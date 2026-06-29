@@ -11,6 +11,7 @@ import {
   LEDGER_DIRECTION,
   LEDGER_ENTRY_TYPE,
   MAINTENANCE_STATUS,
+  TENANT_NOTIFICATION_TYPE,
 } from '@/constants/api-enums';
 import type {
   LeaseSummary,
@@ -20,6 +21,7 @@ import type {
   MessageThread,
   MessageType,
   RentReceipt,
+  TenantNotification,
   ThreadMessage,
 } from '@/lib/types';
 
@@ -27,6 +29,7 @@ import type {
   TenantLedgerEntry,
   TenantMaintenanceRequestSummary,
   TenantMessageThread,
+  TenantNotificationDto,
   TenantTenancy,
 } from './tenant-account-client';
 
@@ -253,6 +256,41 @@ function toThreadMessage(
     body: asString(m.body) ?? '',
     channel: m.channel === COMM_CHANNEL.EMAIL ? 'email' : 'app',
   };
+}
+
+/** Map the API notification type onto the app's lowercase category tag (drives the icon). */
+function notificationCategory(type: TenantNotificationDto['type']): string {
+  switch (type) {
+    case TENANT_NOTIFICATION_TYPE.RENT_DUE:
+    case TENANT_NOTIFICATION_TYPE.RENT_RECEIVED:
+      return 'payment';
+    case TENANT_NOTIFICATION_TYPE.MAINTENANCE:
+      return 'maintenance';
+    case TENANT_NOTIFICATION_TYPE.INSPECTION:
+      return 'inspection';
+    case TENANT_NOTIFICATION_TYPE.RENT_REVIEW:
+      return 'rent_review';
+    case TENANT_NOTIFICATION_TYPE.MESSAGE:
+      return 'message';
+    default:
+      return 'lease';
+  }
+}
+
+/** Project the tenant's API notifications onto the app's notification cards. */
+export function toTenantNotifications(
+  notifications: TenantNotificationDto[],
+): TenantNotification[] {
+  return notifications.map((n) => ({
+    id: n.id,
+    title: asString(n.title) ?? '',
+    body: asString(n.body) ?? '',
+    type: notificationCategory(n.type),
+    read: Boolean(n.read),
+    href: asString(n.href) ?? '/notifications',
+    createdAt: asString(n.createdAt) ?? '',
+    actionRequired: asString(n.actionRequired) ?? undefined,
+  }));
 }
 
 /**

@@ -16,6 +16,8 @@ import {
   fetchMaintenanceRequests,
   fetchTenancies,
   fetchTenantMessages,
+  fetchTenantNotifications,
+  markTenantNotificationRead,
   replyToTenantMessageThread,
 } from '@/lib/crossub-api/tenant-account-client';
 import {
@@ -24,6 +26,7 @@ import {
   toMessageThreads,
   toRentPaymentReceipts,
   toTenantMaintenanceRequests,
+  toTenantNotifications,
 } from '@/lib/crossub-api/tenant-mappers';
 import { LISTING_PROPERTIES, TENANT_PHASE } from '@/lib/mock-data';
 import { categoryToMessageType } from '@/lib/message-categories';
@@ -284,14 +287,15 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       return;
     }
 
-    // Pull every facade-backed screen (lease, ledger, repairs, messages) in parallel. A
-    // 403 (tenant not yet linked to a Person/tenancy) or a network error on any one leaves
-    // that screen on its seed data — the app stays usable rather than going blank.
-    const [tenancies, ledger, requests, threads] = await Promise.allSettled([
+    // Pull every facade-backed screen (lease, ledger, repairs, messages, notifications) in
+    // parallel. A 403 (tenant not yet linked to a Person/tenancy) or a network error on any
+    // one leaves that screen on its seed data — the app stays usable rather than going blank.
+    const [tenancies, ledger, requests, threads, notifs] = await Promise.allSettled([
       fetchTenancies(),
       fetchLedger(),
       fetchMaintenanceRequests(),
       fetchTenantMessages(),
+      fetchTenantNotifications(),
     ]);
 
     let connected = false;
@@ -332,6 +336,12 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       const { threads: mapped, messagesById } = toMessageThreads(threads.value);
       setMessages(mapped);
       setThreadMessagesById(messagesById);
+    }
+
+    if (notifs.status === 'fulfilled') {
+      connected = true;
+      // Real notifications REPLACE the demo list.
+      setNotifications(toTenantNotifications(notifs.value));
     }
 
     setApiConnected(connected);
@@ -599,13 +609,23 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
 
   const markNotificationRead = useCallback(
     (id: string) => {
-      setNotifications((prev) => {
-        const next = prev.map((n) => (n.id === id ? { ...n, read: true } : n));
-        patchTenantStore( { notifications: next });
-        return next;
+      // Optimistic flip in both modes.
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, read: true } : n)),
+      );
+      if (!demo) {
+        // Persist to the real notification; a failure leaves the optimistic flip (a later
+        // refresh reconciles). Ignore the synthetic temp/seed ids that aren't real rows.
+        void markTenantNotificationRead(id).catch(() => {});
+        return;
+      }
+      patchTenantStore({
+        notifications: notifications.map((n) =>
+          n.id === id ? { ...n, read: true } : n,
+        ),
       });
     },
-    [],
+    [demo, notifications],
   );
 
   const confirmIngoingSection = useCallback(

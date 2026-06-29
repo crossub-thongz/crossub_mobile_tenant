@@ -20,6 +20,8 @@ export type TenantMessageThread =
 export type CreateTenantMessageThread =
   components['schemas']['CreateTenantMessageThreadDto'];
 export type SendTenantMessage = components['schemas']['SendTenantMessageDto'];
+export type TenantNotificationDto =
+  components['schemas']['TenantNotificationResponseDto'];
 
 /** Active leases for the signed-in tenant (`GET /api/v1/tenant/tenancies`). */
 export async function fetchTenancies(): Promise<TenantTenancy[]> {
@@ -123,4 +125,30 @@ export async function replyToTenantMessageThread(
   });
   if (error || !data) throw new Error('Failed to send message');
   return data;
+}
+
+/** Notifications for the signed-in tenant (`GET /api/v1/tenant/notifications`). */
+export async function fetchTenantNotifications(): Promise<TenantNotificationDto[]> {
+  const { data, error } = await crossub.GET('/tenant/notifications');
+  if (error || !data) throw new Error('Failed to load notifications');
+  return data;
+}
+
+/** Mark one notification read (`PATCH /api/v1/tenant/notifications/:id/read`). */
+export async function markTenantNotificationRead(
+  notificationId: string,
+): Promise<TenantNotificationDto> {
+  const { data, error } = await crossub.PATCH(
+    '/tenant/notifications/{notificationId}/read',
+    { params: { path: { notificationId } } },
+  );
+  if (error || !data) throw new Error('Failed to mark notification read');
+  return data;
+}
+
+/** Mark all notifications read (`POST /api/v1/tenant/notifications/read-all`). */
+export async function markAllTenantNotificationsRead(): Promise<number> {
+  const { data, error } = await crossub.POST('/tenant/notifications/read-all', {});
+  if (error || !data) throw new Error('Failed to mark all notifications read');
+  return data.updated;
 }

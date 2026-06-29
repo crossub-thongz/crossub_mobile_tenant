@@ -69,3 +69,14 @@ export const COMM_CHANNEL = {
   VOICE: 'VOICE',
   SMS: 'SMS',
 } as const;
+
+/** `TenantNotificationType` — the kind of tenant notification (drives the app's icon/category). */
+export const TENANT_NOTIFICATION_TYPE = {
+  RENT_DUE: 'RENT_DUE',
+  RENT_RECEIVED: 'RENT_RECEIVED',
+  MAINTENANCE: 'MAINTENANCE',
+  INSPECTION: 'INSPECTION',
+  RENT_REVIEW: 'RENT_REVIEW',
+  MESSAGE: 'MESSAGE',
+  LEASE: 'LEASE',
+} as const;
