@@ -5,6 +5,7 @@
  * the provider swaps seed data for these mapped results with no component changes.
  */
 import {
+  APPLICATION_STATUS,
   COMM_CHANNEL,
   COMM_DEPARTMENT,
   INSPECTION_STATUS,
@@ -13,9 +14,11 @@ import {
   LEDGER_DIRECTION,
   LEDGER_ENTRY_TYPE,
   MAINTENANCE_STATUS,
+  RENT_REVIEW_WORKFLOW_STATE,
   TENANT_NOTIFICATION_TYPE,
 } from '@/constants/api-enums';
 import type {
+  ApplicationStatus,
   InspectionListType,
   InspectionSummary,
   LeaseSummary,
@@ -25,17 +28,22 @@ import type {
   MessageThread,
   MessageType,
   RentReceipt,
+  RentReviewCase,
+  RentReviewTenantStatus,
+  RentalApplication,
   TenantNotification,
   ThreadMessage,
 } from '@/lib/types';
 
 import type {
+  TenantApplication,
   TenantDocument,
   TenantInspection,
   TenantLedgerEntry,
   TenantMaintenanceRequestSummary,
   TenantMessageThread,
   TenantNotificationDto,
+  TenantRentReview,
   TenantTenancy,
 } from './tenant-account-client';
 
@@ -418,4 +426,82 @@ export function toTenantDocuments(
     category: documentCategoryLabel(d.category),
     uploadedAt: asString(d.uploadedAt) ?? '',
   }));
+}
+
+/** Map the API application status onto the app's application-status union. */
+function applicationStatus(status: TenantApplication['status']): ApplicationStatus {
+  switch (status) {
+    case APPLICATION_STATUS.APPROVED:
+    case APPLICATION_STATUS.LEASED:
+      return 'approved';
+    case APPLICATION_STATUS.DECLINED:
+    case APPLICATION_STATUS.WITHDRAWN:
+      return 'declined';
+    default:
+      // DRAFT / SUBMITTED — both read as "received and under review" to the tenant.
+      return 'submitted';
+  }
+}
+
+/** Project the tenant's API applications onto the app's RentalApplication cards. */
+export function toTenantApplications(
+  applications: TenantApplication[],
+): RentalApplication[] {
+  return applications.map((a) => ({
+    id: a.id,
+    referenceNumber: asString(a.reference) ?? a.id.slice(0, 8).toUpperCase(),
+    propertyId: asString(a.propertyId) ?? '',
+    propertyAddress: asString(a.propertyAddress) ?? '—',
+    status: applicationStatus(a.status),
+    submittedAt: asString(a.submittedAt) ?? '',
+  }));
+}
+
+/** Map the API rent-review workflow state onto the app's tenant-facing status. */
+function rentReviewStatus(
+  state: TenantRentReview['workflowState'],
+): RentReviewTenantStatus {
+  switch (state) {
+    case RENT_REVIEW_WORKFLOW_STATE.TENANT_ACCEPTED:
+    case RENT_REVIEW_WORKFLOW_STATE.ACCOUNTING:
+    case RENT_REVIEW_WORKFLOW_STATE.COMPLETED:
+      return 'accepted';
+    case RENT_REVIEW_WORKFLOW_STATE.TENANT_REJECTED:
+    case RENT_REVIEW_WORKFLOW_STATE.CANCELLED:
+      return 'rejected';
+    case RENT_REVIEW_WORKFLOW_STATE.NEGOTIATION:
+      return 'countered';
+    default:
+      // PENDING_CONFIRMATION / AGENT_REVIEW / TENANT_NOTIFIED / POSTPONED.
+      return 'pending';
+  }
+}
+
+/**
+ * Project the tenant's API rent reviews onto the app's RentReviewCase cards. Read-only —
+ * the accept/dispute/counter actions stay local (no tenant write anchor). When the tenant
+ * has countered, a single counter-history entry is synthesised (the read carries the latest
+ * counter weekly, not a per-event log).
+ */
+export function toTenantRentReviews(
+  reviews: TenantRentReview[],
+): RentReviewCase[] {
+  return reviews.map((r) => {
+    const effectiveDate = asString(r.effectiveDate) ?? '';
+    const counter = asNumber(r.tenantCounterWeekly);
+    const createdAt = asString(r.createdAt) ?? effectiveDate;
+    return {
+      id: r.id,
+      propertyAddress: asString(r.propertyAddress) ?? '—',
+      currentRentWeekly: asNumber(r.currentRentWeekly) ?? 0,
+      proposedRentWeekly: asNumber(r.proposedRentWeekly) ?? 0,
+      effectiveDate,
+      explanation: asString(r.explanation) ?? undefined,
+      status: rentReviewStatus(r.workflowState),
+      counterHistory:
+        counter != null
+          ? [{ at: createdAt, amount: counter, by: 'tenant' as const }]
+          : [],
+    };
+  });
 }

@@ -15,10 +15,12 @@ import {
   fetchLedger,
   fetchMaintenanceRequests,
   fetchTenancies,
+  fetchTenantApplications,
   fetchTenantDocuments,
   fetchTenantInspections,
   fetchTenantMessages,
   fetchTenantNotifications,
+  fetchTenantRentReviews,
   markTenantNotificationRead,
   replyToTenantMessageThread,
 } from '@/lib/crossub-api/tenant-account-client';
@@ -27,10 +29,12 @@ import {
   toLeaseSummary,
   toMessageThreads,
   toRentPaymentReceipts,
+  toTenantApplications,
   toTenantDocuments,
   toTenantInspections,
   toTenantMaintenanceRequests,
   toTenantNotifications,
+  toTenantRentReviews,
   type TenantDocumentView,
 } from '@/lib/crossub-api/tenant-mappers';
 import { LISTING_PROPERTIES, TENANT_PHASE } from '@/lib/mock-data';
@@ -299,16 +303,27 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     // Pull every facade-backed screen (lease, ledger, repairs, messages, notifications) in
     // parallel. A 403 (tenant not yet linked to a Person/tenancy) or a network error on any
     // one leaves that screen on its seed data — the app stays usable rather than going blank.
-    const [tenancies, ledger, requests, threads, notifs, inspectionsRes, documentsRes] =
-      await Promise.allSettled([
-        fetchTenancies(),
-        fetchLedger(),
-        fetchMaintenanceRequests(),
-        fetchTenantMessages(),
-        fetchTenantNotifications(),
-        fetchTenantInspections(),
-        fetchTenantDocuments(),
-      ]);
+    const [
+      tenancies,
+      ledger,
+      requests,
+      threads,
+      notifs,
+      inspectionsRes,
+      documentsRes,
+      applicationsRes,
+      rentReviewsRes,
+    ] = await Promise.allSettled([
+      fetchTenancies(),
+      fetchLedger(),
+      fetchMaintenanceRequests(),
+      fetchTenantMessages(),
+      fetchTenantNotifications(),
+      fetchTenantInspections(),
+      fetchTenantDocuments(),
+      fetchTenantApplications(),
+      fetchTenantRentReviews(),
+    ]);
 
     let connected = false;
 
@@ -365,6 +380,18 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       connected = true;
       // Real documents REPLACE the derived (mock) storedDocuments list.
       setApiDocuments(toTenantDocuments(documentsRes.value));
+    }
+
+    if (applicationsRes.status === 'fulfilled') {
+      connected = true;
+      // Real applications REPLACE the demo list (read-only — the apply SUBMIT is deferred).
+      setApplications(toTenantApplications(applicationsRes.value));
+    }
+
+    if (rentReviewsRes.status === 'fulfilled') {
+      connected = true;
+      // Real rent reviews REPLACE the demo list (read-only — accept/dispute stays local).
+      setRentReviews(toTenantRentReviews(rentReviewsRes.value));
     }
 
     setApiConnected(connected);

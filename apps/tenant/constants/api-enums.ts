@@ -70,6 +70,30 @@ export const COMM_CHANNEL = {
   SMS: 'SMS',
 } as const;
 
+/** `ApplicationStatus` — the lifecycle of a rental application. */
+export const APPLICATION_STATUS = {
+  DRAFT: 'DRAFT',
+  SUBMITTED: 'SUBMITTED',
+  APPROVED: 'APPROVED',
+  DECLINED: 'DECLINED',
+  LEASED: 'LEASED',
+  WITHDRAWN: 'WITHDRAWN',
+} as const;
+
+/** `RentReviewWorkflowState` — the live-ops rent-review workflow state. */
+export const RENT_REVIEW_WORKFLOW_STATE = {
+  PENDING_CONFIRMATION: 'PENDING_CONFIRMATION',
+  AGENT_REVIEW: 'AGENT_REVIEW',
+  TENANT_NOTIFIED: 'TENANT_NOTIFIED',
+  NEGOTIATION: 'NEGOTIATION',
+  TENANT_ACCEPTED: 'TENANT_ACCEPTED',
+  TENANT_REJECTED: 'TENANT_REJECTED',
+  ACCOUNTING: 'ACCOUNTING',
+  COMPLETED: 'COMPLETED',
+  CANCELLED: 'CANCELLED',
+  POSTPONED: 'POSTPONED',
+} as const;
+
 /** `InspectionType` — the kind of inspection. */
 export const INSPECTION_TYPE = {
   CONDITION: 'CONDITION',

@@ -3,10 +3,12 @@
 ## 2026-06-29
 
 ### Added
-- Tenant-account client: `fetchTenantInspections` + `fetchTenantNotifications`, `markTenantNotificationRead`, `markAllTenantNotificationsRead`, `fetchTenantDocuments` (`/api/v1/tenant/{inspections,documents,notifications}`).
-- `tenant-mappers.ts`: `toTenantInspections` (API inspections → `InspectionSummary[]`), `toTenantDocuments` (aggregated docs → stored-document cards), `toTenantNotifications`; `constants/api-enums.ts` gains `INSPECTION_TYPE`, `INSPECTION_STATUS`, `TENANT_NOTIFICATION_TYPE`.
+- Tenant-account client: `fetchTenantInspections`, `fetchTenantDocuments`, `fetchTenantApplications`, `fetchTenantRentReviews` + `fetchTenantNotifications`, `markTenantNotificationRead`, `markAllTenantNotificationsRead` (`/api/v1/tenant/{inspections,documents,applications,rent-reviews,notifications}`).
+- `tenant-mappers.ts`: `toTenantInspections`, `toTenantDocuments`, `toTenantApplications` (→ `RentalApplication[]`), `toTenantRentReviews` (→ `RentReviewCase[]`), `toTenantNotifications`; `constants/api-enums.ts` gains `INSPECTION_TYPE`, `INSPECTION_STATUS`, `APPLICATION_STATUS`, `RENT_REVIEW_WORKFLOW_STATE`, `TENANT_NOTIFICATION_TYPE`.
 
 ### Changed
+- Applications render live data: the list is loaded from `GET /tenant/applications` on refresh (the apply SUBMIT flow stays local — read-only).
+- Rent reviews render live data: `GET /tenant/rent-reviews` populates the rent-review screens (current/proposed rent, effective date, explanation, status); the accept/dispute/counter actions stay local (read-only).
 - Inspections render live data: the list is loaded from `GET /tenant/inspections` on refresh (type/status mapped to the app's view-model; a published report opens its PDF). The ingoing/outgoing confirmation flows stay local (read-only).
 - Documents render live data: `My documents` lists the aggregated property documents from `GET /tenant/documents` (inspection/maintenance/lease PDFs) when signed in, replacing the derived demo list; demo mode keeps the derived list.
 - Notifications render live data: the list is loaded from `GET /tenant/notifications` on refresh, and tapping a notification marks it read against the real `PATCH /tenant/notifications/:id/read` (optimistic, with fallback to demo seeds on error). No screen component changed (the `TenantDataProvider` refresh seam + mappers do the work). Demo mode still uses the local seed/store.

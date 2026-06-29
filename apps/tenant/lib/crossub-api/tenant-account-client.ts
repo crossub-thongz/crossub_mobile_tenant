@@ -25,6 +25,10 @@ export type TenantNotificationDto =
 export type TenantInspection =
   components['schemas']['TenantInspectionResponseDto'];
 export type TenantDocument = components['schemas']['TenantDocumentResponseDto'];
+export type TenantApplication =
+  components['schemas']['TenantApplicationResponseDto'];
+export type TenantRentReview =
+  components['schemas']['TenantRentReviewResponseDto'];
 
 /** Active leases for the signed-in tenant (`GET /api/v1/tenant/tenancies`). */
 export async function fetchTenancies(): Promise<TenantTenancy[]> {
@@ -58,6 +62,20 @@ export async function fetchTenantInspections(): Promise<TenantInspection[]> {
 export async function fetchTenantDocuments(): Promise<TenantDocument[]> {
   const { data, error } = await crossub.GET('/tenant/documents');
   if (error || !data) throw new Error('Failed to load documents');
+  return data;
+}
+
+/** The signed-in tenant's own rental applications (`GET /api/v1/tenant/applications`). */
+export async function fetchTenantApplications(): Promise<TenantApplication[]> {
+  const { data, error } = await crossub.GET('/tenant/applications');
+  if (error || !data) throw new Error('Failed to load applications');
+  return data.items;
+}
+
+/** Rent reviews on the signed-in tenant's leased property (`GET /api/v1/tenant/rent-reviews`). */
+export async function fetchTenantRentReviews(): Promise<TenantRentReview[]> {
+  const { data, error } = await crossub.GET('/tenant/rent-reviews');
+  if (error || !data) throw new Error('Failed to load rent reviews');
   return data;
 }
 
