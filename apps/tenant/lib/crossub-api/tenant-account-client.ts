@@ -22,6 +22,9 @@ export type CreateTenantMessageThread =
 export type SendTenantMessage = components['schemas']['SendTenantMessageDto'];
 export type TenantNotificationDto =
   components['schemas']['TenantNotificationResponseDto'];
+export type TenantInspection =
+  components['schemas']['TenantInspectionResponseDto'];
+export type TenantDocument = components['schemas']['TenantDocumentResponseDto'];
 
 /** Active leases for the signed-in tenant (`GET /api/v1/tenant/tenancies`). */
 export async function fetchTenancies(): Promise<TenantTenancy[]> {
@@ -42,6 +45,20 @@ export async function fetchTenantProperties(): Promise<TenantProperty[]> {
   const { data, error } = await crossub.GET('/tenant/properties');
   if (error || !data) throw new Error('Failed to load properties');
   return data.items;
+}
+
+/** Inspections on the signed-in tenant's leased property (`GET /api/v1/tenant/inspections`). */
+export async function fetchTenantInspections(): Promise<TenantInspection[]> {
+  const { data, error } = await crossub.GET('/tenant/inspections');
+  if (error || !data) throw new Error('Failed to load inspections');
+  return data.items;
+}
+
+/** Documents on the signed-in tenant's leased property (`GET /api/v1/tenant/documents`). */
+export async function fetchTenantDocuments(): Promise<TenantDocument[]> {
+  const { data, error } = await crossub.GET('/tenant/documents');
+  if (error || !data) throw new Error('Failed to load documents');
+  return data;
 }
 
 /** Maintenance requests the signed-in tenant has filed (`GET /api/v1/tenant/maintenance-requests`). */

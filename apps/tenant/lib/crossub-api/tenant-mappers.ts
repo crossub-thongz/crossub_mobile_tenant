@@ -7,6 +7,8 @@
 import {
   COMM_CHANNEL,
   COMM_DEPARTMENT,
+  INSPECTION_STATUS,
+  INSPECTION_TYPE,
   LEASE_STATUS,
   LEDGER_DIRECTION,
   LEDGER_ENTRY_TYPE,
@@ -14,6 +16,8 @@ import {
   TENANT_NOTIFICATION_TYPE,
 } from '@/constants/api-enums';
 import type {
+  InspectionListType,
+  InspectionSummary,
   LeaseSummary,
   MaintenanceRequest,
   MaintenanceTenantStatus,
@@ -26,12 +30,22 @@ import type {
 } from '@/lib/types';
 
 import type {
+  TenantDocument,
+  TenantInspection,
   TenantLedgerEntry,
   TenantMaintenanceRequestSummary,
   TenantMessageThread,
   TenantNotificationDto,
   TenantTenancy,
 } from './tenant-account-client';
+
+/** The app's stored-document card shape (the provider's `storedDocuments` items). */
+export interface TenantDocumentView {
+  id: string;
+  name: string;
+  category: string;
+  uploadedAt: string;
+}
 
 const MS_PER_DAY = 86_400_000;
 
@@ -320,4 +334,88 @@ export function toMessageThreads(threads: TenantMessageThread[]): {
     };
   });
   return { threads: mapped, messagesById };
+}
+
+/** Collapse the API inspection type onto the app's three-way list type. */
+function inspectionListType(type: TenantInspection['type']): InspectionListType {
+  if (type === INSPECTION_TYPE.INGOING) return 'ingoing';
+  if (type === INSPECTION_TYPE.OUTGOING) return 'outgoing';
+  return 'routine';
+}
+
+/** Friendly label for the API inspection status (the screen shows it verbatim). */
+function inspectionStatusLabel(status: TenantInspection['status']): string {
+  switch (status) {
+    case INSPECTION_STATUS.DRAFT:
+      return 'Draft';
+    case INSPECTION_STATUS.IN_PROGRESS:
+      return 'In progress';
+    case INSPECTION_STATUS.FIRST_REVIEW:
+    case INSPECTION_STATUS.SECOND_REVIEW:
+      return 'Under review';
+    case INSPECTION_STATUS.COMPLETED:
+      return 'Completed';
+    case INSPECTION_STATUS.PUBLISHED:
+      return 'Published';
+    case INSPECTION_STATUS.CANCELLED:
+      return 'Cancelled';
+    default:
+      return 'Scheduled';
+  }
+}
+
+/**
+ * Project the tenant's API inspections onto the app's InspectionSummary cards. The href
+ * opens the published report PDF when one exists, otherwise stays on the list (the
+ * ingoing/outgoing confirmation flows are not wired here — read-only).
+ */
+export function toTenantInspections(
+  inspections: TenantInspection[],
+): InspectionSummary[] {
+  return inspections.map((i) => {
+    const scheduledAt =
+      asString(i.scheduledDate) ?? asString(i.inspectionDate) ?? undefined;
+    const reportUrl = asString(i.reportUrl);
+    return {
+      id: i.id,
+      type: inspectionListType(i.type),
+      propertyAddress: asString(i.propertyAddress) ?? '—',
+      status: inspectionStatusLabel(i.status),
+      scheduledAt,
+      href: reportUrl ?? '/inspections',
+    };
+  });
+}
+
+/** Friendly label for the aggregated document category (the screen shows it verbatim). */
+function documentCategoryLabel(category: TenantDocument['category']): string {
+  switch (category) {
+    case 'inspection':
+      return 'Inspection report';
+    case 'lease':
+      return 'Lease';
+    case 'maintenance_invoice':
+    case 'maintenance_quote':
+      return 'Maintenance';
+    case 'statement':
+      return 'Statement';
+    default:
+      return 'Document';
+  }
+}
+
+/**
+ * Project the tenant's API documents onto the app's stored-document cards. The aggregator
+ * already filters to rows that have a real file URL, so every item here is a real document
+ * (inspection report, maintenance report, or lease PDF), newest first.
+ */
+export function toTenantDocuments(
+  documents: TenantDocument[],
+): TenantDocumentView[] {
+  return documents.map((d) => ({
+    id: asString(d.id) ?? '',
+    name: asString(d.name) ?? 'Document',
+    category: documentCategoryLabel(d.category),
+    uploadedAt: asString(d.uploadedAt) ?? '',
+  }));
 }

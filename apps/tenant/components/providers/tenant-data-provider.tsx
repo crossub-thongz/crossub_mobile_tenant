@@ -15,6 +15,8 @@ import {
   fetchLedger,
   fetchMaintenanceRequests,
   fetchTenancies,
+  fetchTenantDocuments,
+  fetchTenantInspections,
   fetchTenantMessages,
   fetchTenantNotifications,
   markTenantNotificationRead,
@@ -25,8 +27,11 @@ import {
   toLeaseSummary,
   toMessageThreads,
   toRentPaymentReceipts,
+  toTenantDocuments,
+  toTenantInspections,
   toTenantMaintenanceRequests,
   toTenantNotifications,
+  type TenantDocumentView,
 } from '@/lib/crossub-api/tenant-mappers';
 import { LISTING_PROPERTIES, TENANT_PHASE } from '@/lib/mock-data';
 import { categoryToMessageType } from '@/lib/message-categories';
@@ -232,6 +237,10 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
   const [onboardingSteps, setOnboardingSteps] = useState<OnboardingStep[]>([]);
   const [pendingActions, setPendingActions] = useState<PendingAction[]>([]);
   const [inspections, setInspections] = useState<InspectionSummary[]>([]);
+  // Live-mode documents from the API. null = not loaded (demo) → the derived list is used.
+  const [apiDocuments, setApiDocuments] = useState<TenantDocumentView[] | null>(
+    null,
+  );
   const [renewal, setRenewal] = useState<RenewalDecision | null>(null);
   const [terminationNotice, setTerminationNotice] = useState<TerminationNotice | null>(null);
   const [finalStatement, setFinalStatement] = useState<FinalStatement | null>(null);
@@ -290,13 +299,16 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     // Pull every facade-backed screen (lease, ledger, repairs, messages, notifications) in
     // parallel. A 403 (tenant not yet linked to a Person/tenancy) or a network error on any
     // one leaves that screen on its seed data — the app stays usable rather than going blank.
-    const [tenancies, ledger, requests, threads, notifs] = await Promise.allSettled([
-      fetchTenancies(),
-      fetchLedger(),
-      fetchMaintenanceRequests(),
-      fetchTenantMessages(),
-      fetchTenantNotifications(),
-    ]);
+    const [tenancies, ledger, requests, threads, notifs, inspectionsRes, documentsRes] =
+      await Promise.allSettled([
+        fetchTenancies(),
+        fetchLedger(),
+        fetchMaintenanceRequests(),
+        fetchTenantMessages(),
+        fetchTenantNotifications(),
+        fetchTenantInspections(),
+        fetchTenantDocuments(),
+      ]);
 
     let connected = false;
 
@@ -342,6 +354,17 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       connected = true;
       // Real notifications REPLACE the demo list.
       setNotifications(toTenantNotifications(notifs.value));
+    }
+
+    if (inspectionsRes.status === 'fulfilled') {
+      connected = true;
+      setInspections(toTenantInspections(inspectionsRes.value));
+    }
+
+    if (documentsRes.status === 'fulfilled') {
+      connected = true;
+      // Real documents REPLACE the derived (mock) storedDocuments list.
+      setApiDocuments(toTenantDocuments(documentsRes.value));
     }
 
     setApiConnected(connected);
@@ -763,6 +786,10 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
   const phase: TenantLifecyclePhase = lease ? TENANT_PHASE : 'searching';
 
   const storedDocuments = useMemo(() => {
+    // Live mode: the real aggregated documents (inspection/maintenance/lease PDFs) REPLACE
+    // the derived demo list. Demo mode (apiDocuments null): the derived list stands.
+    if (apiDocuments !== null) return apiDocuments;
+
     const docs: { id: string; name: string; category: string; uploadedAt: string }[] = [];
     if (lease) {
       docs.push(
@@ -793,7 +820,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
         })),
     );
     return docs;
-  }, [lease, rentReceipts, paymentProofs]);
+  }, [apiDocuments, lease, rentReceipts, paymentProofs]);
 
   const value = useMemo<TenantDataContextValue>(
     () => ({

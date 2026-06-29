@@ -70,6 +70,27 @@ export const COMM_CHANNEL = {
   SMS: 'SMS',
 } as const;
 
+/** `InspectionType` — the kind of inspection. */
+export const INSPECTION_TYPE = {
+  CONDITION: 'CONDITION',
+  ROUTINE: 'ROUTINE',
+  INGOING: 'INGOING',
+  OUTGOING: 'OUTGOING',
+  WARD_ROUND: 'WARD_ROUND',
+  OPEN: 'OPEN',
+} as const;
+
+/** `InspectionStatus` — review/lifecycle state of an inspection. */
+export const INSPECTION_STATUS = {
+  DRAFT: 'DRAFT',
+  IN_PROGRESS: 'IN_PROGRESS',
+  FIRST_REVIEW: 'FIRST_REVIEW',
+  SECOND_REVIEW: 'SECOND_REVIEW',
+  COMPLETED: 'COMPLETED',
+  PUBLISHED: 'PUBLISHED',
+  CANCELLED: 'CANCELLED',
+} as const;
+
 /** `TenantNotificationType` — the kind of tenant notification (drives the app's icon/category). */
 export const TENANT_NOTIFICATION_TYPE = {
   RENT_DUE: 'RENT_DUE',
