@@ -2,6 +2,9 @@
 
 ## 2026-06-29
 
+### Changed
+- Bumped `@crossub-thongz/api-contract` dependency `^0.1.0` → `^0.10.0` (the published contract that now carries the full tenant operational surface). With the source-fixed nullable DTOs, the contract types are `T | null` (not `T | Record<string, never>`), so the mapper `asString`/`asNumber` guards are now belt-and-suspenders. **This completes the tenant app's move off mock — all 5 CROSSUB mobile apps are now operationally off mock.**
+
 ### Added
 - Tenant-account client: `fetchTenantInspections`, `fetchTenantDocuments`, `fetchTenantApplications`, `fetchTenantRentReviews` + `fetchTenantNotifications`, `markTenantNotificationRead`, `markAllTenantNotificationsRead` (`/api/v1/tenant/{inspections,documents,applications,rent-reviews,notifications}`).
 - `tenant-mappers.ts`: `toTenantInspections`, `toTenantDocuments`, `toTenantApplications` (→ `RentalApplication[]`), `toTenantRentReviews` (→ `RentReviewCase[]`), `toTenantNotifications`; `constants/api-enums.ts` gains `INSPECTION_TYPE`, `INSPECTION_STATUS`, `APPLICATION_STATUS`, `RENT_REVIEW_WORKFLOW_STATE`, `TENANT_NOTIFICATION_TYPE`.
