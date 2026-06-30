@@ -95,11 +95,11 @@ export default function LoginPage() {
         </div>
       </div>
       <div className="w-full max-w-md rounded-xl border bg-card p-8 shadow-lg">
-        <div className="mb-4 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-primary">
+        {/* <div className="mb-4 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-primary">
           New tenant? You must register via the{' '}
           <strong>Agent PC Portal</strong> first. Contact the <strong>Leasing Team</strong>{' '}
           for registration details, then sign in here with your username and password.
-        </div>
+        </div> */}
 
         <div className="mb-6 space-y-1 text-center">
           <h1 className="text-xl font-semibold">Sign in</h1>
@@ -177,9 +177,9 @@ export default function LoginPage() {
 
         <p className="text-muted-foreground mt-6 text-center text-xs">
           Need to register?{' '}
-          <a href={agentRegisterUrl} className="text-primary hover:underline">
+          {/* <a href={agentRegisterUrl} className="text-primary hover:underline">
             Agent PC Portal registration
-          </a>
+          </a> */}
           {' · '}
           <Link href={ROUTES.PROPERTIES} className="text-primary hover:underline">
             Browse properties
