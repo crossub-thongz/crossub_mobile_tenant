@@ -18,16 +18,11 @@ import {
   type SubmitGuestApplicationInput,
 } from '@/lib/crossub-api/public-listings-client';
 import { propertyApplySuccess, ROUTES } from '@/constants/routes';
-import { useDemoData } from '@/lib/utils';
-
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export default function ApplyPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const demo = useDemoData();
-  const { listings, addApplication } = useTenantData();
+  const { listings } = useTenantData();
   const property = listings.find((p) => p.id === id);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState<SubmitGuestApplicationInput>({
@@ -54,25 +49,13 @@ export default function ApplyPage() {
 
     setSubmitting(true);
     try {
-      const propertyAddress = `${property.address}, ${property.suburb}`;
-      const useApi = UUID_RE.test(property.id);
-
-      if (demo && !useApi) {
-        await new Promise((r) => setTimeout(r, 400));
-        const created = addApplication({ propertyId: property.id, propertyAddress });
-        router.push(
-          `${propertyApplySuccess(property.id)}?ref=${encodeURIComponent(created.referenceNumber)}`,
-        );
-        return;
-      }
-
       const result = await submitGuestApplication(property.id, {
         ...form,
         annualIncome: Number(form.annualIncome),
       });
 
       toast.success('Application submitted', {
-        description: `Reference ${result.reference} — visible to the CROSSUB leasing team.`,
+        description: `Reference ${result.reference} — your agent can review it under Tenant selection.`,
       });
       router.push(
         `${propertyApplySuccess(property.id)}?ref=${encodeURIComponent(result.reference)}`,
@@ -92,11 +75,21 @@ export default function ApplyPage() {
     );
   }
 
+  if (property.canApply === false) {
+    return (
+      <TenantShell title="Apply" backHref={`/properties/${id}`}>
+        <p className="text-muted-foreground text-sm">
+          This property is not accepting applications right now.
+        </p>
+      </TenantShell>
+    );
+  }
+
   return (
     <TenantShell title="Application form" backHref={`/properties/${id}`}>
       <PageIntro
         title={property.address}
-        description={`${property.suburb} — tell us about yourself. This is sent to CROSSUB leasing (same as the web leasing dashboard).`}
+        description={`${property.suburb} — submitted to staging CROSSUB leasing. Your assigned agent sees it in Tenant selection after you apply.`}
       />
 
       <form onSubmit={onSubmit} className="space-y-4">

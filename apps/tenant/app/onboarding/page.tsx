@@ -1,31 +1,50 @@
 'use client';
 
 import Link from 'next/link';
-import { CheckCircle2, ChevronRight } from 'lucide-react';
 
 import { TenantShell } from '@/components/layout/tenant-shell';
-import { PageIntro } from '@/components/tenant/page-intro';
 import { StatusBadge } from '@/components/tenant/status-badge';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
-import { cn, formatCurrency, formatDate } from '@/lib/utils';
+import { ROUTES } from '@/constants/routes';
+
+const STATUS_LABEL: Record<string, string> = {
+  pending: 'Not started',
+  uploaded: 'In progress',
+  approved: 'Approved',
+  completed: 'Done',
+};
 
 export default function OnboardingPage() {
-  const { onboardingSteps } = useTenantData();
+  const { onboardingSteps, leasingOnboarding, loading } = useTenantData();
   const completed = onboardingSteps.filter((s) => s.status === 'completed').length;
 
   return (
     <TenantShell title="Onboarding">
-      <PageIntro description="Complete each step after your application is approved — deposit, bond, lease signing, key pickup, and ingoing inspection confirmation." />
+      <p className="text-muted-foreground mb-4 text-sm">
+        Live status from your leasing cycle (step 4 — onboarding). Your agent creates your login
+        after approving your application.
+      </p>
 
-      <div className="from-primary/10 to-card mb-5 rounded-2xl border border-primary/20 bg-gradient-to-br p-4">
-        <p className="text-muted-foreground text-xs font-medium uppercase">Progress</p>
-        <p className="mt-1 text-2xl font-bold">
-          {completed}/{onboardingSteps.length}
-          <span className="text-muted-foreground text-base font-normal"> steps complete</span>
-        </p>
-        <div className="bg-secondary mt-3 h-2 overflow-hidden rounded-full">
+      {leasingOnboarding && (
+        <div className="mb-4 rounded-xl border bg-card p-4 text-sm">
+          <p className="font-semibold">{leasingOnboarding.propertyAddress}</p>
+          <p className="text-muted-foreground mt-1 text-xs">
+            Application: {leasingOnboarding.applicationStatus.toLowerCase()} · Leasing:{' '}
+            {leasingOnboarding.lifecycleStep.replace(/_/g, ' ')}
+          </p>
+        </div>
+      )}
+
+      <div className="mb-4">
+        <div className="mb-2 flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">Progress</span>
+          <span className="font-medium">
+            {completed}/{onboardingSteps.length}
+          </span>
+        </div>
+        <div className="bg-secondary h-2 overflow-hidden rounded-full">
           <div
-            className="bg-primary h-full rounded-full transition-all"
+            className="bg-primary h-full transition-all"
             style={{
               width: `${onboardingSteps.length ? (completed / onboardingSteps.length) * 100 : 0}%`,
             }}
@@ -34,53 +53,28 @@ export default function OnboardingPage() {
       </div>
 
       <div className="space-y-2">
-        {onboardingSteps.map((step, i) => {
-          const done = step.status === 'completed';
-          return (
-            <Link
-              key={step.id}
-              href={step.href}
-              className={cn(
-                'group flex items-center gap-3.5 rounded-2xl border p-4 transition-colors',
-                done
-                  ? 'border-primary/20 bg-primary/5'
-                  : 'border-border bg-card hover:border-primary/25',
-              )}
-            >
-              <div
-                className={cn(
-                  'flex size-10 shrink-0 items-center justify-center rounded-xl',
-                  done ? 'bg-primary/15 text-primary' : 'bg-secondary text-muted-foreground',
-                )}
-              >
-                {done ? (
-                  <CheckCircle2 className="size-5" />
-                ) : (
-                  <span className="text-sm font-semibold">{i + 1}</span>
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="font-semibold">{step.title}</p>
-                <p className="text-muted-foreground line-clamp-2 text-xs leading-relaxed">
-                  {step.description}
-                </p>
-                {step.amount != null && (
-                  <p className="text-primary mt-1.5 text-xs font-medium">
-                    {formatCurrency(step.amount)}
-                    {step.dueAt && ` · due ${formatDate(step.dueAt)}`}
-                  </p>
-                )}
-                <StatusBadge
-                  label={step.status}
-                  variant={done ? 'success' : 'action'}
-                  className="mt-2"
-                />
-              </div>
-              <ChevronRight className="text-muted-foreground size-4 shrink-0 group-hover:text-primary" />
-            </Link>
-          );
-        })}
+        {onboardingSteps.map((step, i) => (
+          <Link
+            key={step.id}
+            href={step.href}
+            className="flex items-center justify-between rounded-xl border bg-card p-4 active:bg-secondary/50"
+          >
+            <div className="min-w-0 pr-3">
+              <p className="text-muted-foreground text-xs">Step {i + 1}</p>
+              <p className="font-medium">{step.title}</p>
+              <p className="text-muted-foreground mt-0.5 line-clamp-2 text-xs">{step.description}</p>
+            </div>
+            <StatusBadge label={STATUS_LABEL[step.status] ?? step.status} />
+          </Link>
+        ))}
       </div>
+
+      {onboardingSteps.length === 0 && !loading && (
+        <p className="text-muted-foreground rounded-xl border border-dashed p-6 text-center text-sm">
+          No onboarding steps yet. After your agent approves your application and creates your
+          tenant login, your leasing checklist will appear here.
+        </p>
+      )}
     </TenantShell>
   );
 }

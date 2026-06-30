@@ -15,10 +15,18 @@ function fileLabel(file: File): string {
 
 export function FileUploadField({
   accept = 'image/*,.pdf',
+  capture,
+  label = 'Upload payment proof',
+  hint = 'Tap to choose a file, or drag and drop here',
+  footer = 'PDF or image · max 10 MB recommended',
   onFileSelect,
   className,
 }: {
   accept?: string;
+  capture?: 'user' | 'environment';
+  label?: string;
+  hint?: string;
+  footer?: string;
   onFileSelect?: (file: File | null) => void;
   className?: string;
 }) {
@@ -53,6 +61,7 @@ export function FileUploadField({
         id={inputId}
         type="file"
         accept={accept}
+        capture={capture}
         className="sr-only"
         onChange={onInputChange}
       />
@@ -85,15 +94,13 @@ export function FileUploadField({
             <Upload className="size-6" />
           </div>
           <div className="text-center">
-            <p className="text-sm font-medium">Upload payment proof</p>
-            <p className="text-muted-foreground mt-1 text-xs">
-              Tap to choose a file, or drag and drop here
-            </p>
+            <p className="text-sm font-medium">{label}</p>
+            <p className="text-muted-foreground mt-1 text-xs">{hint}</p>
           </div>
           <Button type="button" variant="secondary" size="sm" className="pointer-events-none">
             Choose file
           </Button>
-          <p className="text-muted-foreground text-[11px]">PDF or image · max 10 MB recommended</p>
+          <p className="text-muted-foreground text-[11px]">{footer}</p>
         </div>
       ) : (
         <div className="flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4">

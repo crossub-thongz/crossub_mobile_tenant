@@ -1,22 +1,48 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { TenantShell } from '@/components/layout/tenant-shell';
 import { FileUploadField } from '@/components/tenant/file-upload-field';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
 import { ROUTES } from '@/constants/routes';
+import { submitKeyCollection, uploadKeyCollectionPhotos } from '@/lib/crossub-api/tenant-leasing-client';
 import { PAYMENT_STEP_COPY } from '@/lib/onboarding-payment-copy';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
 
 export default function OnboardingStepPage() {
   const { step: stepId } = useParams<{ step: string }>();
-  const { onboardingSteps } = useTenantData();
+  const { onboardingSteps, leasingOnboarding, refreshLeasingOnboarding } = useTenantData();
   const step = onboardingSteps.find((s) => s.id === stepId);
   const [file, setFile] = useState<File | null>(null);
+  const [keyPhoto, setKeyPhoto] = useState<File | null>(null);
+  const [keyTime, setKeyTime] = useState('');
+  const [keyLocation, setKeyLocation] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const isKeyPickup = stepId === 'key_pickup';
+  const keyDone = leasingOnboarding?.keyCollection.status === 'done';
+
+  useEffect(() => {
+    if (!isKeyPickup || !leasingOnboarding) return;
+    if (leasingOnboarding.keyCollection.time) {
+      const d = new Date(leasingOnboarding.keyCollection.time);
+      if (!Number.isNaN(d.getTime())) {
+        const local = new Date(d.getTime() - d.getTimezoneOffset() * 60_000)
+          .toISOString()
+          .slice(0, 16);
+        setKeyTime(local);
+      }
+    }
+    if (leasingOnboarding.keyCollection.location) {
+      setKeyLocation(leasingOnboarding.keyCollection.location);
+    }
+  }, [isKeyPickup, leasingOnboarding]);
 
   if (!step) {
     return (
@@ -28,11 +54,46 @@ export default function OnboardingStepPage() {
 
   const isUpload = step.id === 'deposit' || step.id === 'bond';
   const isLease = step.id === 'lease_signing';
-  const isKeyPickup = step.id === 'key_pickup';
   const paymentCopy =
     step.id === 'deposit' || step.id === 'bond'
       ? PAYMENT_STEP_COPY[step.id]
       : null;
+
+  const handleKeySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!keyTime || !keyLocation.trim()) {
+      toast.error('Enter both pickup time and location');
+      return;
+    }
+
+    const existingPhotos = leasingOnboarding?.keyCollection.photos ?? [];
+    if (!keyPhoto && existingPhotos.length === 0) {
+      toast.error('Add a photo of the keys as proof of collection');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      let photoUrls = existingPhotos;
+      if (keyPhoto) {
+        const uploaded = await uploadKeyCollectionPhotos([keyPhoto]);
+        photoUrls = [...existingPhotos, ...uploaded].slice(0, 5);
+      }
+
+      await submitKeyCollection({
+        time: new Date(keyTime).toISOString(),
+        location: keyLocation.trim(),
+        photoUrls,
+      });
+      await refreshLeasingOnboarding();
+      setKeyPhoto(null);
+      toast.success('Key collection report saved — your agent has been notified');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not save key collection');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <TenantShell title={step.title} backHref={ROUTES.ONBOARDING}>
@@ -41,6 +102,13 @@ export default function OnboardingStepPage() {
       )}
       {!paymentCopy && (
         <p className="text-muted-foreground mb-4 text-sm">{step.description}</p>
+      )}
+
+      {leasingOnboarding && (
+        <p className="text-muted-foreground mb-4 text-xs">
+          {leasingOnboarding.propertyAddress} · Leasing status:{' '}
+          {leasingOnboarding.lifecycleStep.replace(/_/g, ' ')}
+        </p>
       )}
 
       {step.amount != null && (
@@ -104,28 +172,93 @@ export default function OnboardingStepPage() {
       )}
 
       {isKeyPickup && (
-        <form
-          className="space-y-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            toast.success('Key pickup confirmed with CROSSUB');
-          }}
-        >
-          <div className="rounded-xl border bg-card p-4 text-sm">
-            <p className="font-medium">Pickup address</p>
-            <p className="text-muted-foreground mt-1">
-              12 River Lane, Southbank — Agency office, Level 2 (confirm with your agent)
+        <form className="space-y-4" onSubmit={handleKeySubmit}>
+          {keyDone && leasingOnboarding?.keyCollection.time && (
+            <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm">
+              <p className="font-medium">Key collection confirmed</p>
+              <p className="text-muted-foreground mt-1">
+                {formatDateTime(leasingOnboarding.keyCollection.time)}
+                {leasingOnboarding.keyCollection.location
+                  ? ` · ${leasingOnboarding.keyCollection.location}`
+                  : ''}
+              </p>
+            </div>
+          )}
+
+          {leasingOnboarding?.keyCollection.photos &&
+            leasingOnboarding.keyCollection.photos.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Key collection proof</p>
+                <div className="flex flex-wrap gap-2">
+                  {leasingOnboarding.keyCollection.photos.map((url) => (
+                    <a
+                      key={url}
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block overflow-hidden rounded-lg border"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={url}
+                        alt="Key collection proof"
+                        className="size-20 object-cover"
+                      />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+          <div className="space-y-2">
+            <Label>Key collection photo</Label>
+            <p className="text-muted-foreground text-xs">
+              Snap or upload a photo of the keys as proof for your key collection report.
             </p>
+            <FileUploadField
+              accept="image/*"
+              capture="environment"
+              label="Snap or upload key photo"
+              hint="Use your camera or choose from your gallery"
+              footer="Image · max 10 MB recommended"
+              onFileSelect={setKeyPhoto}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="keyLocation">Pickup location</Label>
+            <Input
+              id="keyLocation"
+              required
+              placeholder={
+                leasingOnboarding?.keyCustody === 'crossub'
+                  ? 'CROSSUB office address'
+                  : 'Agent office or property address'
+              }
+              value={keyLocation}
+              onChange={(e) => setKeyLocation(e.target.value)}
+            />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium">Preferred pickup time</label>
-            <input type="datetime-local" className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm" required />
+            <Label htmlFor="keyTime">Preferred pickup time</Label>
+            <Input
+              id="keyTime"
+              type="datetime-local"
+              required
+              value={keyTime}
+              onChange={(e) => setKeyTime(e.target.value)}
+            />
           </div>
-          <Button type="submit" className="w-full">
-            Confirm key collection time
+          <Button type="submit" className="w-full" disabled={submitting}>
+            {submitting
+              ? 'Saving…'
+              : keyDone
+                ? 'Update key collection report'
+                : 'Submit key collection report'}
           </Button>
         </form>
       )}
+
       {step.id === 'account_setup' && (
         <form
           className="space-y-4"
@@ -156,7 +289,8 @@ export default function OnboardingStepPage() {
           </div>
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" required className="accent-primary size-4" />
-            I confirm this account is for my approved tenancy at 12 River Lane
+            I confirm this account is for my approved tenancy
+            {leasingOnboarding ? ` at ${leasingOnboarding.propertyAddress}` : ''}
           </label>
           <Button type="submit" className="w-full">
             Complete account setup

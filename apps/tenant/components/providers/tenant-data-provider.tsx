@@ -39,6 +39,11 @@ import {
 } from '@/lib/crossub-api/tenant-mappers';
 import { LISTING_PROPERTIES, TENANT_PHASE } from '@/lib/mock-data';
 import { fetchPublicListings } from '@/lib/crossub-api/public-listings-client';
+import {
+  fetchLeasingOnboarding,
+  mapLeasingOnboardingToSteps,
+  type TenantLeasingOnboardingDto,
+} from '@/lib/crossub-api/tenant-leasing-client';
 import { categoryToMessageType } from '@/lib/message-categories';
 import { SEED_THREAD_MESSAGES, mergeThreadMessages } from '@/lib/message-threads';
 import { loadInitialState, type LoadedTenantState } from '@/lib/tenant-data-state';
@@ -121,6 +126,8 @@ interface TenantDataContextValue {
   listingsError: string | null;
   applications: RentalApplication[];
   onboardingSteps: OnboardingStep[];
+  leasingOnboarding: TenantLeasingOnboardingDto | null;
+  refreshLeasingOnboarding: () => Promise<void>;
   lease: LeaseSummary | null;
   ingoingReport: IngoingReport | null;
   maintenance: MaintenanceRequest[];
@@ -242,6 +249,8 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     useState<OutstandingBalance | null>(null);
   const [paymentProofs, setPaymentProofs] = useState<PaymentProofRecord[]>([]);
   const [onboardingSteps, setOnboardingSteps] = useState<OnboardingStep[]>([]);
+  const [leasingOnboarding, setLeasingOnboarding] =
+    useState<TenantLeasingOnboardingDto | null>(null);
   const [pendingActions, setPendingActions] = useState<PendingAction[]>([]);
   const [inspections, setInspections] = useState<InspectionSummary[]>([]);
   // Live-mode documents from the API. null = not loaded (demo) → the derived list is used.
@@ -318,6 +327,22 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
   const persistMaintenance = useCallback((next: MaintenanceRequest[]) => {
     patchTenantStore({ maintenance: next });
   }, []);
+
+  const loadLeasingOnboarding = useCallback(async () => {
+    try {
+      const dto = await fetchLeasingOnboarding();
+      setLeasingOnboarding(dto);
+      setOnboardingSteps(mapLeasingOnboardingToSteps(dto));
+      return true;
+    } catch {
+      setLeasingOnboarding(null);
+      return false;
+    }
+  }, []);
+
+  const refreshLeasingOnboarding = useCallback(async () => {
+    await loadLeasingOnboarding();
+  }, [loadLeasingOnboarding]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -424,9 +449,13 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       setRentReviews(toTenantRentReviews(rentReviewsRes.value));
     }
 
+    if (await loadLeasingOnboarding()) {
+      connected = true;
+    }
+
     setApiConnected(connected);
     setLoading(false);
-  }, [demo, status, setters]);
+  }, [demo, status, setters, loadLeasingOnboarding]);
 
   useEffect(() => {
     void refresh();
@@ -892,6 +921,8 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       listingsError,
       applications,
       onboardingSteps,
+      leasingOnboarding,
+      refreshLeasingOnboarding,
       lease,
       ingoingReport: ingoing,
       maintenance,
@@ -934,6 +965,8 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       listingsError,
       applications,
       onboardingSteps,
+      leasingOnboarding,
+      refreshLeasingOnboarding,
       lease,
       ingoing,
       maintenance,

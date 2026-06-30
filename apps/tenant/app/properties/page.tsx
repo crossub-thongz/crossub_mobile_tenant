@@ -27,10 +27,10 @@ export default function PropertiesPage() {
 
   return (
     <TenantShell title="Available properties">
-      <p className="text-muted-foreground mb-4 text-sm">
+      {/* <p className="text-muted-foreground mb-4 text-sm">
         Same property registry as crossub_web Properties — loaded from staging via{' '}
         <code className="text-xs">{PUBLIC_LISTINGS_ENDPOINT}</code>.
-      </p>
+      </p> */}
 
       {listingsError && (
         <div className="mb-4 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">

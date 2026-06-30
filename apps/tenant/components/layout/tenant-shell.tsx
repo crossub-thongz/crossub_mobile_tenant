@@ -8,6 +8,7 @@ import {
   ClipboardList,
   Home,
   KeyRound,
+  LogOut,
   Menu,
   MessageSquare,
   Wallet,
@@ -72,7 +73,7 @@ export function TenantShell({
   const unreadNotifications = notifications.filter((n) => !n.read).length;
   const unreadMessages = messages.reduce((s, m) => s + m.unread, 0);
 
-  const applicantMode = status !== 'authed' && isApplicantRoute(pathname);
+  const applicantMode = status === 'guest' && isApplicantRoute(pathname);
 
   useEffect(() => {
     setMoreOpen(false);
@@ -161,25 +162,30 @@ export function TenantShell({
           </div>
         )}
         {!applicantMode && moreOpen && (
-          <div className="border-t border-border bg-card px-4 py-3">
-            <p className="text-muted-foreground mb-2 text-xs font-medium uppercase">Menu</p>
-            <div className="flex flex-col gap-1">
-              {MORE_NAV.map(({ href, label }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  onClick={() => setMoreOpen(false)}
-                  className="rounded-lg px-3 py-2.5 text-sm hover:bg-secondary"
-                >
-                  {label}
-                </Link>
-              ))}
+          <div className="border-t border-border bg-card">
+            <div className="max-h-[min(55vh,18rem)] overflow-y-auto px-4 py-3">
+              <p className="text-muted-foreground mb-2 text-xs font-medium uppercase">Menu</p>
+              <div className="flex flex-col gap-1">
+                {MORE_NAV.map(({ href, label }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={() => setMoreOpen(false)}
+                    className="rounded-lg px-3 py-2.5 text-sm hover:bg-secondary"
+                  >
+                    {label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+            <div className="border-t border-border px-4 py-2">
               <button
                 type="button"
                 onClick={() => void logout()}
-                className="rounded-lg px-3 py-2.5 text-left text-sm text-destructive hover:bg-destructive/10"
+                className="text-destructive hover:bg-destructive/10 flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm"
               >
-                Sign out
+                <LogOut className="size-4 shrink-0" />
+                Log out
               </button>
             </div>
           </div>
