@@ -10,18 +10,15 @@ import {
   KeyRound,
   Menu,
   MessageSquare,
-  Search,
-  User,
   Wallet,
   Wrench,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
-import { ConnectionBanner } from '@/components/tenant/connection-banner';
 import { useAuth } from '@/components/providers/auth-provider';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
 import { Button } from '@/components/ui/button';
-import { ROUTES } from '@/constants/routes';
+import { isApplicantRoute, ROUTES } from '@/constants/routes';
 import { cn, displayName } from '@/lib/utils';
 
 const PRIMARY_NAV = [
@@ -67,13 +64,19 @@ export function TenantShell({
   bottomBar?: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  const { status, user, logout } = useAuth();
   const [moreOpen, setMoreOpen] = useState(false);
   const headerRef = useRef<HTMLElement>(null);
   const [headerHeight, setHeaderHeight] = useState(56);
   const { notifications, messages } = useTenantData();
   const unreadNotifications = notifications.filter((n) => !n.read).length;
   const unreadMessages = messages.reduce((s, m) => s + m.unread, 0);
+
+  const applicantMode = status !== 'authed' && isApplicantRoute(pathname);
+
+  useEffect(() => {
+    setMoreOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     const el = headerRef.current;
@@ -83,13 +86,18 @@ export function TenantShell({
     const observer = new ResizeObserver(updateHeight);
     observer.observe(el);
     return () => observer.disconnect();
-  }, [title, moreOpen]);
+  }, [title, moreOpen, applicantMode]);
 
   const safeBottom = 'env(safe-area-inset-bottom, 0px)';
   const navOffset = `calc(${BOTTOM_NAV_HEIGHT} + ${safeBottom})`;
-  const navClearance = `calc(${BOTTOM_NAV_HEIGHT} + ${safeBottom} + 1rem)`;
+  const showBottomNav = !applicantMode;
+  const navClearance = showBottomNav
+    ? `calc(${BOTTOM_NAV_HEIGHT} + ${safeBottom} + 1rem)`
+    : `calc(${safeBottom} + 1rem)`;
   const mainPaddingBottom = bottomBar
-    ? `calc(${BOTTOM_NAV_HEIGHT} + 3.75rem + ${safeBottom} + 0.5rem)`
+    ? showBottomNav
+      ? `calc(${BOTTOM_NAV_HEIGHT} + 3.75rem + ${safeBottom} + 0.5rem)`
+      : `calc(3.75rem + ${safeBottom} + 0.5rem)`
     : navClearance;
 
   return (
@@ -104,43 +112,55 @@ export function TenantShell({
               ← Back
             </Link>
           ) : (
-            <Link href={ROUTES.DASHBOARD} className="flex items-center gap-2">
+            <Link
+              href={applicantMode ? ROUTES.PROPERTIES : ROUTES.DASHBOARD}
+              className="flex items-center gap-2"
+            >
               <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 <KeyRound className="size-4" />
               </div>
-              <span className="text-sm font-semibold">CROSSUB Tenant</span>
+              <span className="text-sm font-semibold">
+                {applicantMode ? 'CROSSUB Rentals' : 'CROSSUB Tenant'}
+              </span>
             </Link>
           )}
-          <div className="flex items-center gap-1">
-            <Link
-              href={ROUTES.NOTIFICATIONS}
-              className="relative flex size-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary"
-              aria-label="Notifications"
-            >
-              <Bell className="size-5" />
-              {unreadNotifications > 0 && (
-                <span className="bg-destructive absolute top-1 right-1 size-2 rounded-full" />
-              )}
-            </Link>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-9"
-              onClick={() => setMoreOpen((v) => !v)}
-            >
-              <Menu className="size-5" />
+          {applicantMode ? (
+            <Button asChild variant="outline" size="sm" className="h-8 text-xs">
+              <Link href={ROUTES.LOGIN}>Sign in</Link>
             </Button>
-          </div>
+          ) : (
+            <div className="flex items-center gap-1">
+              <Link
+                href={ROUTES.NOTIFICATIONS}
+                className="relative flex size-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary"
+                aria-label="Notifications"
+              >
+                <Bell className="size-5" />
+                {unreadNotifications > 0 && (
+                  <span className="bg-destructive absolute top-1 right-1 size-2 rounded-full" />
+                )}
+              </Link>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-9"
+                onClick={() => setMoreOpen((v) => !v)}
+                aria-label="Menu"
+              >
+                <Menu className="size-5" />
+              </Button>
+            </div>
+          )}
         </div>
         {title && (
           <div className="border-t border-border px-4 py-2">
             <h1 className="truncate text-base font-semibold">{title}</h1>
-            {user && (
+            {user && !applicantMode && (
               <p className="text-muted-foreground truncate text-xs">{displayName(user)}</p>
             )}
           </div>
         )}
-        {moreOpen && (
+        {!applicantMode && moreOpen && (
           <div className="border-t border-border bg-card px-4 py-3">
             <p className="text-muted-foreground mb-2 text-xs font-medium uppercase">Menu</p>
             <div className="flex flex-col gap-1">
@@ -177,38 +197,40 @@ export function TenantShell({
       {bottomBar && (
         <div
           className="fixed left-1/2 z-40 w-full max-w-lg -translate-x-1/2 border-t border-border bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/90"
-          style={{ bottom: navOffset }}
+          style={{ bottom: showBottomNav ? navOffset : safeBottom }}
         >
           {bottomBar}
         </div>
       )}
-      <nav className="fixed bottom-0 left-1/2 z-50 w-full max-w-lg -translate-x-1/2 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
-        <div className="flex h-16 items-stretch justify-around px-1">
-          {PRIMARY_NAV.map(({ href, label, icon: Icon }) => {
-            const active = isActive(pathname, href);
-            const badge =
-              href === ROUTES.MESSAGES && unreadMessages > 0 ? unreadMessages : 0;
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={cn(
-                  'relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 text-[10px] font-medium',
-                  active ? 'text-primary' : 'text-muted-foreground',
-                )}
-              >
-                <Icon className={cn('size-5', active && 'stroke-[2.5]')} />
-                <span className="truncate">{label}</span>
-                {badge > 0 && (
-                  <span className="bg-destructive absolute top-2 right-2 flex size-4 items-center justify-center rounded-full text-[9px] text-white">
-                    {badge}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
+      {showBottomNav && (
+        <nav className="fixed bottom-0 left-1/2 z-50 w-full max-w-lg -translate-x-1/2 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
+          <div className="flex h-16 items-stretch justify-around px-1">
+            {PRIMARY_NAV.map(({ href, label, icon: Icon }) => {
+              const active = isActive(pathname, href);
+              const badge =
+                href === ROUTES.MESSAGES && unreadMessages > 0 ? unreadMessages : 0;
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={cn(
+                    'relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 text-[10px] font-medium',
+                    active ? 'text-primary' : 'text-muted-foreground',
+                  )}
+                >
+                  <Icon className={cn('size-5', active && 'stroke-[2.5]')} />
+                  <span className="truncate">{label}</span>
+                  {badge > 0 && (
+                    <span className="bg-destructive absolute top-2 right-2 flex size-4 items-center justify-center rounded-full text-[9px] text-white">
+                      {badge}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
+      )}
     </div>
   );
 }

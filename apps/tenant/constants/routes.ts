@@ -31,15 +31,19 @@ export const ROUTES = {
 export const PUBLIC_ROUTE_PATTERNS = [
   /^\/login\/?$/,
   /^\/forgot-password\/?$/,
-  /^\/properties\/?$/,
-  /^\/properties\/[^/]+\/?$/,
+  /^\/properties(\/|$)/,
 ];
+
+/** Guest applicant journey — browse listings and submit without signing in. */
+export const isApplicantRoute = (pathname: string): boolean =>
+  /^\/properties(\/|$)/.test(pathname);
 
 export const isPublicRoute = (pathname: string): boolean =>
   PUBLIC_ROUTE_PATTERNS.some((rx) => rx.test(pathname));
 
 export const propertyDetail = (id: string) => `/properties/${id}`;
 export const propertyApply = (id: string) => `/properties/${id}/apply`;
+export const propertyApplySuccess = (id: string) => `/properties/${id}/apply/success`;
 export const applicationDetail = (id: string) => `/applications/${id}`;
 export const onboardingStep = (step: string) => `/onboarding/${step}`;
 export const repairDetail = (id: string) => `/repairs/${id}`;

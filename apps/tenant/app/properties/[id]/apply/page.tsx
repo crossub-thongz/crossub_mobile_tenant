@@ -1,37 +1,87 @@
 'use client';
 
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { TenantShell } from '@/components/layout/tenant-shell';
+import { PageIntro } from '@/components/tenant/page-intro';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
-import { ROUTES } from '@/constants/routes';
+import {
+  EMPLOYMENT_OPTIONS,
+  submitGuestApplication,
+  type EmploymentStatus,
+  type SubmitGuestApplicationInput,
+} from '@/lib/crossub-api/public-listings-client';
+import { propertyApplySuccess, ROUTES } from '@/constants/routes';
+import { useDemoData } from '@/lib/utils';
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export default function ApplyPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const demo = useDemoData();
   const { listings, addApplication } = useTenantData();
   const property = listings.find((p) => p.id === id);
   const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState<SubmitGuestApplicationInput>({
+    fullName: '',
+    email: '',
+    phone: '',
+    annualIncome: 0,
+    employmentStatus: 'employed',
+    moveInDate: '',
+  });
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!property) return;
+
+    if (!form.moveInDate) {
+      toast.error('Select your preferred move-in date');
+      return;
+    }
+    if (!form.annualIncome || form.annualIncome <= 0) {
+      toast.error('Enter your annual income');
+      return;
+    }
+
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 400));
-    const created = addApplication({
-      propertyId: property.id,
-      propertyAddress: `${property.address}, ${property.suburb}`,
-    });
-    setSubmitting(false);
-    toast.success('Application submitted', {
-      description: `Reference ${created.referenceNumber} · Track status in Applications.`,
-    });
-    router.push(ROUTES.APPLICATIONS);
+    try {
+      const propertyAddress = `${property.address}, ${property.suburb}`;
+      const useApi = UUID_RE.test(property.id);
+
+      if (demo && !useApi) {
+        await new Promise((r) => setTimeout(r, 400));
+        const created = addApplication({ propertyId: property.id, propertyAddress });
+        router.push(
+          `${propertyApplySuccess(property.id)}?ref=${encodeURIComponent(created.referenceNumber)}`,
+        );
+        return;
+      }
+
+      const result = await submitGuestApplication(property.id, {
+        ...form,
+        annualIncome: Number(form.annualIncome),
+      });
+
+      toast.success('Application submitted', {
+        description: `Reference ${result.reference} — visible to the CROSSUB leasing team.`,
+      });
+      router.push(
+        `${propertyApplySuccess(property.id)}?ref=${encodeURIComponent(result.reference)}`,
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not submit application');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (!property) {
@@ -43,49 +93,107 @@ export default function ApplyPage() {
   }
 
   return (
-    <TenantShell title="Online application" backHref={`/properties/${id}`}>
-      <p className="text-muted-foreground mb-4 text-sm">{property.address}, {property.suburb}</p>
+    <TenantShell title="Application form" backHref={`/properties/${id}`}>
+      <PageIntro
+        title={property.address}
+        description={`${property.suburb} — tell us about yourself. This is sent to CROSSUB leasing (same as the web leasing dashboard).`}
+      />
+
       <form onSubmit={onSubmit} className="space-y-4">
-        <p className="text-xs text-muted-foreground">
-          Required documents (identity, income, employment, references) — confirm exact list with
-          Leasing/Fay before production.
-        </p>
         <div className="space-y-2">
-          <Label>Full name</Label>
-          <Input required placeholder="As on ID" />
+          <Label htmlFor="fullName">Full name</Label>
+          <Input
+            id="fullName"
+            required
+            placeholder="Michael Lee"
+            value={form.fullName}
+            onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))}
+          />
         </div>
+
         <div className="space-y-2">
-          <Label>Email</Label>
-          <Input type="email" required />
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            type="email"
+            required
+            placeholder="michael.l@email.com"
+            value={form.email}
+            onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+          />
         </div>
+
         <div className="space-y-2">
-          <Label>Phone</Label>
-          <Input type="tel" required />
+          <Label htmlFor="phone">Phone</Label>
+          <Input
+            id="phone"
+            type="tel"
+            required
+            placeholder="+61 400 345 678"
+            value={form.phone}
+            onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+          />
         </div>
+
         <div className="space-y-2">
-          <Label>Employment & income (summary)</Label>
-          <Input required placeholder="Employer, role, annual income" />
+          <Label htmlFor="annualIncome">Annual income (AUD)</Label>
+          <Input
+            id="annualIncome"
+            type="number"
+            min={0}
+            step={1000}
+            required
+            placeholder="168000"
+            value={form.annualIncome || ''}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, annualIncome: Number(e.target.value) || 0 }))
+            }
+          />
         </div>
+
         <div className="space-y-2">
-          <Label>Rental history (summary)</Label>
-          <Input placeholder="Previous address, landlord, duration" />
+          <Label htmlFor="employmentStatus">Employment</Label>
+          <select
+            id="employmentStatus"
+            className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm"
+            value={form.employmentStatus}
+            onChange={(e) =>
+              setForm((f) => ({
+                ...f,
+                employmentStatus: e.target.value as EmploymentStatus,
+              }))
+            }
+          >
+            {EMPLOYMENT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
         </div>
+
         <div className="space-y-2">
-          <Label>References</Label>
-          <Input placeholder="Name and contact — employer or previous agent" />
+          <Label htmlFor="moveInDate">Move-in date</Label>
+          <Input
+            id="moveInDate"
+            type="date"
+            required
+            value={form.moveInDate}
+            onChange={(e) => setForm((f) => ({ ...f, moveInDate: e.target.value }))}
+          />
         </div>
-        <div className="space-y-2">
-          <Label>Upload ID (PDF/image)</Label>
-          <Input type="file" accept="image/*,.pdf" />
-        </div>
-        <div className="space-y-2">
-          <Label>Income proof (PDF/image)</Label>
-          <Input type="file" accept="image/*,.pdf" />
-        </div>
+
         <Button type="submit" disabled={submitting} className="w-full">
-          {submitting ? 'Submitting...' : 'Submit application'}
+          {submitting ? 'Submitting…' : 'Submit application'}
         </Button>
       </form>
+
+      <p className="text-muted-foreground mt-4 text-center text-xs">
+        Already a tenant?{' '}
+        <Link href={ROUTES.LOGIN} className="text-primary font-medium">
+          Sign in
+        </Link>
+      </p>
     </TenantShell>
   );
 }

@@ -22,15 +22,23 @@ export default function PropertyDetailPage() {
     );
   }
 
+  const canApply = property.canApply !== false;
+
   return (
     <TenantShell title={property.address} backHref={ROUTES.PROPERTIES}>
       <div className="space-y-4">
         <div className="rounded-xl border bg-card p-4">
-          <p className="text-primary text-lg font-semibold">
-            {formatCurrency(property.rentWeekly)}/week
-          </p>
+          {property.rentWeekly > 0 ? (
+            <p className="text-primary text-lg font-semibold">
+              {formatCurrency(property.rentWeekly)}/week
+            </p>
+          ) : (
+            <p className="text-muted-foreground text-sm">Rent on application</p>
+          )}
           <p className="text-muted-foreground text-sm">
-            {property.suburb} · {property.propertyType} · Available {property.availableFrom}
+            {property.propertyType}
+            {property.status ? ` · ${property.status.replace('_', ' ')}` : ''}
+            {property.availableFrom !== 'TBC' ? ` · Available ${property.availableFrom}` : ''}
           </p>
           {property.openInspectionAt && (
             <p className="mt-2 text-sm">
@@ -46,9 +54,15 @@ export default function PropertyDetailPage() {
             ))}
           </ul>
         </div>
-        <Button asChild className="w-full">
-          <Link href={propertyApply(property.id)}>Apply for this property</Link>
-        </Button>
+        {canApply ? (
+          <Button asChild className="w-full">
+            <Link href={propertyApply(property.id)}>Apply for this property</Link>
+          </Button>
+        ) : (
+          <p className="text-muted-foreground rounded-xl border border-dashed p-4 text-center text-sm">
+            This property is not accepting applications right now.
+          </p>
+        )}
       </div>
     </TenantShell>
   );

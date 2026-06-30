@@ -38,6 +38,7 @@ import {
   type TenantDocumentView,
 } from '@/lib/crossub-api/tenant-mappers';
 import { LISTING_PROPERTIES, TENANT_PHASE } from '@/lib/mock-data';
+import { fetchPublicListings } from '@/lib/crossub-api/public-listings-client';
 import { categoryToMessageType } from '@/lib/message-categories';
 import { SEED_THREAD_MESSAGES, mergeThreadMessages } from '@/lib/message-threads';
 import { loadInitialState, type LoadedTenantState } from '@/lib/tenant-data-state';
@@ -116,6 +117,8 @@ interface TenantDataContextValue {
   pendingActions: PendingAction[];
   notifications: TenantNotification[];
   listings: ListingProperty[];
+  listingsLoading: boolean;
+  listingsError: string | null;
   applications: RentalApplication[];
   onboardingSteps: OnboardingStep[];
   lease: LeaseSummary | null;
@@ -249,6 +252,9 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
   const [terminationNotice, setTerminationNotice] = useState<TerminationNotice | null>(null);
   const [finalStatement, setFinalStatement] = useState<FinalStatement | null>(null);
   const [showPhase3Demo, setShowPhase3Demo] = useState(false);
+  const [listings, setListings] = useState<ListingProperty[]>([]);
+  const [listingsLoading, setListingsLoading] = useState(true);
+  const [listingsError, setListingsError] = useState<string | null>(null);
 
   const setters = useMemo(
     () => ({
@@ -284,6 +290,30 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     hydrate();
   }, [hydrate]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setListingsLoading(true);
+    setListingsError(null);
+    void fetchPublicListings()
+      .then((items) => {
+        if (!cancelled) setListings(items);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          const message =
+            err instanceof Error ? err.message : 'Failed to load property listings';
+          setListingsError(message);
+          setListings(demo ? LISTING_PROPERTIES : []);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setListingsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [demo]);
 
   const persistMaintenance = useCallback((next: MaintenanceRequest[]) => {
     patchTenantStore({ maintenance: next });
@@ -857,7 +887,9 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       refresh,
       pendingActions,
       notifications,
-      listings: LISTING_PROPERTIES,
+      listings,
+      listingsLoading,
+      listingsError,
       applications,
       onboardingSteps,
       lease,
@@ -897,6 +929,9 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       refresh,
       pendingActions,
       notifications,
+      listings,
+      listingsLoading,
+      listingsError,
       applications,
       onboardingSteps,
       lease,

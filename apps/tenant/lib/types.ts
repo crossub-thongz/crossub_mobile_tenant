@@ -125,6 +125,10 @@ export interface ListingProperty {
   openInspectionAt?: string;
   features: string[];
   imageUrl?: string;
+  /** Matches crossub_web property status (VACANT, SHOWING, OCCUPIED, …). */
+  status?: string;
+  /** True when vacant/showing — apply flow is enabled. */
+  canApply?: boolean;
 }
 
 export interface RentalApplication {

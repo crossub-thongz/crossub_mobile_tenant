@@ -45,6 +45,9 @@ const proxy = async (
     const lower = key.toLowerCase();
     if (lower === 'set-cookie') return;
     if (lower === 'transfer-encoding') return;
+    // fetch() decompresses gzip/br bodies; forwarding content-encoding breaks browsers.
+    if (lower === 'content-encoding') return;
+    if (lower === 'content-length') return;
     response.headers.set(key, value);
   });
 
