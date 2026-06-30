@@ -7,7 +7,7 @@
     "preinstall": "npx -y only-allow pnpm",
     "dev": "pnpm --filter @crossub/tenant dev",
     "build": "pnpm --filter @crossub/tenant build",
-    "build:tenant": "pnpm --filter @crossub-thongz/api-contract build && pnpm --filter @crossub/tenant build",
+    "build:tenant": "pnpm --filter @crossub/tenant build",
     "build:portal": "pnpm build:tenant",
     "start": "pnpm --filter @crossub/tenant start",
     "start:tenant": "pnpm --filter @crossub/tenant start",
