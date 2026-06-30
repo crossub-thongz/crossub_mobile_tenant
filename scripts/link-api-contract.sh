@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Links crossub_web's api-contract into packages/ for local monorepo-style dev.
-# On Render/CI without a sibling crossub_web checkout, install from GitHub Packages
-# instead (set GITHUB_TOKEN with read:packages).
+# Optional: replace the vendored packages/api-contract with a symlink to crossub_web
+# when developing against a local crossub_web checkout. Render/CI uses the committed
+# copy in packages/api-contract — no sibling crossub_web repo required.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
