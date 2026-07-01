@@ -400,6 +400,7 @@ export const DEMO_VACATING: VacatingCase = {
   id: 'vac-901',
   propertyAddress: '12 River Lane, Southbank',
   vacatingDate: '2027-07-15',
+  status: 'open',
   outgoingStatus: 'supporting_photos_required',
   outgoingReportId: 'out-401',
 };

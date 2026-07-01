@@ -33,6 +33,7 @@ import type {
   RentalApplication,
   TenantNotification,
   ThreadMessage,
+  VacatingCase,
 } from '@/lib/types';
 
 import type {
@@ -45,6 +46,7 @@ import type {
   TenantNotificationDto,
   TenantRentReview,
   TenantTenancy,
+  TenantVacatingCase,
 } from './tenant-account-client';
 
 /** The app's stored-document card shape (the provider's `storedDocuments` items). */
@@ -504,4 +506,20 @@ export function toTenantRentReviews(
           : [],
     };
   });
+}
+
+/** Project API vacating cases onto the app's VacatingCase card (newest first from API). */
+export function toTenantVacatingCases(cases: TenantVacatingCase[]): VacatingCase[] {
+  return cases.map((c) => ({
+    id: c.id,
+    propertyAddress: asString(c.propertyAddress) ?? '—',
+    vacatingDate:
+      asString(c.vacatingDate)?.slice(0, 10) ??
+      asString(c.createdAt)?.slice(0, 10) ??
+      '',
+    status: c.status,
+    cancellationReason: asString(c.cancellationReason) ?? undefined,
+    outgoingStatus: c.status === 'cancelled' ? 'finalized' : 'report_sent',
+    outgoingReportId: undefined,
+  }));
 }

@@ -21,6 +21,8 @@ import {
   fetchTenantMessages,
   fetchTenantNotifications,
   fetchTenantRentReviews,
+  fetchTenantVacatingCases,
+  cancelTenantVacatingCase,
   markTenantNotificationRead,
   replyToTenantMessageThread,
 } from '@/lib/crossub-api/tenant-account-client';
@@ -35,6 +37,7 @@ import {
   toTenantMaintenanceRequests,
   toTenantNotifications,
   toTenantRentReviews,
+  toTenantVacatingCases,
   type TenantDocumentView,
 } from '@/lib/crossub-api/tenant-mappers';
 import { LISTING_PROPERTIES, TENANT_PHASE } from '@/lib/mock-data';
@@ -153,6 +156,7 @@ interface TenantDataContextValue {
   recordRentPayment: (input: RecordRentPaymentInput) => RentReceipt;
   approveRepairCompletion: (id: string) => void;
   recordVacatingDate: (date: string) => void;
+  cancelVacatingCase: (reason?: string) => Promise<void>;
   markNotificationRead: (id: string) => void;
   confirmIngoingSection: (sectionId: string, dispute?: string) => void;
   confirmOutgoingSection: (sectionId: string, dispute?: string) => void;
@@ -368,6 +372,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       documentsRes,
       applicationsRes,
       rentReviewsRes,
+      vacatingCasesRes,
     ] = await Promise.allSettled([
       fetchTenancies(),
       fetchLedger(),
@@ -378,6 +383,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       fetchTenantDocuments(),
       fetchTenantApplications(),
       fetchTenantRentReviews(),
+      fetchTenantVacatingCases(),
     ]);
 
     let connected = false;
@@ -447,6 +453,15 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       connected = true;
       // Real rent reviews REPLACE the demo list (read-only — accept/dispute stays local).
       setRentReviews(toTenantRentReviews(rentReviewsRes.value));
+    }
+
+    if (vacatingCasesRes.status === 'fulfilled') {
+      connected = true;
+      const mapped = toTenantVacatingCases(vacatingCasesRes.value);
+      const primary = mapped[0] ?? null;
+      setVacatingState(primary);
+      setVacatingDisplay(primary);
+      if (primary) patchTenantStore({ vacating: primary });
     }
 
     if (await loadLeasingOnboarding()) {
@@ -822,6 +837,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
         id: 'vac-new',
         propertyAddress: propertyAddress,
         vacatingDate: date,
+        status: 'open',
         outgoingStatus: 'report_sent',
         outgoingReportId: 'out-401',
       };
@@ -830,6 +846,32 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       patchTenantStore( { vacating: next });
     },
     [propertyAddress],
+  );
+
+  const cancelVacatingCase = useCallback(
+    async (reason?: string) => {
+      const id = vacatingDisplay?.id;
+      if (!id) return;
+      try {
+        const updated = await cancelTenantVacatingCase(id, reason);
+        const mapped = toTenantVacatingCases([updated])[0] ?? null;
+        setVacatingState(mapped);
+        setVacatingDisplay(mapped);
+        patchTenantStore({ vacating: mapped });
+      } catch {
+        // Optimistic local withdraw when API unavailable (demo / offline).
+        if (!vacatingDisplay) return;
+        const local: VacatingCase = {
+          ...vacatingDisplay,
+          status: 'cancelled',
+          cancellationReason: reason ?? 'Withdrawn by tenant',
+        };
+        setVacatingState(local);
+        setVacatingDisplay(local);
+        patchTenantStore({ vacating: local });
+      }
+    },
+    [vacatingDisplay],
   );
 
   const respondRentReview = useCallback(
@@ -941,6 +983,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       recordRentPayment,
       approveRepairCompletion,
       recordVacatingDate,
+      cancelVacatingCase,
       finalStatement,
       arrears,
       paymentProofs,
@@ -988,6 +1031,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       confirmOutgoingSection,
       approveRepairCompletion,
       recordVacatingDate,
+      cancelVacatingCase,
       respondRentReview,
       finalStatement,
       arrears,

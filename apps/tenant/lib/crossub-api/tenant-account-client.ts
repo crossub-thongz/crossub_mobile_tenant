@@ -30,6 +30,19 @@ export type TenantApplication =
 export type TenantRentReview =
   components['schemas']['TenantRentReviewResponseDto'];
 
+/** Vacating case from `GET /api/v1/tenant/vacating-cases`. */
+export type TenantVacatingCase = {
+  id: string;
+  propertyId: string | null;
+  propertyAddress: string | null;
+  status: 'open' | 'cancelled';
+  vacatingDate: string | null;
+  terminationReason: string | null;
+  cancellationReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 /** Active leases for the signed-in tenant (`GET /api/v1/tenant/tenancies`). */
 export async function fetchTenancies(): Promise<TenantTenancy[]> {
   const { data, error } = await crossub.GET('/tenant/tenancies');
@@ -77,6 +90,30 @@ export async function fetchTenantRentReviews(): Promise<TenantRentReview[]> {
   const { data, error } = await crossub.GET('/tenant/rent-reviews');
   if (error || !data) throw new Error('Failed to load rent reviews');
   return data;
+}
+
+/** Vacating cases on the signed-in tenant's leased property (`GET /api/v1/tenant/vacating-cases`). */
+export async function fetchTenantVacatingCases(): Promise<TenantVacatingCase[]> {
+  const base = `${process.env.NEXT_PUBLIC_API_URL ?? '/api'}/v1`;
+  const res = await fetch(`${base}/tenant/vacating-cases`, { credentials: 'include' });
+  if (!res.ok) throw new Error('Failed to load vacating cases');
+  return (await res.json()) as TenantVacatingCase[];
+}
+
+/** Withdraw a vacating case (`PATCH /api/v1/tenant/vacating-cases/:caseId/cancel`). */
+export async function cancelTenantVacatingCase(
+  caseId: string,
+  reason?: string,
+): Promise<TenantVacatingCase> {
+  const base = `${process.env.NEXT_PUBLIC_API_URL ?? '/api'}/v1`;
+  const res = await fetch(`${base}/tenant/vacating-cases/${caseId}/cancel`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reason }),
+  });
+  if (!res.ok) throw new Error('Failed to withdraw vacating case');
+  return (await res.json()) as TenantVacatingCase;
 }
 
 /** Maintenance requests the signed-in tenant has filed (`GET /api/v1/tenant/maintenance-requests`). */
