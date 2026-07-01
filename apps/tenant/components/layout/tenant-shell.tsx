@@ -5,14 +5,12 @@ import { usePathname } from 'next/navigation';
 import {
   Bell,
   Building2,
-  ClipboardList,
   Home,
   KeyRound,
   LogOut,
   Menu,
   MessageSquare,
   Wallet,
-  Wrench,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -25,8 +23,6 @@ import { cn, displayName } from '@/lib/utils';
 const PRIMARY_NAV = [
   { href: ROUTES.DASHBOARD, label: 'Home', icon: Home },
   { href: ROUTES.PROPERTY, label: 'Property', icon: Building2 },
-  { href: ROUTES.INSPECTIONS, label: 'Inspection', icon: ClipboardList },
-  { href: ROUTES.REPAIRS, label: 'Repair', icon: Wrench },
   { href: ROUTES.ACCOUNTING, label: 'Accounting', icon: Wallet },
   { href: ROUTES.MESSAGES, label: 'Message', icon: MessageSquare },
 ] as const;
@@ -35,9 +31,7 @@ const MORE_NAV = [
   { href: ROUTES.PROPERTIES, label: 'Browse listings' },
   { href: ROUTES.APPLICATIONS, label: 'Applications' },
   { href: ROUTES.ONBOARDING, label: 'Onboarding' },
-  { href: ROUTES.RENT_REVIEW, label: 'Rent review' },
   { href: ROUTES.RENEWAL, label: 'Lease renewal' },
-  { href: ROUTES.VACATING, label: 'Vacating' },
   { href: ROUTES.NOTIFICATIONS, label: 'Notifications' },
   { href: ROUTES.DOCUMENTS, label: 'Documents' },
   { href: ROUTES.SETTINGS, label: 'Settings' },

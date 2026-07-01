@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Building2, Calendar, FileText, MapPin } from 'lucide-react';
 
 import { TenantShell } from '@/components/layout/tenant-shell';
+import { PropertyHubActions } from '@/components/tenant/property-hub-actions';
 import { EmptyState } from '@/components/tenant/empty-state';
 import { InfoCard } from '@/components/tenant/info-card';
 import { StatusBadge } from '@/components/tenant/status-badge';
@@ -67,6 +68,8 @@ export default function PropertyPage() {
             </Button>
           </div>
         )}
+
+        <PropertyHubActions />
 
         <Button asChild variant="secondary" className="w-full">
           <Link href={ROUTES.LEASE}>

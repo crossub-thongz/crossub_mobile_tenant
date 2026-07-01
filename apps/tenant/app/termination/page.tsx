@@ -15,7 +15,7 @@ import { ROUTES } from '@/constants/routes';
 import { formatDate } from '@/lib/utils';
 
 export default function TerminationPage() {
-  const { terminationNotice, recordVacatingDate } = useTenantData();
+  const { terminationNotice, startVacating } = useTenantData();
   const [moveOut, setMoveOut] = useState('');
 
   if (!terminationNotice) {
@@ -66,9 +66,10 @@ export default function TerminationPage() {
             className="mt-4 w-full"
             onClick={() => {
               if (!moveOut) return toast.error('Select a date');
-              recordVacatingDate(moveOut);
-              toast.success('Move-out date recorded');
-              window.location.href = ROUTES.MOVE_OUT_SERVICES;
+              void startVacating(moveOut, terminationNotice.reason).then(() => {
+                toast.success('Vacating case started');
+                window.location.href = ROUTES.VACATING;
+              });
             }}
           >
             Confirm vacating date

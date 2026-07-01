@@ -4,6 +4,7 @@
  * translation here means the screens stay agnostic about where their data came from —
  * the provider swaps seed data for these mapped results with no component changes.
  */
+import { VACATING_STAGE } from '@/constants/vacating';
 import {
   APPLICATION_STATUS,
   COMM_CHANNEL,
@@ -508,20 +509,52 @@ export function toTenantRentReviews(
   });
 }
 
+/** Active (non-withdrawn) vacating case, if any. Cancelled cases are ignored. */
+export function pickActiveVacatingCase(cases: VacatingCase[]): VacatingCase | null {
+  return cases.find((c) => c.status === 'open') ?? null;
+}
+
 /** Project API vacating cases onto the app's VacatingCase card (newest first from API). */
 export function toTenantVacatingCases(cases: TenantVacatingCase[]): VacatingCase[] {
-  return cases.map((c) => ({
-    id: c.id,
-    propertyAddress: asString(c.propertyAddress) ?? '—',
-    vacatingDate:
-      asString(c.vacatingDate)?.slice(0, 10) ??
-      asString(c.createdAt)?.slice(0, 10) ??
-      '',
-    initialVacatingDate: asString(c.initialVacatingDate)?.slice(0, 10) ?? undefined,
-    vacateDateChanged: c.vacateDateChanged,
-    status: c.status,
-    cancellationReason: asString(c.cancellationReason) ?? undefined,
-    outgoingStatus: c.status === 'cancelled' ? 'finalized' : 'report_sent',
-    outgoingReportId: undefined,
-  }));
+  return cases.map((c) => {
+    const outgoingReportId =
+      asString(c.outgoingInspectionId) ?? undefined;
+    let outgoingStatus: VacatingCase['outgoingStatus'] = 'report_sent';
+    if (c.status === 'cancelled' || c.bondRefundPaid) {
+      outgoingStatus = 'finalized';
+    } else if (c.tenantSettlementStatus === 'accepted') {
+      outgoingStatus = 'confirmed';
+    } else if (c.tenantSettlementStatus === 'declined') {
+      outgoingStatus = 'disputed';
+    } else if (c.inspectionReportAvailable) {
+      outgoingStatus = 'report_sent';
+    }
+
+    return {
+      id: c.id,
+      propertyId: asString(c.propertyId) ?? undefined,
+      propertyAddress: asString(c.propertyAddress) ?? '—',
+      vacatingDate:
+        asString(c.vacatingDate)?.slice(0, 10) ??
+        asString(c.createdAt)?.slice(0, 10) ??
+        '',
+      initialVacatingDate: asString(c.initialVacatingDate)?.slice(0, 10) ?? undefined,
+      vacateDateChanged: c.vacateDateChanged,
+      status: c.status,
+      cancellationReason: asString(c.cancellationReason) ?? undefined,
+      terminationReason: asString(c.terminationReason) ?? undefined,
+      currentStage: c.currentStage ?? VACATING_STAGE.KEY_RETURN,
+      keysReturned: c.keysReturned ?? false,
+      inspectionDate: asString(c.inspectionDate)?.slice(0, 10) ?? undefined,
+      outgoingInspectionId: outgoingReportId,
+      inspectionReportAvailable: c.inspectionReportAvailable ?? false,
+      tenantSettlementStatus: c.tenantSettlementStatus ?? 'pending',
+      tenantConfirmationDueAt: asString(c.tenantConfirmationDueAt) ?? undefined,
+      refundAmount: c.refundAmount,
+      debtAmount: c.debtAmount,
+      bondRefundPaid: c.bondRefundPaid ?? false,
+      outgoingStatus,
+      outgoingReportId,
+    };
+  });
 }

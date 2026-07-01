@@ -22,6 +22,7 @@ import {
   fetchTenantNotifications,
   fetchTenantRentReviews,
   fetchTenantVacatingCases,
+  createTenantVacatingCase,
   cancelTenantVacatingCase,
   updateTenantVacateDate,
   markTenantNotificationRead,
@@ -38,10 +39,12 @@ import {
   toTenantMaintenanceRequests,
   toTenantNotifications,
   toTenantRentReviews,
+  pickActiveVacatingCase,
   toTenantVacatingCases,
   type TenantDocumentView,
 } from '@/lib/crossub-api/tenant-mappers';
 import { LISTING_PROPERTIES, TENANT_PHASE } from '@/lib/mock-data';
+import { VACATING_STAGE } from '@/constants/vacating';
 import { fetchPublicListings } from '@/lib/crossub-api/public-listings-client';
 import {
   fetchLeasingOnboarding,
@@ -157,6 +160,7 @@ interface TenantDataContextValue {
   recordRentPayment: (input: RecordRentPaymentInput) => RentReceipt;
   approveRepairCompletion: (id: string) => void;
   recordVacatingDate: (date: string) => void;
+  startVacating: (date: string, reason?: string) => Promise<void>;
   cancelVacatingCase: (reason?: string) => Promise<void>;
   updateVacateDate: (date: string) => Promise<void>;
   markNotificationRead: (id: string) => void;
@@ -460,10 +464,10 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     if (vacatingCasesRes.status === 'fulfilled') {
       connected = true;
       const mapped = toTenantVacatingCases(vacatingCasesRes.value);
-      const primary = mapped[0] ?? null;
+      const primary = pickActiveVacatingCase(mapped);
       setVacatingState(primary);
       setVacatingDisplay(primary);
-      if (primary) patchTenantStore({ vacating: primary });
+      patchTenantStore({ vacating: primary });
     }
 
     if (await loadLeasingOnboarding()) {
@@ -833,45 +837,69 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     [persistMaintenance],
   );
 
+  const startVacating = useCallback(
+    async (date: string, reason?: string) => {
+      const applyLocalVacating = () => {
+        const next: VacatingCase = {
+          id: `vac-local-${Date.now()}`,
+          propertyAddress,
+          vacatingDate: date.slice(0, 10),
+          status: 'open',
+          currentStage: VACATING_STAGE.KEY_RETURN,
+          keysReturned: false,
+          tenantSettlementStatus: 'pending',
+          outgoingStatus: 'report_sent',
+          terminationReason: reason,
+        };
+        setVacatingState(next);
+        setVacatingDisplay(next);
+        patchTenantStore({ vacating: next });
+      };
+
+      if (demo || status !== 'authed') {
+        applyLocalVacating();
+        return;
+      }
+
+      try {
+        const created = await createTenantVacatingCase({
+          expectedVacateDate: date,
+          terminationReason: reason,
+        });
+        const mapped = toTenantVacatingCases([created])[0] ?? null;
+        if (mapped) {
+          setVacatingState(mapped);
+          setVacatingDisplay(mapped);
+          patchTenantStore({ vacating: mapped });
+        } else {
+          applyLocalVacating();
+        }
+      } catch {
+        applyLocalVacating();
+      }
+    },
+    [demo, propertyAddress, status],
+  );
+
   const recordVacatingDate = useCallback(
     (date: string) => {
-      const next: VacatingCase = {
-        id: 'vac-new',
-        propertyAddress: propertyAddress,
-        vacatingDate: date,
-        status: 'open',
-        outgoingStatus: 'report_sent',
-        outgoingReportId: 'out-401',
-      };
-      setVacatingState(next);
-      setVacatingDisplay(next);
-      patchTenantStore( { vacating: next });
+      void startVacating(date);
     },
-    [propertyAddress],
+    [startVacating],
   );
 
   const cancelVacatingCase = useCallback(
     async (reason?: string) => {
       const id = vacatingDisplay?.id;
-      if (!id) return;
+      if (!id || vacatingDisplay.status !== 'open') return;
       try {
-        const updated = await cancelTenantVacatingCase(id, reason);
-        const mapped = toTenantVacatingCases([updated])[0] ?? null;
-        setVacatingState(mapped);
-        setVacatingDisplay(mapped);
-        patchTenantStore({ vacating: mapped });
+        await cancelTenantVacatingCase(id, reason);
       } catch {
-        // Optimistic local withdraw when API unavailable (demo / offline).
-        if (!vacatingDisplay) return;
-        const local: VacatingCase = {
-          ...vacatingDisplay,
-          status: 'cancelled',
-          cancellationReason: reason ?? 'Withdrawn by tenant',
-        };
-        setVacatingState(local);
-        setVacatingDisplay(local);
-        patchTenantStore({ vacating: local });
+        // Demo / offline — still clear locally so tenant can open a new case.
       }
+      setVacatingState(null);
+      setVacatingDisplay(null);
+      patchTenantStore({ vacating: null });
     },
     [vacatingDisplay],
   );
@@ -981,6 +1009,11 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     return docs;
   }, [apiDocuments, lease, rentReceipts, paymentProofs]);
 
+  const activeVacating = useMemo(
+    () => (vacatingDisplay?.status === 'open' ? vacatingDisplay : null),
+    [vacatingDisplay],
+  );
+
   const value = useMemo<TenantDataContextValue>(
     () => ({
       loading,
@@ -1003,7 +1036,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       rentReceipts,
       rentReviews,
       renewal,
-      vacating: vacatingDisplay,
+      vacating: activeVacating,
       inspections,
       terminationNotice,
       addRepair,
@@ -1014,6 +1047,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       recordRentPayment,
       approveRepairCompletion,
       recordVacatingDate,
+      startVacating,
       cancelVacatingCase,
       updateVacateDate,
       finalStatement,
@@ -1049,7 +1083,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       rentReceipts,
       rentReviews,
       renewal,
-      vacatingDisplay,
+      activeVacating,
       inspections,
       terminationNotice,
       addRepair,
@@ -1063,6 +1097,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       confirmOutgoingSection,
       approveRepairCompletion,
       recordVacatingDate,
+      startVacating,
       cancelVacatingCase,
       updateVacateDate,
       respondRentReview,

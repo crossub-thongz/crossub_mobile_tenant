@@ -401,7 +401,12 @@ export const DEMO_VACATING: VacatingCase = {
   propertyAddress: '12 River Lane, Southbank',
   vacatingDate: '2027-07-15',
   status: 'open',
-  outgoingStatus: 'supporting_photos_required',
+  currentStage: 'outgoing_inspection',
+  keysReturned: true,
+  inspectionReportAvailable: true,
+  outgoingInspectionId: 'out-401',
+  tenantSettlementStatus: 'pending',
+  outgoingStatus: 'report_sent',
   outgoingReportId: 'out-401',
 };
 

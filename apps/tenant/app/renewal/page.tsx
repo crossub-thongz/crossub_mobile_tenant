@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -7,11 +8,14 @@ import { TenantShell } from '@/components/layout/tenant-shell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
+import { ROUTES } from '@/constants/routes';
 import { formatDate } from '@/lib/utils';
 
 export default function RenewalPage() {
-  const { renewal } = useTenantData();
+  const router = useRouter();
+  const { renewal, startVacating } = useTenantData();
   const [moveOut, setMoveOut] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   if (!renewal) {
     return (
@@ -24,8 +28,8 @@ export default function RenewalPage() {
   return (
     <TenantShell title="Lease renewal">
       <p className="text-muted-foreground mb-4 text-sm">
-        90 days before lease expiry, indicate whether you intend to renew. Renew may connect to rent
-        review. Confirm periodic period wording with Qiaolin/Fay.
+        Indicate whether you intend to renew. If not renewing, your vacate date opens the same
+        End Leasing workflow your agent uses.
       </p>
       <div className="rounded-xl border bg-card p-4 text-sm">
         <p>Lease ends {formatDate(renewal.leaseEnd)}</p>
@@ -45,12 +49,23 @@ export default function RenewalPage() {
           <Button
             variant="outline"
             className="w-full"
+            disabled={submitting}
             onClick={() => {
-              if (!moveOut) return toast.error('Select vacating date');
-              toast.success('Vacating date recorded — outgoing workflow triggered');
+              if (!moveOut) {
+                toast.error('Select vacating date');
+                return;
+              }
+              setSubmitting(true);
+              void startVacating(moveOut, 'Not renewing — tenant selected move-out date')
+                .then(() => {
+                  toast.success('Vacating case started');
+                  router.push(ROUTES.VACATING);
+                })
+                .catch(() => toast.error('Could not start vacating case'))
+                .finally(() => setSubmitting(false));
             }}
           >
-            Select move-out date
+            {submitting ? 'Starting…' : 'Start vacating on this date'}
           </Button>
         </div>
       </div>

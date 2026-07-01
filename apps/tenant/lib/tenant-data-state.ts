@@ -97,7 +97,8 @@ export function loadInitialState(): LoadedTenantState {
     ingoing: stored.ingoingReport ?? INGOING_REPORT,
     outgoing: stored.outgoingReport ?? OUTGOING_REPORT,
     rentReviews: stored.rentReviews.length ? stored.rentReviews : RENT_REVIEWS,
-    vacatingState: stored.vacating ?? VACATING,
+    vacatingState:
+      stored.vacating?.status === 'open' ? stored.vacating : VACATING,
     lease: LEASE,
     rentReceipts: mergeRentReceipts(RENT_RECEIPTS, stored.rentReceipts),
     arrears: stored.arrears !== undefined ? stored.arrears : ARREARS,
@@ -113,6 +114,10 @@ export function loadInitialState(): LoadedTenantState {
     terminationNotice: TERMINATION_NOTICE,
     finalStatement: SHOW_PHASE3_DEMO ? DEMO_FINAL_STATEMENT : FINAL_STATEMENT,
     showPhase3Demo: SHOW_PHASE3_DEMO,
-    vacating: SHOW_PHASE3_DEMO ? DEMO_VACATING : stored.vacating ?? VACATING,
+    vacating: SHOW_PHASE3_DEMO
+      ? DEMO_VACATING
+      : stored.vacating?.status === 'open'
+        ? stored.vacating
+        : VACATING,
   };
 }

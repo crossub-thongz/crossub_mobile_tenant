@@ -58,7 +58,7 @@ export default function DashboardPage() {
       summary: ingoingReport
         ? `Ingoing ${ingoingReport.confirmedCount}/${ingoingReport.sections.length} confirmed · ${inspections.length} on file`
         : `${inspections.length} inspection record(s)`,
-      href: ROUTES.INSPECTIONS,
+      href: ROUTES.PROPERTY,
       badge:
         ingoingReport && ingoingReport.status !== 'confirmed' ? 'Action' : undefined,
       icon: ClipboardList,
@@ -69,7 +69,7 @@ export default function DashboardPage() {
         openRepairs.length > 0
           ? `${openRepairs.length} active · ${openRepairs[0]?.statusLabel ?? ''}`
           : 'No open repairs — report an issue anytime',
-      href: ROUTES.REPAIRS,
+      href: ROUTES.PROPERTY,
       badge: openRepairs.length > 0 ? String(openRepairs.length) : undefined,
       icon: Wrench,
     },

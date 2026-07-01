@@ -1,3 +1,5 @@
+import type { VacatingStage } from '@/constants/vacating';
+
 export type Priority = 'urgent' | 'high' | 'normal' | 'low';
 
 export type TenantLifecyclePhase =
@@ -329,11 +331,23 @@ export interface RenewalDecision {
 export interface VacatingCase {
   id: string;
   propertyAddress: string;
+  propertyId?: string;
   vacatingDate: string;
   status: 'open' | 'cancelled';
   vacateDateChanged?: boolean;
   initialVacatingDate?: string;
   cancellationReason?: string;
+  terminationReason?: string;
+  currentStage: VacatingStage;
+  keysReturned: boolean;
+  inspectionDate?: string;
+  outgoingInspectionId?: string;
+  inspectionReportAvailable?: boolean;
+  tenantSettlementStatus: 'pending' | 'accepted' | 'declined';
+  tenantConfirmationDueAt?: string;
+  refundAmount?: number | null;
+  debtAmount?: number | null;
+  bondRefundPaid?: boolean;
   outgoingStatus:
     | 'report_sent'
     | 'confirmed'

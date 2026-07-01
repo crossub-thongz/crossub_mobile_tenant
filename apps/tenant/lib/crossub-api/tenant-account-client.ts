@@ -30,20 +30,33 @@ export type TenantApplication =
 export type TenantRentReview =
   components['schemas']['TenantRentReviewResponseDto'];
 
-/** Vacating case from `GET /api/v1/tenant/vacating-cases`. */
+/** Vacating case from tenant vacating API. */
 export type TenantVacatingCase = {
   id: string;
   propertyId: string | null;
   propertyAddress: string | null;
   status: 'open' | 'cancelled';
+  currentStage: VacatingStage;
   vacatingDate: string | null;
   initialVacatingDate: string | null;
   vacateDateChanged: boolean;
+  keysReturned: boolean;
+  inspectionDate: string | null;
+  outgoingInspectionId: string | null;
+  inspectionReportAvailable: boolean;
+  tenantSettlementStatus: 'pending' | 'accepted' | 'declined';
+  tenantConfirmationDueAt: string | null;
+  refundAmount: number | null;
+  debtAmount: number | null;
+  bondRefundPaid: boolean;
   terminationReason: string | null;
   cancellationReason: string | null;
   createdAt: string;
   updatedAt: string;
 };
+
+type VacatingStage =
+  import('@/constants/vacating').VacatingStage;
 
 /** Active leases for the signed-in tenant (`GET /api/v1/tenant/tenancies`). */
 export async function fetchTenancies(): Promise<TenantTenancy[]> {
@@ -100,6 +113,30 @@ export async function fetchTenantVacatingCases(): Promise<TenantVacatingCase[]> 
   const res = await fetch(`${base}/tenant/vacating-cases`, { credentials: 'include' });
   if (!res.ok) throw new Error('Failed to load vacating cases');
   return (await res.json()) as TenantVacatingCase[];
+}
+
+/** Open a vacating case (`POST /api/v1/tenant/vacating-cases`). */
+export async function createTenantVacatingCase(input: {
+  expectedVacateDate: string;
+  propertyId?: string;
+  terminationReason?: string;
+}): Promise<TenantVacatingCase> {
+  const base = `${process.env.NEXT_PUBLIC_API_URL ?? '/api'}/v1`;
+  const res = await fetch(`${base}/tenant/vacating-cases`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      expectedVacateDate: new Date(input.expectedVacateDate).toISOString(),
+      propertyId: input.propertyId,
+      terminationReason: input.terminationReason,
+    }),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as { message?: string } | null;
+    throw new Error(body?.message ?? 'Failed to start vacating case');
+  }
+  return (await res.json()) as TenantVacatingCase;
 }
 
 /** Withdraw a vacating case (`PATCH /api/v1/tenant/vacating-cases/:caseId/cancel`). */
