@@ -10,6 +10,11 @@ import { hrefWithFrom } from '@/lib/back-navigation';
 import { OUTGOING_STATUS_LABEL } from '@/lib/tenant-labels';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
+function vacateDateLabel(date: string, changed?: boolean): string {
+  const base = formatDate(date);
+  return changed ? `${base} (changed)` : base;
+}
+
 export default function VacatingPage() {
   const {
     vacating,
@@ -17,8 +22,11 @@ export default function VacatingPage() {
     showPhase3Demo,
     outgoingReport: outgoing,
     cancelVacatingCase,
+    updateVacateDate,
   } = useTenantData();
   const [withdrawing, setWithdrawing] = useState(false);
+  const [draftDate, setDraftDate] = useState('');
+  const [savingDate, setSavingDate] = useState(false);
 
   if (!vacating) {
     return (
@@ -47,6 +55,7 @@ export default function VacatingPage() {
   }
 
   const isDeleted = vacating.status === 'cancelled';
+  const dateValue = draftDate || vacating.vacatingDate.slice(0, 10);
 
   const handleWithdraw = async () => {
     if (
@@ -64,6 +73,17 @@ export default function VacatingPage() {
     }
   };
 
+  const handleDateSave = async () => {
+    if (!dateValue) return;
+    setSavingDate(true);
+    try {
+      await updateVacateDate(dateValue);
+      setDraftDate('');
+    } finally {
+      setSavingDate(false);
+    }
+  };
+
   return (
     <TenantShell title="Vacating">
       <div className="space-y-5">
@@ -72,7 +92,7 @@ export default function VacatingPage() {
             <div>
               <p className="font-semibold">{vacating.propertyAddress}</p>
               <p className="text-muted-foreground mt-1">
-                Vacating {formatDate(vacating.vacatingDate)}
+                Vacating {vacateDateLabel(vacating.vacatingDate, vacating.vacateDateChanged)}
               </p>
             </div>
             {isDeleted && (
@@ -99,6 +119,25 @@ export default function VacatingPage() {
                   Review outgoing report →
                 </Link>
               )}
+              <div className="mt-4 space-y-2 border-t border-border/60 pt-3">
+                <p className="text-xs font-medium">Change vacate date</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    type="date"
+                    value={dateValue}
+                    onChange={(e) => setDraftDate(e.target.value)}
+                    className="border-input bg-background rounded-md border px-2 py-1.5 text-xs"
+                  />
+                  <button
+                    type="button"
+                    disabled={savingDate || !dateValue}
+                    onClick={() => void handleDateSave()}
+                    className="bg-primary text-primary-foreground rounded-md px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+                  >
+                    {savingDate ? 'Saving…' : 'Save date'}
+                  </button>
+                </div>
+              </div>
               <button
                 type="button"
                 disabled={withdrawing}

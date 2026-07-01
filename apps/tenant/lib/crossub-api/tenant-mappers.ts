@@ -517,6 +517,8 @@ export function toTenantVacatingCases(cases: TenantVacatingCase[]): VacatingCase
       asString(c.vacatingDate)?.slice(0, 10) ??
       asString(c.createdAt)?.slice(0, 10) ??
       '',
+    initialVacatingDate: asString(c.initialVacatingDate)?.slice(0, 10) ?? undefined,
+    vacateDateChanged: c.vacateDateChanged,
     status: c.status,
     cancellationReason: asString(c.cancellationReason) ?? undefined,
     outgoingStatus: c.status === 'cancelled' ? 'finalized' : 'report_sent',

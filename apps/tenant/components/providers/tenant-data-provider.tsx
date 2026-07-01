@@ -23,6 +23,7 @@ import {
   fetchTenantRentReviews,
   fetchTenantVacatingCases,
   cancelTenantVacatingCase,
+  updateTenantVacateDate,
   markTenantNotificationRead,
   replyToTenantMessageThread,
 } from '@/lib/crossub-api/tenant-account-client';
@@ -157,6 +158,7 @@ interface TenantDataContextValue {
   approveRepairCompletion: (id: string) => void;
   recordVacatingDate: (date: string) => void;
   cancelVacatingCase: (reason?: string) => Promise<void>;
+  updateVacateDate: (date: string) => Promise<void>;
   markNotificationRead: (id: string) => void;
   confirmIngoingSection: (sectionId: string, dispute?: string) => void;
   confirmOutgoingSection: (sectionId: string, dispute?: string) => void;
@@ -874,6 +876,35 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     [vacatingDisplay],
   );
 
+  const updateVacateDate = useCallback(
+    async (date: string) => {
+      const id = vacatingDisplay?.id;
+      if (!id) return;
+      try {
+        const updated = await updateTenantVacateDate(id, date);
+        const mapped = toTenantVacatingCases([updated])[0] ?? null;
+        setVacatingState(mapped);
+        setVacatingDisplay(mapped);
+        patchTenantStore({ vacating: mapped });
+      } catch {
+        if (!vacatingDisplay) return;
+        const local: VacatingCase = {
+          ...vacatingDisplay,
+          vacatingDate: date,
+          vacateDateChanged:
+            !!vacatingDisplay.initialVacatingDate &&
+            vacatingDisplay.initialVacatingDate.slice(0, 10) !== date.slice(0, 10),
+          initialVacatingDate:
+            vacatingDisplay.initialVacatingDate ?? vacatingDisplay.vacatingDate,
+        };
+        setVacatingState(local);
+        setVacatingDisplay(local);
+        patchTenantStore({ vacating: local });
+      }
+    },
+    [vacatingDisplay],
+  );
+
   const respondRentReview = useCallback(
     (
       id: string,
@@ -984,6 +1015,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       approveRepairCompletion,
       recordVacatingDate,
       cancelVacatingCase,
+      updateVacateDate,
       finalStatement,
       arrears,
       paymentProofs,
@@ -1032,6 +1064,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       approveRepairCompletion,
       recordVacatingDate,
       cancelVacatingCase,
+      updateVacateDate,
       respondRentReview,
       finalStatement,
       arrears,

@@ -37,6 +37,8 @@ export type TenantVacatingCase = {
   propertyAddress: string | null;
   status: 'open' | 'cancelled';
   vacatingDate: string | null;
+  initialVacatingDate: string | null;
+  vacateDateChanged: boolean;
   terminationReason: string | null;
   cancellationReason: string | null;
   createdAt: string;
@@ -113,6 +115,22 @@ export async function cancelTenantVacatingCase(
     body: JSON.stringify({ reason }),
   });
   if (!res.ok) throw new Error('Failed to withdraw vacating case');
+  return (await res.json()) as TenantVacatingCase;
+}
+
+/** Update vacate date (`PATCH /api/v1/tenant/vacating-cases/:caseId/vacate-date`). */
+export async function updateTenantVacateDate(
+  caseId: string,
+  date: string,
+): Promise<TenantVacatingCase> {
+  const base = `${process.env.NEXT_PUBLIC_API_URL ?? '/api'}/v1`;
+  const res = await fetch(`${base}/tenant/vacating-cases/${caseId}/vacate-date`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ date: new Date(date).toISOString() }),
+  });
+  if (!res.ok) throw new Error('Failed to update vacate date');
   return (await res.json()) as TenantVacatingCase;
 }
 

@@ -331,6 +331,8 @@ export interface VacatingCase {
   propertyAddress: string;
   vacatingDate: string;
   status: 'open' | 'cancelled';
+  vacateDateChanged?: boolean;
+  initialVacatingDate?: string;
   cancellationReason?: string;
   outgoingStatus:
     | 'report_sent'
