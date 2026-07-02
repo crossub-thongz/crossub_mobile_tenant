@@ -3,27 +3,37 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* CROSSUB Premium Theme — light default, dark via .dark class (matches crossub_web) */
 :root {
-  --background: #0b0f10;
-  --card: #111617;
-  --card-foreground: #ffffff;
-  --popover: #111617;
-  --popover-foreground: #ffffff;
-  --foreground: #ffffff;
-  --primary: #00d4a4;
-  --primary-foreground: #0b0f10;
-  --secondary: #1c2326;
-  --secondary-foreground: #ffffff;
-  --muted: #1c2326;
-  --muted-foreground: #6b7280;
-  --accent: #00d4a4;
-  --accent-foreground: #0b0f10;
+  --background: #ffffff;
+  --card: #ffffff;
+  --card-foreground: #020617;
+  --popover: #ffffff;
+  --popover-foreground: #020617;
+  --foreground: #020617;
+  --primary: #00b894;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #020617;
+  --muted: #f1f5f9;
+  --muted-foreground: #334155;
+  --accent: #ecfdf8;
+  --accent-foreground: #065f46;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --border: #1c2326;
-  --input: #1c2326;
-  --ring: #00d4a4;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #00b894;
   --radius: 0.75rem;
+  --warning: #f59e0b;
+  --success: #00b894;
+  --info: #3b82f6;
+  --surface-overlay: rgba(2, 6, 23, 0.05);
+  --surface-border-subtle: rgba(2, 6, 23, 0.1);
+  --text-subtle: rgba(2, 6, 23, 0.72);
+  --text-faint: rgba(2, 6, 23, 0.58);
+  --scrollbar-thumb: rgba(2, 6, 23, 0.18);
+  --scrollbar-thumb-hover: rgba(2, 6, 23, 0.28);
 }
 
 .dark {
@@ -46,6 +56,15 @@
   --border: #1c2326;
   --input: #1c2326;
   --ring: #00d4a4;
+  --warning: #f59e0b;
+  --success: #00d4a4;
+  --info: #3b82f6;
+  --surface-overlay: rgba(255, 255, 255, 0.03);
+  --surface-border-subtle: rgba(255, 255, 255, 0.1);
+  --text-subtle: rgba(255, 255, 255, 0.55);
+  --text-faint: rgba(255, 255, 255, 0.4);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.1);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.15);
 }
 
 @theme inline {

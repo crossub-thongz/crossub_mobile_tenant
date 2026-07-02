@@ -1,8 +1,10 @@
 import type { Metadata, Viewport } from 'next';
+import Script from 'next/script';
 import { Inter } from 'next/font/google';
 
 import { AuthProvider } from '@/components/providers/auth-provider';
 import { TenantDataProvider } from '@/components/providers/tenant-data-provider';
+import { ThemeProvider } from '@/components/theme-provider';
 import { TutorialGate } from '@/components/tenant/tutorial-gate';
 import { Toaster } from '@/components/ui/sonner';
 import './globals.css';
@@ -19,7 +21,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0b0f10',
+  themeColor: '#ffffff',
 };
 
 export const dynamic = 'force-dynamic';
@@ -30,15 +32,31 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark bg-background">
-      <body className={`${inter.variable} font-sans antialiased`}>
-        <AuthProvider>
-          <TenantDataProvider>
-            <TutorialGate />
-            {children}
-          </TenantDataProvider>
-        </AuthProvider>
-        <Toaster position="bottom-right" />
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${inter.variable} font-sans antialiased bg-background`}>
+        <Script id="crossub-theme-init" strategy="beforeInteractive">
+          {`(function(){try{var t=localStorage.getItem('theme');var d=document.documentElement;if(t==='dark')d.classList.add('dark');else d.classList.remove('dark')}catch(e){}})();`}
+        </Script>
+        <ThemeProvider>
+          <AuthProvider>
+            <TenantDataProvider>
+              <TutorialGate />
+              {children}
+            </TenantDataProvider>
+          </AuthProvider>
+          <Toaster
+            position="bottom-right"
+            toastOptions={{
+              classNames: {
+                toast: 'bg-card border-border text-foreground',
+                title: 'text-foreground',
+                description: 'text-muted-foreground',
+                success: 'border-primary/20 bg-primary/5',
+                error: 'border-destructive/20 bg-destructive/5',
+              },
+            }}
+          />
+        </ThemeProvider>
       </body>
     </html>
   );

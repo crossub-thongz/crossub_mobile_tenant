@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 
 import { useAuth } from '@/components/providers/auth-provider';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -84,7 +85,10 @@ export default function LoginPage() {
   const isSubmitting = loginForm.formState.isSubmitting;
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
+    <div className="relative flex min-h-screen flex-col items-center justify-center bg-background px-4">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
       <div className="mb-8 flex items-center gap-3">
         <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
           <KeyRound className="size-5" />

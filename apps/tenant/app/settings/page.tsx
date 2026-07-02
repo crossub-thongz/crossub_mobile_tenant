@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { TenantShell } from '@/components/layout/tenant-shell';
+import { ThemeSetting } from '@/components/theme-setting';
 import { Button } from '@/components/ui/button';
 
 const NOTIFICATION_TRIGGERS = [
@@ -31,6 +32,8 @@ export default function SettingsPage() {
   return (
     <TenantShell title="Settings">
       <div className="space-y-5 text-sm">
+        <ThemeSetting />
+
         <section className="rounded-xl border bg-card p-4">
           <h2 className="font-semibold">Notification preferences</h2>
           <p className="text-muted-foreground mt-1 text-xs">
