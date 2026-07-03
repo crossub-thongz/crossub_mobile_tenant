@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-07-03
+
+### Fixed
+- `lib/onboarding-payment-copy.ts` — the `deposit`/`bond` copy entries were missing the `summary` (both) and `faq` (bond) fields the onboarding step page renders, breaking `tsc`. Both entries now carry the full shape; the deposit-vs-bond explainer moved from bond's instruction bullets into its FAQ box (question/answer), matching how the page presents it. App `tsc --noEmit` is now clean. (Copy remains flagged for confirmation with Leasing/Fay.)
+
 ## 2026-06-29
 
 ### Changed
