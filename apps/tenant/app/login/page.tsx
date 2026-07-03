@@ -43,9 +43,6 @@ export default function LoginPage() {
   const { refresh, status } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
 
-  const agentPortalUrl = process.env.NEXT_PUBLIC_AGENT_PORTAL_URL ?? 'http://localhost:3002';
-  const agentRegisterUrl = `${agentPortalUrl.replace(/\/$/, '')}/register`;
-
   useEffect(() => {
     if (status === 'authed') router.replace(ROUTES.DASHBOARD);
   }, [status, router]);
@@ -99,16 +96,10 @@ export default function LoginPage() {
         </div>
       </div>
       <div className="w-full max-w-md rounded-xl border bg-card p-8 shadow-lg">
-        {/* <div className="mb-4 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-primary">
-          New tenant? You must register via the{' '}
-          <strong>Agent PC Portal</strong> first. Contact the <strong>Leasing Team</strong>{' '}
-          for registration details, then sign in here with your username and password.
-        </div> */}
-
         <div className="mb-6 space-y-1 text-center">
           <h1 className="text-xl font-semibold">Sign in</h1>
           <p className="text-sm text-muted-foreground">
-            Use the username and password from your Agent PC Portal registration
+            Use the email and password your agent gave you after your lease was set up
           </p>
         </div>
 
@@ -180,11 +171,7 @@ export default function LoginPage() {
         </form>
 
         <p className="text-muted-foreground mt-6 text-center text-xs">
-          Need to register?{' '}
-          {/* <a href={agentRegisterUrl} className="text-primary hover:underline">
-            Agent PC Portal registration
-          </a> */}
-          {' · '}
+          Looking for a rental?{' '}
           <Link href={ROUTES.PROPERTIES} className="text-primary hover:underline">
             Browse properties
           </Link>

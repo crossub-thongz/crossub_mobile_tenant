@@ -97,6 +97,22 @@ export async function fetchPublicListings(): Promise<ListingProperty[]> {
   return data.items.map(mapPublicListingToProperty);
 }
 
+/** Single listing for deep-links when the browse list has not loaded yet. */
+export async function fetchPublicListing(propertyId: string): Promise<ListingProperty> {
+  const res = await fetch(`${API_BASE}/public/listings/${propertyId}`, {
+    credentials: 'omit',
+    cache: 'no-store',
+  });
+  if (!res.ok) {
+    if (res.status === 404) {
+      throw new Error('Property not found or not available.');
+    }
+    throw new Error('Failed to load property');
+  }
+  const dto = (await res.json()) as PublicListingDto;
+  return mapPublicListingToProperty(dto);
+}
+
 /** Guest application submit (`POST /api/v1/public/listings/:id/applications`). */
 export async function submitGuestApplication(
   propertyId: string,

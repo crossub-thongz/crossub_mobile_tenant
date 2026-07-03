@@ -16,13 +16,18 @@ import { formatCurrency, formatDateTime } from '@/lib/utils';
 export default function PropertiesPage() {
   const { listings, listingsLoading, listingsError } = useTenantData();
   const [filters, setFilters] = useState(DEFAULT_PROPERTY_FILTERS);
-  const suburbs = useMemo(
-    () => [...new Set(listings.map((p) => p.suburb).filter(Boolean))].sort(),
+  const availableListings = useMemo(
+    () => listings.filter((p) => p.canApply !== false),
     [listings],
   );
+  const suburbs = useMemo(
+    () =>
+      [...new Set(availableListings.map((p) => p.suburb).filter(Boolean))].sort(),
+    [availableListings],
+  );
   const filtered = useMemo(
-    () => filterListings(listings, filters),
-    [listings, filters],
+    () => filterListings(availableListings, filters),
+    [availableListings, filters],
   );
 
   return (
@@ -51,8 +56,10 @@ export default function PropertiesPage() {
           </p>
         ) : filtered.length === 0 ? (
           <p className="text-muted-foreground rounded-xl border border-dashed p-6 text-center text-sm">
-            {listings.length === 0
-              ? 'No properties returned from staging. Check API_INTERNAL_URL matches crossub_web and deploy the latest API (public listings endpoint).'
+            {availableListings.length === 0
+              ? listings.length === 0
+                ? 'No properties returned from staging. Check API_INTERNAL_URL matches crossub_web and deploy the latest API (public listings endpoint).'
+                : 'No properties are accepting applications right now. Ask your agent to run seed:public-listings on staging if rent should show.'
               : 'No properties match your filters.'}
           </p>
         ) : (

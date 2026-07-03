@@ -2,17 +2,55 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 import { TenantShell } from '@/components/layout/tenant-shell';
 import { Button } from '@/components/ui/button';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
 import { propertyApply, ROUTES } from '@/constants/routes';
+import {
+  fetchPublicListing,
+} from '@/lib/crossub-api/public-listings-client';
+import type { ListingProperty } from '@/lib/types';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 
 export default function PropertyDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { listings } = useTenantData();
-  const property = listings.find((p) => p.id === id);
+  const fromList = listings.find((p) => p.id === id);
+  const [property, setProperty] = useState<ListingProperty | null>(fromList ?? null);
+  const [loading, setLoading] = useState(!fromList);
+
+  useEffect(() => {
+    if (fromList) {
+      setProperty(fromList);
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    void fetchPublicListing(id)
+      .then((row) => {
+        if (!cancelled) setProperty(row);
+      })
+      .catch(() => {
+        if (!cancelled) setProperty(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [fromList, id]);
+
+  if (loading) {
+    return (
+      <TenantShell title="Property" backHref={ROUTES.PROPERTIES}>
+        <p className="text-muted-foreground text-sm">Loading property…</p>
+      </TenantShell>
+    );
+  }
 
   if (!property) {
     return (

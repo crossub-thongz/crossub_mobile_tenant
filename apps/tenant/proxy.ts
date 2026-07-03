@@ -6,6 +6,14 @@ import { ROUTES, isPublicRoute } from '@/constants/routes';
 export function proxy(req: NextRequest) {
   const hasAccess = req.cookies.has(COOKIE_ACCESS);
   const path = req.nextUrl.pathname;
+
+  // Guests land on browse; signed-in tenants land on home.
+  if (path === '/' || path === '') {
+    const url = req.nextUrl.clone();
+    url.pathname = hasAccess ? ROUTES.DASHBOARD : ROUTES.PROPERTIES;
+    return NextResponse.redirect(url);
+  }
+
   const publicRoute = isPublicRoute(path);
 
   if (!hasAccess && !publicRoute) {

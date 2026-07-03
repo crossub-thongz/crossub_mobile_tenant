@@ -23,3 +23,5 @@ services:
         sync: false
       - key: NEXT_PUBLIC_WEB_URL
         sync: false
+      - key: NEXT_PUBLIC_USE_DEMO_DATA
+        value: "false"
