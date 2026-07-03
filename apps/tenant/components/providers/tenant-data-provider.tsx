@@ -40,6 +40,7 @@ import {
   toTenantNotifications,
   toTenantRentReviews,
   pickActiveVacatingCase,
+  pickDisplayVacatingCase,
   toTenantVacatingCases,
   type TenantDocumentView,
 } from '@/lib/crossub-api/tenant-mappers';
@@ -142,7 +143,10 @@ interface TenantDataContextValue {
   rentReceipts: RentReceipt[];
   rentReviews: RentReviewCase[];
   renewal: RenewalDecision | null;
+  /** Open vacating case only — used for hub badges and active workflows. */
   vacating: VacatingCase | null;
+  /** Open or latest withdrawn case — drives the Vacating page (Deleted tag). */
+  vacatingCase: VacatingCase | null;
   finalStatement: FinalStatement | null;
   arrears: ArrearsNotice | null;
   paymentProofs: PaymentProofRecord[];
@@ -464,10 +468,10 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     if (vacatingCasesRes.status === 'fulfilled') {
       connected = true;
       const mapped = toTenantVacatingCases(vacatingCasesRes.value);
-      const primary = pickActiveVacatingCase(mapped);
-      setVacatingState(primary);
+      const primary = pickDisplayVacatingCase(mapped);
+      setVacatingState(pickActiveVacatingCase(mapped));
       setVacatingDisplay(primary);
-      patchTenantStore({ vacating: primary });
+      patchTenantStore({ vacating: pickActiveVacatingCase(mapped) });
     }
 
     if (await loadLeasingOnboarding()) {
@@ -893,13 +897,22 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       const id = vacatingDisplay?.id;
       if (!id || vacatingDisplay.status !== 'open') return;
       try {
-        await cancelTenantVacatingCase(id, reason);
+        const updated = await cancelTenantVacatingCase(id, reason);
+        const mapped = toTenantVacatingCases([updated])[0] ?? null;
+        setVacatingState(null);
+        setVacatingDisplay(mapped);
+        patchTenantStore({ vacating: null });
       } catch {
-        // Demo / offline — still clear locally so tenant can open a new case.
+        if (!vacatingDisplay) return;
+        const local: VacatingCase = {
+          ...vacatingDisplay,
+          status: 'cancelled',
+          cancellationReason: reason ?? 'Tenant no longer vacating',
+        };
+        setVacatingState(null);
+        setVacatingDisplay(local);
+        patchTenantStore({ vacating: null });
       }
-      setVacatingState(null);
-      setVacatingDisplay(null);
-      patchTenantStore({ vacating: null });
     },
     [vacatingDisplay],
   );
@@ -1014,6 +1027,8 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     [vacatingDisplay],
   );
 
+  const vacatingCase = useMemo(() => vacatingDisplay, [vacatingDisplay]);
+
   const value = useMemo<TenantDataContextValue>(
     () => ({
       loading,
@@ -1037,6 +1052,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       rentReviews,
       renewal,
       vacating: activeVacating,
+      vacatingCase,
       inspections,
       terminationNotice,
       addRepair,
@@ -1084,6 +1100,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       rentReviews,
       renewal,
       activeVacating,
+      vacatingCase,
       inspections,
       terminationNotice,
       addRepair,

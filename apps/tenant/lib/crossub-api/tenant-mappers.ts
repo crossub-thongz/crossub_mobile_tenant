@@ -514,6 +514,21 @@ export function pickActiveVacatingCase(cases: VacatingCase[]): VacatingCase | nu
   return cases.find((c) => c.status === 'open') ?? null;
 }
 
+/**
+ * Case to show on the Vacating screen: prefer an open case; otherwise the most
+ * recently withdrawn one (Deleted tag) so refresh matches Crossub Web.
+ */
+export function pickDisplayVacatingCase(cases: VacatingCase[]): VacatingCase | null {
+  const open = pickActiveVacatingCase(cases);
+  if (open) return open;
+  const cancelled = cases.filter((c) => c.status === 'cancelled');
+  if (cancelled.length === 0) return null;
+  return cancelled.sort(
+    (a, b) =>
+      new Date(b.vacatingDate || 0).getTime() - new Date(a.vacatingDate || 0).getTime(),
+  )[0]!;
+}
+
 /** Project API vacating cases onto the app's VacatingCase card (newest first from API). */
 export function toTenantVacatingCases(cases: TenantVacatingCase[]): VacatingCase[] {
   return cases.map((c) => {

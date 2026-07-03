@@ -9,11 +9,16 @@ import { useTenantData } from '@/components/providers/tenant-data-provider';
 import { ROUTES } from '@/constants/routes';
 
 export default function VacatingPage() {
-  const { vacating, startVacating, cancelVacatingCase, updateVacateDate, showPhase3Demo } =
-    useTenantData();
+  const {
+    vacatingCase,
+    startVacating,
+    cancelVacatingCase,
+    updateVacateDate,
+    showPhase3Demo,
+  } = useTenantData();
   const [starting, setStarting] = useState(false);
 
-  if (!vacating) {
+  if (!vacatingCase) {
     return (
       <TenantShell title="Vacating">
         <div className="space-y-4">
@@ -51,11 +56,31 @@ export default function VacatingPage() {
 
   return (
     <TenantShell title="Vacating">
-      <VacatingCaseView
-        vacating={vacating}
-        cancelVacatingCase={cancelVacatingCase}
-        updateVacateDate={updateVacateDate}
-      />
+      <div className="space-y-6">
+        <VacatingCaseView
+          vacating={vacatingCase}
+          cancelVacatingCase={cancelVacatingCase}
+          updateVacateDate={updateVacateDate}
+        />
+        {vacatingCase.status === 'cancelled' && (
+          <div className="space-y-3 border-t pt-6">
+            <p className="text-muted-foreground text-sm">
+              Start a new vacating case if your plans change.
+            </p>
+            <VacatingStartForm
+              loading={starting}
+              onStart={async (date) => {
+                setStarting(true);
+                try {
+                  await startVacating(date);
+                } finally {
+                  setStarting(false);
+                }
+              }}
+            />
+          </div>
+        )}
+      </div>
     </TenantShell>
   );
 }
