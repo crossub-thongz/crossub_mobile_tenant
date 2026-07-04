@@ -44,7 +44,6 @@ import {
   toTenantVacatingCases,
   type TenantDocumentView,
 } from '@/lib/crossub-api/tenant-mappers';
-import { LISTING_PROPERTIES, TENANT_PHASE } from '@/lib/mock-data';
 import { VACATING_STAGE } from '@/constants/vacating';
 import { fetchPublicListings } from '@/lib/crossub-api/public-listings-client';
 import {
@@ -327,7 +326,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
           const message =
             err instanceof Error ? err.message : 'Failed to load property listings';
           setListingsError(message);
-          setListings(demo ? LISTING_PROPERTIES : []);
+          setListings([]);
         }
       })
       .finally(() => {
@@ -336,7 +335,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     return () => {
       cancelled = true;
     };
-  }, [demo]);
+  }, []);
 
   const persistMaintenance = useCallback((next: MaintenanceRequest[]) => {
     patchTenantStore({ maintenance: next });
@@ -983,7 +982,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     [],
   );
 
-  const phase: TenantLifecyclePhase = lease ? TENANT_PHASE : 'searching';
+  const phase: TenantLifecyclePhase = lease ? 'active' : 'searching';
 
   const storedDocuments = useMemo(() => {
     // Live mode: the real aggregated documents (inspection/maintenance/lease PDFs) REPLACE

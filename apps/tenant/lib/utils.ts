@@ -46,8 +46,9 @@ export function formatCurrency(amount: number): string {
   return `$${amount.toLocaleString('en-AU')}`;
 }
 
+/** Opt-in only — live API data is the default. */
 export const useDemoData = (): boolean =>
-  process.env.NEXT_PUBLIC_USE_DEMO_DATA !== 'false';
+  process.env.NEXT_PUBLIC_USE_DEMO_DATA === 'true';
 
 /**
  * Read a browser File into raw base64 (no `data:<mime>;base64,` prefix) for the

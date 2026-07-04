@@ -8,7 +8,6 @@ import { TenantShell } from '@/components/layout/tenant-shell';
 import { PropertyFiltersBar } from '@/components/tenant/property-filters';
 import { StatusBadge } from '@/components/tenant/status-badge';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
-import { PUBLIC_LISTINGS_ENDPOINT } from '@/lib/crossub-api/public-listings-client';
 import { DEFAULT_PROPERTY_FILTERS, filterListings } from '@/lib/filter-listings';
 import { propertyApply, propertyDetail } from '@/constants/routes';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
@@ -17,7 +16,10 @@ export default function PropertiesPage() {
   const { listings, listingsLoading, listingsError } = useTenantData();
   const [filters, setFilters] = useState(DEFAULT_PROPERTY_FILTERS);
   const availableListings = useMemo(
-    () => listings.filter((p) => p.canApply !== false),
+    () =>
+      listings.filter(
+        (p) => p.canApply !== false || Boolean(p.openInspectionAt),
+      ),
     [listings],
   );
   const suburbs = useMemo(
@@ -52,14 +54,14 @@ export default function PropertiesPage() {
       <div className="space-y-3">
         {listingsLoading ? (
           <p className="text-muted-foreground rounded-xl border border-dashed p-6 text-center text-sm">
-            Loading properties from staging…
+            Loading properties…
           </p>
         ) : filtered.length === 0 ? (
           <p className="text-muted-foreground rounded-xl border border-dashed p-6 text-center text-sm">
             {availableListings.length === 0
               ? listings.length === 0
-                ? 'No properties returned from staging. Check API_INTERNAL_URL matches crossub_web and deploy the latest API (public listings endpoint).'
-                : 'No properties are accepting applications right now. Ask your agent to run seed:public-listings on staging if rent should show.'
+                ? 'No properties are available right now. Check that the API is running and that properties have an active leasing cycle with open inspection or vacant/showing status.'
+                : 'No properties are accepting applications right now.'
               : 'No properties match your filters.'}
           </p>
         ) : (
@@ -85,6 +87,23 @@ export default function PropertiesPage() {
                   ? `${formatCurrency(p.rentWeekly)}/week`
                   : 'Rent on application'}
               </p>
+              {(p.bondAmount != null && p.bondAmount > 0) ||
+              (p.depositAmount != null && p.depositAmount > 0) ? (
+                <p className="text-muted-foreground mt-1 text-xs">
+                  {p.bondAmount != null && p.bondAmount > 0
+                    ? `Bond ${formatCurrency(p.bondAmount)}`
+                    : null}
+                  {p.bondAmount != null &&
+                  p.bondAmount > 0 &&
+                  p.depositAmount != null &&
+                  p.depositAmount > 0
+                    ? ' · '
+                    : null}
+                  {p.depositAmount != null && p.depositAmount > 0
+                    ? `Deposit ${formatCurrency(p.depositAmount)}`
+                    : null}
+                </p>
+              ) : null}
               <p className="text-muted-foreground text-xs">
                 {p.status ? `${p.status.replace('_', ' ')} · ` : ''}
                 {p.bedrooms} bed · {p.bathrooms} bath

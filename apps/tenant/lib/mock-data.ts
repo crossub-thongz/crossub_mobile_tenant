@@ -17,7 +17,6 @@ import type {
   FinalStatement,
   IngoingReport,
   LeaseSummary,
-  ListingProperty,
   MaintenanceRequest,
   MessageThread,
   OnboardingStep,
@@ -30,45 +29,6 @@ import type {
   TenantNotification,
   VacatingCase,
 } from '@/lib/types';
-
-export const LISTING_PROPERTIES: ListingProperty[] = [
-  {
-    id: 'prop-101',
-    address: '12 River Lane',
-    suburb: 'Southbank',
-    rentWeekly: 520,
-    propertyType: 'Apartment',
-    bedrooms: 2,
-    bathrooms: 1,
-    availableFrom: '2026-07-01',
-    openInspectionAt: '2026-06-15T11:00:00+10:00',
-    features: ['Balcony', 'Parking', 'Air conditioning'],
-    imageUrl: '/placeholder-property.jpg',
-  },
-  {
-    id: 'prop-102',
-    address: '8 Oak Street',
-    suburb: 'Carlton',
-    rentWeekly: 680,
-    propertyType: 'Townhouse',
-    bedrooms: 3,
-    bathrooms: 2,
-    availableFrom: '2026-06-20',
-    openInspectionAt: '2026-06-18T14:30:00+10:00',
-    features: ['Courtyard', 'Storage', 'Near tram'],
-  },
-  {
-    id: 'prop-103',
-    address: 'Unit 4 / 55 King Rd',
-    suburb: 'Clayton',
-    rentWeekly: 450,
-    propertyType: 'Unit',
-    bedrooms: 1,
-    bathrooms: 1,
-    availableFrom: '2026-08-01',
-    features: ['Furnished option', 'Study nook'],
-  },
-];
 
 export const APPLICATIONS: RentalApplication[] = [
   {

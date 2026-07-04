@@ -120,6 +120,8 @@ export interface ListingProperty {
   address: string;
   suburb: string;
   rentWeekly: number;
+  bondAmount?: number;
+  depositAmount?: number;
   propertyType: string;
   bedrooms: number;
   bathrooms: number;

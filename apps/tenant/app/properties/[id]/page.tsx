@@ -73,6 +73,25 @@ export default function PropertyDetailPage() {
           ) : (
             <p className="text-muted-foreground text-sm">Rent on application</p>
           )}
+          {(property.bondAmount != null && property.bondAmount > 0) ||
+          (property.depositAmount != null && property.depositAmount > 0) ? (
+            <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+              {property.bondAmount != null && property.bondAmount > 0 ? (
+                <div>
+                  <p className="text-muted-foreground text-xs">Bond</p>
+                  <p className="font-medium">{formatCurrency(property.bondAmount)}</p>
+                </div>
+              ) : null}
+              {property.depositAmount != null && property.depositAmount > 0 ? (
+                <div>
+                  <p className="text-muted-foreground text-xs">Deposit</p>
+                  <p className="font-medium">
+                    {formatCurrency(property.depositAmount)}
+                  </p>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           <p className="text-muted-foreground text-sm">
             {property.propertyType}
             {property.status ? ` · ${property.status.replace('_', ' ')}` : ''}

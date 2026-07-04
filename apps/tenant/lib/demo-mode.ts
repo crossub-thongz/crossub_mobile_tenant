@@ -7,5 +7,5 @@
 export function resolveUseDemoData(runtime?: { useDemoData?: boolean }): boolean {
   if (runtime?.useDemoData === true) return true;
   if (runtime?.useDemoData === false) return false;
-  return process.env.NEXT_PUBLIC_USE_DEMO_DATA !== 'false';
+  return process.env.NEXT_PUBLIC_USE_DEMO_DATA === 'true';
 }

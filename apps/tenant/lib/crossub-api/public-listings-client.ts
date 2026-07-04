@@ -19,6 +19,8 @@ export interface PublicListingDto {
   acceptingApplications: boolean;
   propertyType: string;
   rentWeekly: number | null;
+  bondAmount: number | null;
+  depositAmount: number | null;
   availableFrom: string | null;
   openInspectionAt: string | null;
   bedrooms: number | null;
@@ -64,6 +66,8 @@ export function mapPublicListingToProperty(dto: PublicListingDto): ListingProper
     address: dto.address,
     suburb,
     rentWeekly: dto.rentWeekly ?? 0,
+    bondAmount: dto.bondAmount ?? undefined,
+    depositAmount: dto.depositAmount ?? undefined,
     propertyType: propertyTypeLabel(dto.propertyType),
     bedrooms: dto.bedrooms ?? 0,
     bathrooms: dto.bathrooms ?? 0,

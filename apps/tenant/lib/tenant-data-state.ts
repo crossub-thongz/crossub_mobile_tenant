@@ -22,6 +22,7 @@ import {
   TERMINATION_NOTICE,
   VACATING,
 } from '@/lib/mock-data';
+import { resolveUseDemoData } from '@/lib/demo-mode';
 import {
   mergeApplications,
   mergeMaintenance,
@@ -75,6 +76,14 @@ export interface LoadedTenantState {
   vacating: VacatingCase | null;
 }
 
+const EMPTY_OUTGOING: OutgoingReport = {
+  id: 'out-empty',
+  propertyAddress: '—',
+  status: 'report_sent',
+  sections: [],
+  confirmedCount: 0,
+};
+
 function mergeRentReceipts(
   seed: RentReceipt[],
   persisted: RentReceipt[] | undefined,
@@ -85,9 +94,38 @@ function mergeRentReceipts(
   return [...added, ...seed];
 }
 
-/** Shared demo tenancy + per-browser persisted changes (all signed-in users). */
+function loadLiveInitialState(stored: ReturnType<typeof readTenantStore>): LoadedTenantState {
+  return {
+    maintenance: stored.maintenance ?? [],
+    applications: stored.applications ?? [],
+    messages: stored.messages ?? [],
+    notifications: stored.notifications ?? [],
+    ingoing: stored.ingoingReport ?? null,
+    outgoing: stored.outgoingReport ?? EMPTY_OUTGOING,
+    rentReviews: stored.rentReviews ?? [],
+    vacatingState: stored.vacating?.status === 'open' ? stored.vacating : null,
+    lease: null,
+    rentReceipts: stored.rentReceipts ?? [],
+    arrears: stored.arrears ?? null,
+    outstandingBalance: stored.outstandingBalance ?? null,
+    paymentProofs: [],
+    onboardingSteps: [],
+    pendingActions: [],
+    inspections: [],
+    renewal: null,
+    terminationNotice: null,
+    finalStatement: null,
+    showPhase3Demo: false,
+    vacating: stored.vacating ?? null,
+  };
+}
+
+/** Demo tenancy + per-browser persisted changes when `NEXT_PUBLIC_USE_DEMO_DATA=true`. */
 export function loadInitialState(): LoadedTenantState {
   const stored = readTenantStore();
+  if (!resolveUseDemoData()) {
+    return loadLiveInitialState(stored);
+  }
 
   return {
     maintenance: mergeMaintenance(DEMO_MAINTENANCE, stored.maintenance),
