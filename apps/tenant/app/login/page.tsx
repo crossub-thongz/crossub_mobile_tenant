@@ -11,8 +11,7 @@ import {
   Mail,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -39,13 +38,13 @@ const loginSchema = z.object({
 type LoginValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
-  const router = useRouter();
   const { refresh, status } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
 
-  useEffect(() => {
-    if (status === 'authed') router.replace(ROUTES.DASHBOARD);
-  }, [status, router]);
+  useLayoutEffect(() => {
+    if (status !== 'authed') return;
+    window.location.replace(ROUTES.DASHBOARD);
+  }, [status]);
 
   const loginForm = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
@@ -56,7 +55,7 @@ export default function LoginPage() {
     try {
       await api.post<{ user: AuthUser }>('/auth/login', values);
       await refresh();
-      router.replace(ROUTES.DASHBOARD);
+      window.location.assign(ROUTES.DASHBOARD);
       return;
     } catch (err) {
       if (err instanceof ApiError && err.status !== 401 && err.status >= 400) {
@@ -72,7 +71,7 @@ export default function LoginPage() {
     const localUser = loginLocalAccount(values.email, values.password);
     if (localUser) {
       await refresh();
-      router.replace(ROUTES.DASHBOARD);
+      window.location.assign(ROUTES.DASHBOARD);
       return;
     }
 
