@@ -3,7 +3,8 @@ import type { ListingProperty } from '@/lib/types';
 /** Browser → tenant Next proxy → crossub API (see apps/tenant/.env API_INTERNAL_URL). */
 export const PUBLIC_LISTINGS_ENDPOINT = '/api/v1/public/listings';
 
-const API_BASE = `${process.env.NEXT_PUBLIC_API_URL ?? '/api'}/v1`;
+/** Always proxy guest listing calls through the tenant Next BFF (same-origin). */
+const PUBLIC_API_V1 = '/api/v1';
 
 export type EmploymentStatus =
   | 'employed'
@@ -86,7 +87,7 @@ export function mapPublicListingToProperty(dto: PublicListingDto): ListingProper
  * `GET /api/properties`, public read facade.
  */
 export async function fetchPublicListings(): Promise<ListingProperty[]> {
-  const res = await fetch(`${API_BASE}/public/listings`, {
+  const res = await fetch(`${PUBLIC_API_V1}/public/listings`, {
     credentials: 'omit',
     cache: 'no-store',
   });
@@ -104,7 +105,7 @@ export async function fetchPublicListings(): Promise<ListingProperty[]> {
 
 /** Single listing for deep-links when the browse list has not loaded yet. */
 export async function fetchPublicListing(propertyId: string): Promise<ListingProperty> {
-  const res = await fetch(`${API_BASE}/public/listings/${propertyId}`, {
+  const res = await fetch(`${PUBLIC_API_V1}/public/listings/${propertyId}`, {
     credentials: 'omit',
     cache: 'no-store',
   });
@@ -123,9 +124,9 @@ export async function submitGuestApplication(
   propertyId: string,
   body: SubmitGuestApplicationInput,
 ): Promise<GuestApplicationResult> {
-  const res = await fetch(`${API_BASE}/public/listings/${propertyId}/applications`, {
+  const res = await fetch(`${PUBLIC_API_V1}/public/listings/${propertyId}/applications`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     credentials: 'omit',
     body: JSON.stringify(body),
   });
