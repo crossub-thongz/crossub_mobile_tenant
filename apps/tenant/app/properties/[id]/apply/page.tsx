@@ -21,6 +21,7 @@ import {
 } from '@/lib/crossub-api/public-listings-client';
 import type { ListingProperty } from '@/lib/types';
 import { propertyApplySuccess, ROUTES } from '@/constants/routes';
+import { apiErrorMessage } from '@/lib/api-error-message';
 
 export default function ApplyPage() {
   const { id } = useParams<{ id: string }>();
@@ -87,7 +88,7 @@ export default function ApplyPage() {
         `${propertyApplySuccess(property.id)}?ref=${encodeURIComponent(result.reference)}`,
       );
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not submit application');
+      toast.error(apiErrorMessage(err, 'Could not submit application'));
     } finally {
       setSubmitting(false);
     }

@@ -1,4 +1,5 @@
 import type { ListingProperty } from '@/lib/types';
+import { parseApiErrorMessage } from '@/lib/api-error-message';
 
 /** Browser → tenant Next proxy → crossub API (see apps/tenant/.env API_INTERNAL_URL). */
 export const PUBLIC_LISTINGS_ENDPOINT = '/api/v1/public/listings';
@@ -157,10 +158,9 @@ export async function submitGuestApplication(
     : null;
 
   if (!res.ok) {
-    const err = payload as { message?: string | string[] } | null;
-    const raw = err?.message;
-    const message = Array.isArray(raw) ? raw[0] : raw;
-    throw new Error(message ?? `Failed to submit application (${res.status})`);
+    throw new Error(
+      parseApiErrorMessage(payload, res.status, 'Failed to submit application'),
+    );
   }
 
   if (!payload || typeof payload !== 'object') {
