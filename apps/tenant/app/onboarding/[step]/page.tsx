@@ -11,7 +11,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
 import { ROUTES } from '@/constants/routes';
-import { submitKeyCollection, uploadKeyCollectionPhotos } from '@/lib/crossub-api/tenant-leasing-client';
+import {
+  submitBondProof,
+  submitDepositProof,
+  submitKeyCollection,
+  uploadBondProofPhoto,
+  uploadDepositProofPhoto,
+  uploadKeyCollectionPhotos,
+} from '@/lib/crossub-api/tenant-leasing-client';
+import { fileToBase64 } from '@/lib/utils';
 import { PAYMENT_STEP_COPY } from '@/lib/onboarding-payment-copy';
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
 
@@ -58,6 +66,48 @@ export default function OnboardingStepPage() {
     step.id === 'deposit' || step.id === 'bond'
       ? PAYMENT_STEP_COPY[step.id]
       : null;
+  const existingProof =
+    step.id === 'deposit'
+      ? leasingOnboarding?.depositProof
+      : step.id === 'bond'
+        ? leasingOnboarding?.bondProof
+        : null;
+  const proofSubmitted = Boolean(existingProof?.proofUrl);
+
+  const handlePaymentProofSubmit = async () => {
+    if (!file) {
+      toast.error('Choose a file to upload');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const contentBase64 = await fileToBase64(file);
+      const upload = {
+        fileName: file.name,
+        mimeType: file.type || 'application/octet-stream',
+        sizeBytes: file.size,
+        contentBase64,
+      };
+      const proofUrl =
+        step.id === 'deposit'
+          ? await uploadDepositProofPhoto(upload)
+          : await uploadBondProofPhoto(upload);
+      if (step.id === 'deposit') {
+        await submitDepositProof({ proofUrl, fileName: file.name });
+      } else {
+        await submitBondProof({ proofUrl, fileName: file.name });
+      }
+      await refreshLeasingOnboarding();
+      setFile(null);
+      toast.success('Proof uploaded — pending CROSSUB approval', {
+        description: file.name,
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not upload proof');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const handleKeySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -141,18 +191,31 @@ export default function OnboardingStepPage() {
             designated statutory process).
           </p>
 
+          {proofSubmitted && existingProof?.proofUrl && (
+            <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm">
+              <p className="font-medium">Proof submitted</p>
+              <p className="text-muted-foreground mt-1 text-xs">
+                {existingProof.fileName ?? 'Payment proof'} — awaiting CROSSUB approval.
+              </p>
+              <a
+                href={existingProof.proofUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary mt-2 inline-block text-xs font-medium underline"
+              >
+                View uploaded document
+              </a>
+            </div>
+          )}
+
           <FileUploadField accept="image/*,.pdf" onFileSelect={setFile} />
 
           <Button
             className="w-full"
-            disabled={!file}
-            onClick={() =>
-              toast.success('Proof uploaded — pending CROSSUB approval', {
-                description: file?.name,
-              })
-            }
+            disabled={!file || submitting}
+            onClick={() => void handlePaymentProofSubmit()}
           >
-            Submit proof
+            {submitting ? 'Uploading…' : proofSubmitted ? 'Replace proof' : 'Submit proof'}
           </Button>
         </div>
       )}

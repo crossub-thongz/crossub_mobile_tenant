@@ -30,6 +30,14 @@ export interface TenantLeasingOnboardingDto {
     location: string | null;
     photos: string[];
   };
+  depositProof: {
+    fileName: string | null;
+    proofUrl: string | null;
+  };
+  bondProof: {
+    fileName: string | null;
+    proofUrl: string | null;
+  };
 }
 
 export interface SetKeyCollectionInput {
@@ -92,6 +100,86 @@ export async function uploadKeyCollectionPhoto(
   }
   const data = (await res.json()) as { url: string };
   return data.url;
+}
+
+/** Stage a deposit proof file (`POST /tenant/leasing/onboarding/deposit/proof/upload`). */
+export async function uploadDepositProofPhoto(
+  body: UploadTenantPhotoInput,
+): Promise<string> {
+  const res = await fetch(
+    `${API_BASE}/tenant/leasing/onboarding/deposit/proof/upload`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(body),
+    },
+  );
+  if (!res.ok) {
+    throw new Error('Failed to upload deposit proof');
+  }
+  const data = (await res.json()) as { url: string };
+  return data.url;
+}
+
+/** Submit deposit proof for staff review (`PATCH /tenant/leasing/onboarding/deposit/proof`). */
+export async function submitDepositProof(body: {
+  proofUrl: string;
+  fileName: string;
+}): Promise<TenantLeasingOnboardingDto> {
+  const res = await fetch(`${API_BASE}/tenant/leasing/onboarding/deposit/proof`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = (await res.json().catch(() => null)) as { message?: string | string[] } | null;
+    const raw = err?.message;
+    const message = Array.isArray(raw) ? raw[0] : raw;
+    throw new Error(message ?? 'Failed to submit deposit proof');
+  }
+  return res.json() as Promise<TenantLeasingOnboardingDto>;
+}
+
+/** Stage a bond proof file (`POST /tenant/leasing/onboarding/bond/proof/upload`). */
+export async function uploadBondProofPhoto(
+  body: UploadTenantPhotoInput,
+): Promise<string> {
+  const res = await fetch(
+    `${API_BASE}/tenant/leasing/onboarding/bond/proof/upload`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(body),
+    },
+  );
+  if (!res.ok) {
+    throw new Error('Failed to upload bond proof');
+  }
+  const data = (await res.json()) as { url: string };
+  return data.url;
+}
+
+/** Submit bond proof for staff review (`PATCH /tenant/leasing/onboarding/bond/proof`). */
+export async function submitBondProof(body: {
+  proofUrl: string;
+  fileName: string;
+}): Promise<TenantLeasingOnboardingDto> {
+  const res = await fetch(`${API_BASE}/tenant/leasing/onboarding/bond/proof`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = (await res.json().catch(() => null)) as { message?: string | string[] } | null;
+    const raw = err?.message;
+    const message = Array.isArray(raw) ? raw[0] : raw;
+    throw new Error(message ?? 'Failed to submit bond proof');
+  }
+  return res.json() as Promise<TenantLeasingOnboardingDto>;
 }
 
 /** Stage up to 5 key-collection photos; returns public URLs for the key-collection report. */
