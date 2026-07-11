@@ -132,27 +132,42 @@ export async function submitGuestApplication(
   propertyId: string,
   body: SubmitGuestApplicationInput,
 ): Promise<GuestApplicationResult> {
-  const res = await fetch(`${PUBLIC_API_V1}/public/listings/${propertyId}/applications`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    credentials: 'omit',
-    redirect: 'manual',
-    body: JSON.stringify(body),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${PUBLIC_API_V1}/public/listings/${propertyId}/applications`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      credentials: 'omit',
+      redirect: 'manual',
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new Error('Could not reach the application server. Try again in a moment.');
+  }
+
   if (res.type === 'opaqueredirect' || (res.status >= 300 && res.status < 400)) {
     throw new Error(
-      'Application submit was redirected — use the apply form at /properties/{id}/apply.',
+      'Application submit was redirected — refresh the page and try again.',
     );
   }
+
+  const contentType = res.headers.get('content-type') ?? '';
+  const payload: unknown = contentType.includes('application/json')
+    ? await res.json().catch(() => null)
+    : null;
+
   if (!res.ok) {
-    const err = (await res.json().catch(() => null)) as {
-      message?: string | string[];
-    } | null;
+    const err = payload as { message?: string | string[] } | null;
     const raw = err?.message;
     const message = Array.isArray(raw) ? raw[0] : raw;
-    throw new Error(message ?? 'Failed to submit application');
+    throw new Error(message ?? `Failed to submit application (${res.status})`);
   }
-  return res.json() as Promise<GuestApplicationResult>;
+
+  if (!payload || typeof payload !== 'object') {
+    throw new Error('Unexpected response from the application server.');
+  }
+
+  return payload as GuestApplicationResult;
 }
 
 export const EMPLOYMENT_OPTIONS: { value: EmploymentStatus; label: string }[] = [

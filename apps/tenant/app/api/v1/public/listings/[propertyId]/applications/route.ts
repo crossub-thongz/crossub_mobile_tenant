@@ -9,17 +9,25 @@ export async function POST(
   context: { params: Promise<{ propertyId: string }> },
 ): Promise<NextResponse> {
   const { propertyId } = await context.params;
-  const upstream = await fetch(
-    `${apiBase()}/api/v1/public/listings/${encodeURIComponent(propertyId)}/applications`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': req.headers.get('content-type') ?? 'application/json',
-        Accept: 'application/json',
+  let upstream: Response;
+  try {
+    upstream = await fetch(
+      `${apiBase()}/api/v1/public/listings/${encodeURIComponent(propertyId)}/applications`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': req.headers.get('content-type') ?? 'application/json',
+          Accept: 'application/json',
+        },
+        body: await req.arrayBuffer(),
       },
-      body: await req.arrayBuffer(),
-    },
-  );
+    );
+  } catch {
+    return NextResponse.json(
+      { message: 'Could not reach the CROSSUB API. Check API_INTERNAL_URL on the tenant app.' },
+      { status: 502 },
+    );
+  }
 
   const response = new NextResponse(upstream.body, {
     status: upstream.status,
