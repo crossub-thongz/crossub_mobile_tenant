@@ -136,8 +136,14 @@ export async function submitGuestApplication(
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     credentials: 'omit',
+    redirect: 'manual',
     body: JSON.stringify(body),
   });
+  if (res.type === 'opaqueredirect' || (res.status >= 300 && res.status < 400)) {
+    throw new Error(
+      'Application submit was redirected — use the apply form at /properties/{id}/apply.',
+    );
+  }
   if (!res.ok) {
     const err = (await res.json().catch(() => null)) as {
       message?: string | string[];

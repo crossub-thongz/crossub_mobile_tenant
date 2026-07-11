@@ -37,12 +37,15 @@ export async function POST(
   return response;
 }
 
-export async function GET(): Promise<NextResponse> {
-  return NextResponse.json(
-    {
-      message:
-        'Guest applications must be submitted with POST. Open the tenant apply form at /properties/{id}/apply.',
-    },
-    { status: 405, headers: { Allow: 'POST' } },
-  );
+/** Browsers opening the API URL directly should land on the apply form. */
+export async function GET(
+  req: NextRequest,
+  context: { params: Promise<{ propertyId: string }> },
+): Promise<NextResponse> {
+  const { propertyId } = await context.params;
+  const sessionId = req.nextUrl.searchParams.get('sessionId');
+  const applyPath = `/properties/${encodeURIComponent(propertyId)}/apply${
+    sessionId ? `?sessionId=${encodeURIComponent(sessionId)}` : ''
+  }`;
+  return NextResponse.redirect(new URL(applyPath, req.url), 307);
 }

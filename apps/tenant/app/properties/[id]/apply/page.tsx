@@ -15,12 +15,13 @@ import { useTenantData } from '@/components/providers/tenant-data-provider';
 import {
   EMPLOYMENT_OPTIONS,
   fetchPublicListing,
-  submitGuestApplication,
   type EmploymentStatus,
   type SubmitGuestApplicationInput,
 } from '@/lib/crossub-api/public-listings-client';
 import type { ListingProperty } from '@/lib/types';
 import { propertyApplySuccess, ROUTES } from '@/constants/routes';
+
+import { submitGuestApplicationAction } from './submit-guest-application';
 
 export default function ApplyPage() {
   const { id } = useParams<{ id: string }>();
@@ -74,7 +75,7 @@ export default function ApplyPage() {
 
     setSubmitting(true);
     try {
-      const result = await submitGuestApplication(property.id, {
+      const result = await submitGuestApplicationAction(property.id, {
         ...form,
         annualIncome: Number(form.annualIncome),
         ...(viewingSessionId ? { viewingSessionId } : {}),
