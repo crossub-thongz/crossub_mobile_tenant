@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -21,6 +21,8 @@ import { propertyApplySuccess, ROUTES } from '@/constants/routes';
 
 export default function ApplyPage() {
   const { id } = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
+  const viewingSessionId = searchParams.get('sessionId') ?? undefined;
   const router = useRouter();
   const { listings } = useTenantData();
   const property = listings.find((p) => p.id === id);
@@ -52,6 +54,7 @@ export default function ApplyPage() {
       const result = await submitGuestApplication(property.id, {
         ...form,
         annualIncome: Number(form.annualIncome),
+        ...(viewingSessionId ? { viewingSessionId } : {}),
       });
 
       toast.success('Application submitted', {
@@ -89,7 +92,11 @@ export default function ApplyPage() {
     <TenantShell title="Application form" backHref={`/properties/${id}`}>
       <PageIntro
         title={property.address}
-        description={`${property.suburb} — submitted to staging CROSSUB leasing. Your assigned agent sees it in Tenant selection after you apply.`}
+        description={
+          viewingSessionId
+            ? `${property.suburb} — open inspection application. Your details are linked to this viewing and sent to the managing agent.`
+            : `${property.suburb} — submitted to CROSSUB leasing. Your assigned agent sees it in Tenant selection after you apply.`
+        }
       />
 
       <form onSubmit={onSubmit} className="space-y-4">

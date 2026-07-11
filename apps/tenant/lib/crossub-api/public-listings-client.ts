@@ -37,6 +37,7 @@ export interface SubmitGuestApplicationInput {
   annualIncome: number;
   employmentStatus: EmploymentStatus;
   moveInDate: string;
+  viewingSessionId?: string;
 }
 
 export interface GuestApplicationResult {
