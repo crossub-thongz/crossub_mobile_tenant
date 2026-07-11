@@ -126,6 +126,7 @@ export interface ListingProperty {
   bedrooms: number;
   bathrooms: number;
   availableFrom: string;
+  leaseTerm?: string;
   openInspectionAt?: string;
   features: string[];
   imageUrl?: string;

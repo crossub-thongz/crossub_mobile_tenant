@@ -2,9 +2,10 @@
 
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
+import { ApplicationRentalFacts } from '@/components/tenant/application-rental-facts';
 import { TenantShell } from '@/components/layout/tenant-shell';
 import { PageIntro } from '@/components/tenant/page-intro';
 import { Button } from '@/components/ui/button';
@@ -13,10 +14,12 @@ import { Label } from '@/components/ui/label';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
 import {
   EMPLOYMENT_OPTIONS,
+  fetchPublicListing,
   submitGuestApplication,
   type EmploymentStatus,
   type SubmitGuestApplicationInput,
 } from '@/lib/crossub-api/public-listings-client';
+import type { ListingProperty } from '@/lib/types';
 import { propertyApplySuccess, ROUTES } from '@/constants/routes';
 
 export default function ApplyPage() {
@@ -25,7 +28,9 @@ export default function ApplyPage() {
   const viewingSessionId = searchParams.get('sessionId') ?? undefined;
   const router = useRouter();
   const { listings } = useTenantData();
-  const property = listings.find((p) => p.id === id);
+  const cachedProperty = listings.find((p) => p.id === id);
+  const [property, setProperty] = useState<ListingProperty | null>(cachedProperty ?? null);
+  const [loadingListing, setLoadingListing] = useState(!cachedProperty);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState<SubmitGuestApplicationInput>({
     fullName: '',
@@ -35,6 +40,24 @@ export default function ApplyPage() {
     employmentStatus: 'employed',
     moveInDate: '',
   });
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingListing(true);
+    void fetchPublicListing(id, viewingSessionId)
+      .then((listing) => {
+        if (!cancelled) setProperty(listing);
+      })
+      .catch(() => {
+        if (!cancelled && cachedProperty) setProperty(cachedProperty);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingListing(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [cachedProperty, id, viewingSessionId]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,6 +93,14 @@ export default function ApplyPage() {
     }
   };
 
+  if (loadingListing && !property) {
+    return (
+      <TenantShell title="Apply" backHref={`/properties/${id}`}>
+        <p className="text-muted-foreground text-sm">Loading application details…</p>
+      </TenantShell>
+    );
+  }
+
   if (!property) {
     return (
       <TenantShell title="Apply" backHref={ROUTES.PROPERTIES}>
@@ -98,6 +129,8 @@ export default function ApplyPage() {
             : `${property.suburb} — submitted to CROSSUB leasing. Your assigned agent sees it in Tenant selection after you apply.`
         }
       />
+
+      <ApplicationRentalFacts property={property} />
 
       <form onSubmit={onSubmit} className="space-y-4">
         <div className="space-y-2">

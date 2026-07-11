@@ -23,6 +23,7 @@ export interface PublicListingDto {
   bondAmount: number | null;
   depositAmount: number | null;
   availableFrom: string | null;
+  leaseTerm: string | null;
   openInspectionAt: string | null;
   bedrooms: number | null;
   bathrooms: number | null;
@@ -74,6 +75,7 @@ export function mapPublicListingToProperty(dto: PublicListingDto): ListingProper
     bedrooms: dto.bedrooms ?? 0,
     bathrooms: dto.bathrooms ?? 0,
     availableFrom: dto.availableFrom ?? 'TBC',
+    leaseTerm: dto.leaseTerm ?? undefined,
     openInspectionAt: dto.openInspectionAt ?? undefined,
     features: dto.features.length > 0 ? dto.features : ['Contact agent for details'],
     imageUrl: dto.imageUrl ?? undefined,
@@ -104,8 +106,14 @@ export async function fetchPublicListings(): Promise<ListingProperty[]> {
 }
 
 /** Single listing for deep-links when the browse list has not loaded yet. */
-export async function fetchPublicListing(propertyId: string): Promise<ListingProperty> {
-  const res = await fetch(`${PUBLIC_API_V1}/public/listings/${propertyId}`, {
+export async function fetchPublicListing(
+  propertyId: string,
+  viewingSessionId?: string,
+): Promise<ListingProperty> {
+  const query = viewingSessionId
+    ? `?sessionId=${encodeURIComponent(viewingSessionId)}`
+    : '';
+  const res = await fetch(`${PUBLIC_API_V1}/public/listings/${propertyId}${query}`, {
     credentials: 'omit',
     cache: 'no-store',
   });
