@@ -5309,6 +5309,11 @@
             "nullable": true,
             "description": "Rationale / decision note for the review, when present."
           },
+          "rentNegotiable": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Whether the tenant may submit a counter-offer. When false, only accept or decline is permitted."
+          },
           "tenantCounterWeekly": {
             "type": "number",
             "nullable": true,
@@ -5330,6 +5335,7 @@
           "proposedRentWeekly",
           "effectiveDate",
           "explanation",
+          "rentNegotiable",
           "tenantCounterWeekly",
           "createdAt"
         ]

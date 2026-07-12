@@ -1950,6 +1950,8 @@ export interface components {
             effectiveDate: string | null;
             /** @description Rationale / decision note for the review, when present. */
             explanation: string | null;
+            /** @description Whether the tenant may submit a counter-offer. When false, only accept or decline is permitted. */
+            rentNegotiable: boolean | null;
             /**
              * @description The weekly rent the tenant has countered with, when in negotiation.
              * @example 870

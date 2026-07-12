@@ -500,6 +500,7 @@ export function toTenantRentReviews(
       proposedRentWeekly: asNumber(r.proposedRentWeekly) ?? 0,
       effectiveDate,
       explanation: asString(r.explanation) ?? undefined,
+      rentNegotiable: r.rentNegotiable ?? null,
       status: rentReviewStatus(r.workflowState),
       counterHistory:
         counter != null

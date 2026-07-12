@@ -31,6 +31,7 @@ export default function RentReviewDetailPage() {
   }
 
   const increase = review.proposedRentWeekly - review.currentRentWeekly;
+  const canCounter = review.rentNegotiable === true;
 
   return (
     <TenantShell title="Rent review notice" backHref={ROUTES.RENT_REVIEW}>
@@ -96,31 +97,43 @@ export default function RentReviewDetailPage() {
               Approve new rent
             </Button>
 
-            <div className="rounded-2xl border bg-card p-4">
-              <p className="font-semibold">Submit counter offer</p>
-              <p className="text-muted-foreground mt-1 text-xs">
-                Propose a different weekly rent amount.
-              </p>
-              <Input
-                type="number"
-                className="mt-3"
-                placeholder="Your proposed $/week"
-                value={counter}
-                onChange={(e) => setCounter(e.target.value)}
-              />
-              <Button
-                variant="outline"
-                className="mt-3 w-full"
-                onClick={() => {
-                  const amount = Number(counter);
-                  if (!amount) return toast.error('Enter an amount');
-                  respondRentReview(review.id, 'counter', { amount });
-                  toast.success('Counter offer submitted');
-                }}
-              >
-                Submit counter offer
-              </Button>
-            </div>
+            {canCounter ? (
+              <div className="rounded-2xl border bg-card p-4">
+                <p className="font-semibold">Submit counter offer</p>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  Propose a different weekly rent amount.
+                </p>
+                <Input
+                  type="number"
+                  className="mt-3"
+                  placeholder="Your proposed $/week"
+                  value={counter}
+                  onChange={(e) => setCounter(e.target.value)}
+                />
+                <Button
+                  variant="outline"
+                  className="mt-3 w-full"
+                  onClick={() => {
+                    const amount = Number(counter);
+                    if (!amount) return toast.error('Enter an amount');
+                    respondRentReview(review.id, 'counter', { amount });
+                    toast.success('Counter offer submitted');
+                  }}
+                >
+                  Submit counter offer
+                </Button>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+                <p className="text-sm font-semibold text-amber-950 dark:text-amber-50">
+                  Non-negotiable increase
+                </p>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  This rent review is not open to counter-offers. You can approve the new rent or
+                  decline and vacate.
+                </p>
+              </div>
+            )}
 
             <div className="rounded-2xl border border-destructive/25 bg-destructive/5 p-4">
               <div className="flex items-center gap-2">

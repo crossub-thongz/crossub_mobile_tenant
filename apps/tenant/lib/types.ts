@@ -320,6 +320,8 @@ export interface RentReviewCase {
   explanation?: string;
   reportAttachmentName?: string;
   status: RentReviewTenantStatus;
+  /** When false, tenant may only accept or decline — no counter-offer. */
+  rentNegotiable?: boolean | null;
   counterHistory: { at: string; amount: number; by: 'tenant' | 'agent' }[];
   moveOutDate?: string;
 }

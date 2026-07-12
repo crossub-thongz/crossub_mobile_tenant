@@ -351,6 +351,7 @@ export const RENT_REVIEWS: RentReviewCase[] = [
     explanation: 'Annual rent review based on market conditions.',
     reportAttachmentName: 'Market rent report — Southbank 2 bed.pdf',
     status: 'pending',
+    rentNegotiable: true,
     counterHistory: [],
   },
 ];

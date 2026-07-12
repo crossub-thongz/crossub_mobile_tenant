@@ -952,6 +952,10 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       payload?: { amount?: number; moveOutDate?: string; reason?: string },
     ) => {
       setRentReviews((prev) => {
+        const current = prev.find((r) => r.id === id);
+        if (action === 'counter' && current?.rentNegotiable !== true) {
+          return prev;
+        }
         const next = prev.map((r) => {
           if (r.id !== id) return r;
           if (action === 'accept') return { ...r, status: 'accepted' as const };
