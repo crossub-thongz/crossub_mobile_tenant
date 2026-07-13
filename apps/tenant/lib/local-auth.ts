@@ -42,7 +42,7 @@ function accountToUser(account: LocalAccount): AuthUser {
   return {
     id: account.id,
     email: account.email,
-    role: Role.STAFF,
+    role: Role.TENANT,
     status: UserStatus.ACTIVE,
     profileCompleted: true,
     firstName: account.firstName,

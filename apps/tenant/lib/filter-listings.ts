@@ -11,7 +11,7 @@ export const DEFAULT_PROPERTY_FILTERS: PropertyFilters = {
   hasOpenInspection: false,
   knownRentOnly: false,
   availableFrom: '',
-  sortBy: 'address_asc',
+  sortBy: 'newest_desc',
 };
 
 function listingHasKnownRent(rentWeekly: number | null): boolean {
@@ -76,6 +76,8 @@ export function sortListings(
   const sorted = [...listings];
   sorted.sort((a, b) => {
     switch (sortBy) {
+      case 'newest_desc':
+        return dateSortKey(b.listedAt, true) - dateSortKey(a.listedAt, true);
       case 'rent_asc':
         return rentSortKey(a.rentWeekly) - rentSortKey(b.rentWeekly);
       case 'rent_desc': {
@@ -88,8 +90,9 @@ export function sortListings(
       case 'inspection_asc':
         return dateSortKey(a.openInspectionAt, false) - dateSortKey(b.openInspectionAt, false);
       case 'address_asc':
-      default:
         return a.address.localeCompare(b.address, undefined, { sensitivity: 'base' });
+      default:
+        return dateSortKey(b.listedAt, true) - dateSortKey(a.listedAt, true);
     }
   });
   return sorted;

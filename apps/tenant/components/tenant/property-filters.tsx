@@ -14,6 +14,7 @@ const PROPERTY_TYPES = [
 ] as const;
 
 const SORT_OPTIONS: { value: ListingSortBy; label: string }[] = [
+  { value: 'newest_desc', label: 'Newest first' },
   { value: 'address_asc', label: 'Address (A–Z)' },
   { value: 'rent_asc', label: 'Rent (low to high)' },
   { value: 'rent_desc', label: 'Rent (high to low)' },

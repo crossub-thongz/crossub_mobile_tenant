@@ -130,6 +130,8 @@ export interface ListingProperty {
   availableFrom: string;
   leaseTerm?: string;
   openInspectionAt?: string;
+  /** When the agent opened the new-leasing case. */
+  listedAt?: string;
   features: string[];
   imageUrl?: string;
   /** Matches crossub_web property status (VACANT, SHOWING, OCCUPIED, …). */
@@ -390,6 +392,7 @@ export interface FinalStatement {
 }
 
 export type ListingSortBy =
+  | 'newest_desc'
   | 'address_asc'
   | 'rent_asc'
   | 'rent_desc'

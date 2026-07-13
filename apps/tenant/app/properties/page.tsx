@@ -15,13 +15,7 @@ import { formatCurrency, formatDateTime } from '@/lib/utils';
 export default function PropertiesPage() {
   const { listings, listingsLoading, listingsError } = useTenantData();
   const [filters, setFilters] = useState(DEFAULT_PROPERTY_FILTERS);
-  const availableListings = useMemo(
-    () =>
-      listings.filter(
-        (p) => p.canApply !== false || Boolean(p.openInspectionAt),
-      ),
-    [listings],
-  );
+  const availableListings = listings;
   const suburbs = useMemo(
     () =>
       [...new Set(availableListings.map((p) => p.suburb).filter(Boolean))].sort(),
@@ -33,7 +27,7 @@ export default function PropertiesPage() {
   );
 
   return (
-    <TenantShell title="New leasing properties">
+    <TenantShell title="Browse listings">
       {/* <p className="text-muted-foreground mb-4 text-sm">
         Same property registry as crossub_web Properties — loaded from staging via{' '}
         <code className="text-xs">{PUBLIC_LISTINGS_ENDPOINT}</code>.
@@ -60,7 +54,7 @@ export default function PropertiesPage() {
           <p className="text-muted-foreground rounded-xl border border-dashed p-6 text-center text-sm">
             {availableListings.length === 0
               ? listings.length === 0
-                ? 'No new leasing properties are available right now. Your property manager will list properties here when they open a new leasing case.'
+                ? 'No properties are available right now. Properties appear here when crossub_web has an active leasing cycle in open inspection, open report, or application approval.'
                 : 'No properties are accepting applications right now.'
               : 'No properties match your filters.'}
           </p>

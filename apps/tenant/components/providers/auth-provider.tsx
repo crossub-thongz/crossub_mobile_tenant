@@ -16,6 +16,11 @@ import {
   getLocalSessionUser,
   hasLocalAccessCookie,
 } from '@/lib/local-auth';
+import {
+  clearForeignPortalSession,
+  isTenantPortalUser,
+} from '@/lib/tenant-auth';
+import { isPublicRoute } from '@/constants/routes';
 
 type AuthStatus = 'loading' | 'authed' | 'guest';
 
@@ -32,18 +37,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [status, setStatus] = useState<AuthStatus>('loading');
 
+  const rejectForeignSession = useCallback(async () => {
+    await clearForeignPortalSession();
+    setUser(null);
+    setStatus('guest');
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname;
+      if (!isPublicRoute(path)) {
+        window.location.href = '/login?wrongPortal=1';
+      }
+    }
+  }, []);
+
   const refresh = useCallback(async () => {
     clearOrphanLocalAccessCookie();
 
     try {
       const data = await api.get<{ user: AuthUser }>('/auth/me');
+      if (!isTenantPortalUser(data.user)) {
+        await rejectForeignSession();
+        return;
+      }
       setUser(data.user);
       setStatus('authed');
       return;
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         const localUser = getLocalSessionUser();
-        if (localUser && hasLocalAccessCookie()) {
+        if (localUser && hasLocalAccessCookie() && isTenantPortalUser(localUser)) {
           setUser(localUser);
           setStatus('authed');
           return;
@@ -55,7 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const localUser = getLocalSessionUser();
-    if (localUser && hasLocalAccessCookie()) {
+    if (localUser && hasLocalAccessCookie() && isTenantPortalUser(localUser)) {
       setUser(localUser);
       setStatus('authed');
       return;
@@ -63,7 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     setUser(null);
     setStatus('guest');
-  }, []);
+  }, [rejectForeignSession]);
 
   const logout = useCallback(async () => {
     clearLocalSession();

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useLayoutEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -22,10 +23,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PASSWORD_MAX, PASSWORD_MIN } from '@/constants/auth';
+import { Role } from '@/constants/roles';
 import { ROUTES } from '@/constants/routes';
 import { ApiError, api } from '@/lib/api';
 import type { AuthUser } from '@/lib/auth-types';
 import { loginLocalAccount } from '@/lib/local-auth';
+import { clearForeignPortalSession, isTenantPortalUser } from '@/lib/tenant-auth';
 
 const loginSchema = z.object({
   email: z.string().email('Enter a valid email'),
@@ -39,12 +42,21 @@ type LoginValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const { refresh, status } = useAuth();
+  const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
+  const wrongPortal = searchParams.get('wrongPortal') === '1';
 
   useLayoutEffect(() => {
     if (status !== 'authed') return;
     window.location.replace(ROUTES.DASHBOARD);
   }, [status]);
+
+  useLayoutEffect(() => {
+    if (!wrongPortal) return;
+    toast.error(
+      'This portal is for tenants only. Staff accounts should use the CROSSUB admin portal.',
+    );
+  }, [wrongPortal]);
 
   const loginForm = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
@@ -53,7 +65,14 @@ export default function LoginPage() {
 
   const onLogin = async (values: LoginValues) => {
     try {
-      await api.post<{ user: AuthUser }>('/auth/login', values);
+      const result = await api.post<{ user: AuthUser }>('/auth/login', values);
+      if (!isTenantPortalUser(result.user)) {
+        await clearForeignPortalSession();
+        toast.error(
+          'This portal is for tenants only. Use the CROSSUB admin portal for staff accounts.',
+        );
+        return;
+      }
       await refresh();
       window.location.assign(ROUTES.DASHBOARD);
       return;
