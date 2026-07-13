@@ -65,6 +65,7 @@ export interface TenantDocumentView {
   name: string;
   category: string;
   uploadedAt: string;
+  url?: string;
 }
 
 const MS_PER_DAY = 86_400_000;
@@ -451,6 +452,7 @@ export function toTenantDocuments(
     name: asString(d.name) ?? 'Document',
     category: documentCategoryLabel(d.category),
     uploadedAt: asString(d.uploadedAt) ?? '',
+    url: asString(d.url) ?? undefined,
   }));
 }
 

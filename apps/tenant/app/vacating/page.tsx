@@ -17,7 +17,6 @@ export default function VacatingPage() {
     updateVacateDate,
     acceptVacatingSettlement,
     declineVacatingSettlement,
-    showPhase3Demo,
   } = useTenantData();
   const [starting, setStarting] = useState(false);
 
@@ -51,11 +50,6 @@ export default function VacatingPage() {
                 if your lease is ending soon.
               </p>
             </>
-          )}
-          {showPhase3Demo && (
-            <p className="text-muted-foreground text-xs">
-              Demo mode: enable SHOW_PHASE3_DEMO in mock-data for a sample end-leasing case.
-            </p>
           )}
         </div>
       </TenantShell>

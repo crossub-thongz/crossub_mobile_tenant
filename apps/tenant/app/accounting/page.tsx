@@ -10,7 +10,6 @@ import { TenantShell } from '@/components/layout/tenant-shell';
 import { InfoCard } from '@/components/tenant/info-card';
 import { PageIntro, SectionTitle } from '@/components/tenant/page-intro';
 import { StatusBadge } from '@/components/tenant/status-badge';
-import { getTenantDocument } from '@/lib/tenant-documents';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
 import { ROUTES, statementDetail } from '@/constants/routes';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -22,7 +21,7 @@ export default function AccountingPage() {
     paymentProofs,
     outstandingBalance,
     finalStatement,
-    showPhase3Demo,
+    storedDocuments,
   } = useTenantData();
 
   return (
@@ -52,7 +51,9 @@ export default function AccountingPage() {
         <section>
           <SectionTitle>Payment history</SectionTitle>
           <div className="space-y-3">
-            {rentReceipts.map((r) => (
+            {rentReceipts.map((r) => {
+              const doc = storedDocuments.find((d) => d.id === r.id);
+              return (
               <div
                 key={r.id}
                 className="rounded-2xl border border-border bg-card p-4"
@@ -69,10 +70,11 @@ export default function AccountingPage() {
                     <p className="text-muted-foreground text-sm">
                       {formatDate(r.periodStart)} – {formatDate(r.periodEnd)}
                     </p>
-                    {r.pdfAvailable && getTenantDocument(r.id) && (
+                    {r.pdfAvailable && doc?.url && (
                       <DocumentActions
                         documentId={r.id}
                         fileName={`Rent receipt — ${r.periodStart.slice(0, 7)}.pdf`}
+                        documentUrl={doc.url}
                         className="mt-3"
                         compact
                       />
@@ -80,7 +82,8 @@ export default function AccountingPage() {
                   </div>
                 </div>
               </div>
-            ))}
+            );
+            })}
           </div>
         </section>
 
@@ -107,7 +110,7 @@ export default function AccountingPage() {
           </section>
         )}
 
-        {(finalStatement || showPhase3Demo) && finalStatement && (
+        {finalStatement && (
           <Link
             href={statementDetail()}
             className="text-primary block rounded-2xl border border-dashed border-primary/30 bg-primary/5 py-4 text-center text-sm font-medium"

@@ -15,11 +15,9 @@ import {
 } from '@/lib/crossub-api/tenant-account-client';
 import { ROUTES } from '@/constants/routes';
 import type { Priority } from '@/lib/types';
-import { useDemoData } from '@/lib/utils';
 
 export default function NewMaintenancePage() {
   const router = useRouter();
-  const demo = useDemoData();
   const { addRepair } = useTenantData();
   const [submitting, setSubmitting] = useState(false);
 
@@ -36,59 +34,45 @@ export default function NewMaintenancePage() {
       .filter((f): f is File => f instanceof File && f.size > 0);
     setSubmitting(true);
     try {
-      if (!demo) {
-        // Stage photos FIRST so a failed upload blocks the submit (evidence is never lost),
-        // then create the request with the staged urls — no orphan request.
-        let photos: string[] = [];
+      let photos: string[] = [];
+      if (files.length) {
         try {
           photos = await uploadRepairPhotos(files);
         } catch {
           toast.error('Photo upload failed', {
             description: 'Please retry — your request was not submitted.',
           });
-          setSubmitting(false);
           return;
         }
-        const created = await apiSubmitMaintenanceRequest({
-          category,
-          description,
-          urgent,
-          ...(photos.length ? { photos } : {}),
-        });
-        const item = addRepair({
-          category,
-          description,
-          area,
-          urgency,
-          id: created.id,
-          // orderNumber is typed `string | {}` by the contract's nullable rendering — guard it.
-          trackingNumber:
-            typeof created.orderNumber === 'string' ? created.orderNumber : undefined,
-        });
-        toast.success('Request submitted', {
-          description: `Tracking ${item.trackingNumber}.`,
-        });
-        router.push(ROUTES.REPAIRS);
-        return;
       }
-      const created = addRepair({ category, description, area, urgency });
+      const created = await apiSubmitMaintenanceRequest({
+        category,
+        description,
+        urgent,
+        ...(photos.length ? { photos } : {}),
+      });
+      const item = addRepair({
+        category,
+        description,
+        area,
+        urgency,
+        id: created.id,
+        trackingNumber:
+          typeof created.orderNumber === 'string' ? created.orderNumber : undefined,
+      });
       toast.success('Request submitted', {
-        description: `Tracking ${created.trackingNumber}.`,
+        description: `Tracking ${item.trackingNumber}.`,
       });
       router.push(ROUTES.REPAIRS);
     } catch {
-      const created = addRepair({ category, description, area, urgency });
-      toast.success('Request saved', {
-        description: `Tracking ${created.trackingNumber}.`,
-      });
-      router.push(ROUTES.REPAIRS);
+      toast.error('Unable to submit repair request. Please try again.');
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <TenantShell title="New repair request" backHref={ROUTES.MAINTENANCE}>
+    <TenantShell title="New repair request" backHref={ROUTES.REPAIRS}>
       <form onSubmit={onSubmit} className="space-y-4">
         <div className="space-y-2">
           <Label>Category</Label>

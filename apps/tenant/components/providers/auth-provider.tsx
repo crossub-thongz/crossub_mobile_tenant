@@ -11,12 +11,6 @@ import {
 import { api, ApiError } from '@/lib/api';
 import type { AuthUser } from '@/lib/auth-types';
 import {
-  clearLocalSession,
-  clearOrphanLocalAccessCookie,
-  getLocalSessionUser,
-  hasLocalAccessCookie,
-} from '@/lib/local-auth';
-import {
   clearForeignPortalSession,
   isTenantPortalUser,
 } from '@/lib/tenant-auth';
@@ -50,8 +44,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const refresh = useCallback(async () => {
-    clearOrphanLocalAccessCookie();
-
     try {
       const data = await api.get<{ user: AuthUser }>('/auth/me');
       if (!isTenantPortalUser(data.user)) {
@@ -60,34 +52,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       setUser(data.user);
       setStatus('authed');
-      return;
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
-        const localUser = getLocalSessionUser();
-        if (localUser && hasLocalAccessCookie() && isTenantPortalUser(localUser)) {
-          setUser(localUser);
-          setStatus('authed');
-          return;
-        }
         setUser(null);
         setStatus('guest');
         return;
       }
+      setUser(null);
+      setStatus('guest');
     }
-
-    const localUser = getLocalSessionUser();
-    if (localUser && hasLocalAccessCookie() && isTenantPortalUser(localUser)) {
-      setUser(localUser);
-      setStatus('authed');
-      return;
-    }
-
-    setUser(null);
-    setStatus('guest');
   }, [rejectForeignSession]);
 
   const logout = useCallback(async () => {
-    clearLocalSession();
     try {
       await api.post('/auth/logout');
     } catch {

@@ -6,11 +6,11 @@ import { TenantShell } from '@/components/layout/tenant-shell';
 import { DocumentActions } from '@/components/tenant/document-actions';
 import { StatusBadge } from '@/components/tenant/status-badge';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
-import { getTenantDocument } from '@/lib/tenant-documents';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
 export default function LeasePage() {
-  const { lease } = useTenantData();
+  const { lease, storedDocuments } = useTenantData();
+  const leaseDocuments = storedDocuments.filter((d) => d.category === 'Lease');
 
   if (!lease) {
     return (
@@ -42,36 +42,37 @@ export default function LeasePage() {
         <section>
           <h2 className="text-sm font-semibold">Documents</h2>
           <ul className="mt-2 space-y-3">
-            {lease.documents.map((d) => {
-              const available = Boolean(getTenantDocument(d.id));
-              return (
-                <li key={d.id} className="rounded-lg border bg-card p-3">
-                  <div className="flex items-start gap-3">
-                    <div className="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-lg">
-                      <FileText className="size-4" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium">{d.name}</p>
-                      <span className="text-muted-foreground text-xs">
-                        Uploaded {formatDate(d.uploadedAt)}
-                      </span>
-                      {available ? (
-                        <DocumentActions
-                          documentId={d.id}
-                          fileName={d.name}
-                          className="mt-3"
-                          compact
-                        />
-                      ) : (
-                        <p className="text-muted-foreground mt-2 text-xs">
-                          Preview not available for this file yet.
-                        </p>
-                      )}
-                    </div>
+            {leaseDocuments.map((d) => (
+              <li key={d.id} className="rounded-lg border bg-card p-3">
+                <div className="flex items-start gap-3">
+                  <div className="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-lg">
+                    <FileText className="size-4" />
                   </div>
-                </li>
-              );
-            })}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">{d.name}</p>
+                    <span className="text-muted-foreground text-xs">
+                      Uploaded {formatDate(d.uploadedAt)}
+                    </span>
+                    {d.url ? (
+                      <DocumentActions
+                        documentId={d.id}
+                        fileName={d.name}
+                        documentUrl={d.url}
+                        className="mt-3"
+                        compact
+                      />
+                    ) : (
+                      <p className="text-muted-foreground mt-2 text-xs">
+                        Preview not available for this file yet.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </li>
+            ))}
+            {leaseDocuments.length === 0 && (
+              <p className="text-muted-foreground text-sm">No lease documents uploaded yet.</p>
+            )}
           </ul>
         </section>
       </div>

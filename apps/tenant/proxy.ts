@@ -10,7 +10,7 @@ export function proxy(req: NextRequest) {
   // Guests land on browse; signed-in tenants land on home.
   if (path === '/' || path === '') {
     const url = req.nextUrl.clone();
-    url.pathname = hasAccess ? ROUTES.DASHBOARD : ROUTES.PROPERTIES;
+    url.pathname = hasAccess ? ROUTES.PROPERTY : ROUTES.PROPERTIES;
     return NextResponse.redirect(url);
   }
 
@@ -28,7 +28,7 @@ export function proxy(req: NextRequest) {
     req.nextUrl.searchParams.get('session') !== 'expired'
   ) {
     const url = req.nextUrl.clone();
-    url.pathname = ROUTES.DASHBOARD;
+    url.pathname = ROUTES.PROPERTY;
     return NextResponse.redirect(url);
   }
 

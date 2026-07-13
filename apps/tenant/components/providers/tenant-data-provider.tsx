@@ -73,7 +73,6 @@ import {
   type TenantLeasingOnboardingDto,
 } from '@/lib/crossub-api/tenant-leasing-client';
 import { categoryToMessageType } from '@/lib/message-categories';
-import { SEED_THREAD_MESSAGES, mergeThreadMessages } from '@/lib/message-threads';
 import { loadInitialState, type LoadedTenantState } from '@/lib/tenant-data-state';
 import {
   nextApplicationRef,
@@ -108,7 +107,6 @@ import type {
   VacatingCase,
   TerminationNotice,
 } from '@/lib/types';
-import { useDemoData } from '@/lib/utils';
 
 export interface NewRepairInput {
   category: string;
@@ -119,7 +117,7 @@ export interface NewRepairInput {
   /**
    * Server-assigned id/tracking from a successful real `POST /tenant/maintenance-requests`.
    * When present, the optimistic card uses them so the next `refresh()` reconciles to the
-   * same row (no duplicate). Omitted in demo mode → a local id is generated.
+   * same row (no duplicate).
    */
   id?: string;
   trackingNumber?: string;
@@ -177,10 +175,9 @@ interface TenantDataContextValue {
   arrears: ArrearsNotice | null;
   paymentProofs: PaymentProofRecord[];
   outstandingBalance: OutstandingBalance | null;
-  showPhase3Demo: boolean;
   inspections: InspectionSummary[];
   terminationNotice: TerminationNotice | null;
-  storedDocuments: { id: string; name: string; category: string; uploadedAt: string }[];
+  storedDocuments: TenantDocumentView[];
   addRepair: (input: NewRepairInput) => MaintenanceRequest;
   addApplication: (input: NewApplicationInput) => RentalApplication;
   addMessageThread: (input: NewMessageInput) => MessageThread;
@@ -230,7 +227,6 @@ function applyLoadedState(
     setRenewal: (v: RenewalDecision | null) => void;
     setTerminationNotice: (v: TerminationNotice | null) => void;
     setFinalStatement: (v: FinalStatement | null) => void;
-    setShowPhase3Demo: (v: boolean) => void;
     setVacatingDisplay: (v: VacatingCase | null) => void;
   },
 ) {
@@ -253,13 +249,11 @@ function applyLoadedState(
   setters.setRenewal(loaded.renewal);
   setters.setTerminationNotice(loaded.terminationNotice);
   setters.setFinalStatement(loaded.finalStatement);
-  setters.setShowPhase3Demo(loaded.showPhase3Demo);
   setters.setVacatingDisplay(loaded.vacating);
 }
 
 export function TenantDataProvider({ children }: { children: React.ReactNode }) {
   const { status } = useAuth();
-  const demo = useDemoData();
 
   const [loading, setLoading] = useState(true);
   const [apiConnected, setApiConnected] = useState(false);
@@ -269,7 +263,6 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
   const [newLeasingCases, setNewLeasingCases] = useState<NewLeasingCase[]>([]);
   const [messages, setMessages] = useState<MessageThread[]>([]);
   // Live-mode per-thread message history (keyed by thread id, incl. optimistic temp ids).
-  // Empty in demo mode — there the screens read from the mock SEED/store instead.
   const [threadMessagesById, setThreadMessagesById] = useState<
     Record<string, ThreadMessage[]>
   >({});
@@ -292,14 +285,13 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     useState<TenantLeasingOnboardingDto | null>(null);
   const [pendingActions, setPendingActions] = useState<PendingAction[]>([]);
   const [inspections, setInspections] = useState<InspectionSummary[]>([]);
-  // Live-mode documents from the API. null = not loaded (demo) → the derived list is used.
+  // Live-mode documents from the API.
   const [apiDocuments, setApiDocuments] = useState<TenantDocumentView[] | null>(
     null,
   );
   const [renewal, setRenewal] = useState<RenewalDecision | null>(null);
   const [terminationNotice, setTerminationNotice] = useState<TerminationNotice | null>(null);
   const [finalStatement, setFinalStatement] = useState<FinalStatement | null>(null);
-  const [showPhase3Demo, setShowPhase3Demo] = useState(false);
   const [listings, setListings] = useState<ListingProperty[]>([]);
   const [listingsLoading, setListingsLoading] = useState(true);
   const [listingsError, setListingsError] = useState<string | null>(null);
@@ -325,7 +317,6 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       setRenewal,
       setTerminationNotice,
       setFinalStatement,
-      setShowPhase3Demo,
       setVacatingDisplay,
     }),
     [],
@@ -388,7 +379,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     const loaded = loadInitialState();
     applyLoadedState(loaded, setters);
 
-    if (demo || status !== 'authed') {
+    if (status !== 'authed') {
       setApiConnected(false);
       setLoading(false);
       return;
@@ -562,7 +553,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
 
     setApiConnected(connected);
     setLoading(false);
-  }, [demo, status, setters, loadLeasingOnboarding]);
+  }, [status, setters, loadLeasingOnboarding]);
 
   useEffect(() => {
     void refresh();
@@ -626,14 +617,8 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
   );
 
   const getThreadMessages = useCallback(
-    (threadId: string): ThreadMessage[] => {
-      // Live mode: the thread's history was loaded with the inbox (or appended
-      // optimistically). Demo mode: read from the mock seed + per-browser store.
-      if (!demo) return threadMessagesById[threadId] ?? [];
-      const stored = readTenantStore();
-      return mergeThreadMessages(threadId, SEED_THREAD_MESSAGES, stored.threadMessages);
-    },
-    [demo, threadMessagesById],
+    (threadId: string): ThreadMessage[] => threadMessagesById[threadId] ?? [],
+    [threadMessagesById],
   );
 
   const sendThreadMessage = useCallback(
@@ -651,65 +636,32 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
         channel: 'app',
       };
 
-      if (!demo) {
-        // Optimistic append to the live history + bump the inbox row, then POST the reply
-        // to the real conversation (via serverThreadId for a just-created thread) and
-        // re-sync the history from the server's authoritative response.
-        setThreadMessagesById((prev) => ({
-          ...prev,
-          [threadId]: [...(prev[threadId] ?? []), outbound],
-        }));
-        setMessages((prev) =>
-          prev.map((t) =>
-            t.id === threadId
-              ? { ...t, lastMessage: trimmed, lastAt: now, unread: 0 }
-              : t,
-          ),
-        );
-        const thread = messages.find((m) => m.id === threadId);
-        const realId = thread?.serverThreadId ?? threadId;
-        void replyToTenantMessageThread(realId, { body: trimmed })
-          .then((updated) => {
-            const { messagesById } = toMessageThreads([updated]);
-            setThreadMessagesById((prev) => ({
-              ...prev,
-              [threadId]: messagesById[updated.id] ?? prev[threadId],
-            }));
-          })
-          .catch(() => {
-            /* keep the optimistic message; a later refresh reconciles */
-          });
-        return;
-      }
-
-      const stored = readTenantStore();
-      const threadMessages = {
-        ...(stored.threadMessages ?? {}),
-        [threadId]: [...(stored.threadMessages?.[threadId] ?? []), outbound],
-      };
-      setMessages((prev) => {
-        const next = prev.map((t) => {
-          if (t.id !== threadId) return t;
-          const updated = {
-            ...t,
-            lastMessage: trimmed,
-            lastAt: now,
-            unread: 0,
-          };
-          if (to === 'contractor' && !t.contractorEnabled) {
-            return {
-              ...updated,
-              contractorEnabled: true,
-              contractorName: t.contractorName ?? 'Contractor',
-            };
-          }
-          return updated;
+      setThreadMessagesById((prev) => ({
+        ...prev,
+        [threadId]: [...(prev[threadId] ?? []), outbound],
+      }));
+      setMessages((prev) =>
+        prev.map((t) =>
+          t.id === threadId
+            ? { ...t, lastMessage: trimmed, lastAt: now, unread: 0 }
+            : t,
+        ),
+      );
+      const thread = messages.find((m) => m.id === threadId);
+      const realId = thread?.serverThreadId ?? threadId;
+      void replyToTenantMessageThread(realId, { body: trimmed })
+        .then((updated) => {
+          const { messagesById } = toMessageThreads([updated]);
+          setThreadMessagesById((prev) => ({
+            ...prev,
+            [threadId]: messagesById[updated.id] ?? prev[threadId],
+          }));
+        })
+        .catch(() => {
+          /* keep the optimistic message; a later refresh reconciles */
         });
-        patchTenantStore( { messages: next, threadMessages });
-        return next;
-      });
     },
-    [demo, messages],
+    [messages],
   );
 
   const addMessageThread = useCallback(
@@ -744,50 +696,33 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
         channel: 'app',
       };
 
-      if (!demo) {
-        // Optimistic thread (temp id) so the compose screen can navigate immediately, then
-        // POST the real conversation and stamp serverThreadId for subsequent replies. The
-        // inbox keeps keying off the temp id so the just-opened detail view keeps working.
-        setMessages((prev) => [item, ...prev]);
-        setThreadMessagesById((prev) => ({ ...prev, [id]: [outbound] }));
-        void createTenantMessageThread({
-          subject: item.subject,
-          body: trimmedBody,
-          department: categoryToDepartment(input.category),
+      setMessages((prev) => [item, ...prev]);
+      setThreadMessagesById((prev) => ({ ...prev, [id]: [outbound] }));
+      void createTenantMessageThread({
+        subject: item.subject,
+        body: trimmedBody,
+        department: categoryToDepartment(input.category),
+      })
+        .then((created) => {
+          setMessages((prev) =>
+            prev.map((t) =>
+              t.id === id
+                ? { ...t, serverThreadId: created.id, lastAt: created.lastAt ?? t.lastAt }
+                : t,
+            ),
+          );
+          const { messagesById } = toMessageThreads([created]);
+          setThreadMessagesById((prev) => ({
+            ...prev,
+            [id]: messagesById[created.id] ?? prev[id],
+          }));
         })
-          .then((created) => {
-            setMessages((prev) =>
-              prev.map((t) =>
-                t.id === id
-                  ? { ...t, serverThreadId: created.id, lastAt: created.lastAt ?? t.lastAt }
-                  : t,
-              ),
-            );
-            const { messagesById } = toMessageThreads([created]);
-            setThreadMessagesById((prev) => ({
-              ...prev,
-              [id]: messagesById[created.id] ?? prev[id],
-            }));
-          })
-          .catch(() => {
-            /* keep optimistic; a later refresh reconciles */
-          });
-        return item;
-      }
-
-      const stored = readTenantStore();
-      const threadMessages = {
-        ...(stored.threadMessages ?? {}),
-        [id]: [outbound],
-      };
-      setMessages((prev) => {
-        const next = [item, ...prev];
-        patchTenantStore( { messages: next, threadMessages });
-        return next;
-      });
+        .catch(() => {
+          /* keep optimistic; a later refresh reconciles */
+        });
       return item;
     },
-    [demo, lease, leaseId],
+    [lease, leaseId],
   );
 
   const recordRentPayment = useCallback(
@@ -825,30 +760,19 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
 
   const markNotificationRead = useCallback(
     (id: string) => {
-      // Optimistic flip in both modes.
       setNotifications((prev) =>
         prev.map((n) => (n.id === id ? { ...n, read: true } : n)),
       );
-      if (!demo) {
-        // Persist to the real notification; a failure leaves the optimistic flip (a later
-        // refresh reconciles). Ignore the synthetic temp/seed ids that aren't real rows.
-        void markTenantNotificationRead(id).catch(() => {});
-        return;
-      }
-      patchTenantStore({
-        notifications: notifications.map((n) =>
-          n.id === id ? { ...n, read: true } : n,
-        ),
-      });
+      void markTenantNotificationRead(id).catch(() => {});
     },
-    [demo, notifications],
+    [],
   );
 
   const confirmIngoingSection = useCallback(
     async (sectionId: string, dispute?: string) => {
       if (!ingoing) return;
 
-      if (demo || !apiConnected) {
+      if (!apiConnected) {
         setIngoing((prev) => {
           if (!prev) return prev;
           const sections = prev.sections.map((s) =>
@@ -928,14 +852,14 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
         );
       }
     },
-    [demo, apiConnected, ingoing],
+    [apiConnected, ingoing],
   );
 
   const confirmOutgoingSection = useCallback(
     async (sectionId: string, dispute?: string) => {
       if (!outgoing) return;
 
-      if (demo || !apiConnected) {
+      if (!apiConnected) {
         setOutgoing((prev) => {
           if (!prev) return prev;
           const sections = prev.sections.map((s) =>
@@ -1009,7 +933,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
         );
       }
     },
-    [demo, apiConnected, outgoing],
+    [apiConnected, outgoing],
   );
 
   const approveRepairCompletion = useCallback(
@@ -1053,7 +977,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
         patchTenantStore({ vacating: next });
       };
 
-      if (demo || status !== 'authed') {
+      if (status !== 'authed') {
         applyLocalVacating();
         return;
       }
@@ -1075,7 +999,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
         applyLocalVacating();
       }
     },
-    [demo, propertyAddress, status],
+    [propertyAddress, status],
   );
 
   const recordVacatingDate = useCallback(
@@ -1147,14 +1071,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
 
   const acceptVacatingSettlement = useCallback(
     async (caseId: string) => {
-      if (demo || status !== 'authed') {
-        setVacatingDisplay((prev) =>
-          prev && prev.id === caseId
-            ? { ...prev, tenantSettlementStatus: 'accepted' }
-            : prev,
-        );
-        return;
-      }
+      if (status !== 'authed') return;
       try {
         const updated = await acceptTenantVacatingSettlement(caseId);
         applyVacatingCaseUpdate(toTenantVacatingCases([updated])[0] ?? null);
@@ -1162,19 +1079,12 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
         /* keep current state; a later refresh reconciles */
       }
     },
-    [demo, status, applyVacatingCaseUpdate],
+    [status, applyVacatingCaseUpdate],
   );
 
   const declineVacatingSettlement = useCallback(
     async (caseId: string, reason: string) => {
-      if (demo || status !== 'authed') {
-        setVacatingDisplay((prev) =>
-          prev && prev.id === caseId
-            ? { ...prev, tenantSettlementStatus: 'declined' }
-            : prev,
-        );
-        return;
-      }
+      if (status !== 'authed') return;
       try {
         const updated = await declineTenantVacatingSettlement(caseId, { reason });
         applyVacatingCaseUpdate(toTenantVacatingCases([updated])[0] ?? null);
@@ -1182,7 +1092,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
         /* keep current state; a later refresh reconciles */
       }
     },
-    [demo, status, applyVacatingCaseUpdate],
+    [status, applyVacatingCaseUpdate],
   );
 
   const respondRentReview = useCallback(
@@ -1225,7 +1135,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
         });
       };
 
-      if (demo || status !== 'authed') {
+      if (status !== 'authed') {
         applyLocal();
         return;
       }
@@ -1247,22 +1157,17 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
         });
       } catch {
         applyLocal();
-        if (action === 'reject' && payload?.moveOutDate && demo) {
-          await startVacating(payload.moveOutDate, payload.reason);
-        }
       }
     },
-    [demo, status, startVacating],
+    [status, startVacating],
   );
 
   const phase: TenantLifecyclePhase = lease ? 'active' : 'searching';
 
   const storedDocuments = useMemo(() => {
-    // Live mode: the real aggregated documents (inspection/maintenance/lease PDFs) REPLACE
-    // the derived demo list. Demo mode (apiDocuments null): the derived list stands.
     if (apiDocuments !== null) return apiDocuments;
 
-    const docs: { id: string; name: string; category: string; uploadedAt: string }[] = [];
+    const docs: TenantDocumentView[] = [];
     if (lease) {
       docs.push(
         ...lease.documents.map((d) => ({
@@ -1355,7 +1260,6 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       arrears,
       paymentProofs,
       outstandingBalance,
-      showPhase3Demo,
       storedDocuments,
       markNotificationRead,
       confirmIngoingSection,
@@ -1413,7 +1317,6 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       arrears,
       paymentProofs,
       outstandingBalance,
-      showPhase3Demo,
       storedDocuments,
     ],
   );

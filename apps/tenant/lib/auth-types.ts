@@ -9,4 +9,6 @@ export interface AuthUser {
   firstName?: string | null;
   lastName?: string | null;
   phone?: string | null;
+  systemAccessAgreementRequired?: boolean;
+  systemAccessAccepted?: boolean;
 }

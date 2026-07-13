@@ -26,6 +26,8 @@ export const ROUTES = {
   STATEMENT: '/accounting/statement',
   DOCUMENTS: '/documents',
   TUTORIAL: '/tutorial',
+  ONBOARDING_GUIDE: '/onboarding-guide',
+  SYSTEM_ACCESS_AGREEMENT: '/system-access-agreement',
 } as const;
 
 export const PUBLIC_ROUTE_PATTERNS = [

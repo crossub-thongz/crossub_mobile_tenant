@@ -2,7 +2,6 @@ import { COOKIE_ACCESS, COOKIE_REFRESH } from '@/constants/auth';
 import { Role } from '@/constants/roles';
 import type { AuthUser } from '@/lib/auth-types';
 import { api } from '@/lib/api';
-import { clearLocalSession } from '@/lib/local-auth';
 
 /** Only real tenant users may use this portal (not staff/admin mobile roles). */
 export function isTenantPortalUser(user: Pick<AuthUser, 'role'> | null | undefined): boolean {
@@ -11,7 +10,6 @@ export function isTenantPortalUser(user: Pick<AuthUser, 'role'> | null | undefin
 
 /** Clear a session issued by another CROSSUB portal (e.g. admin web on localhost). */
 export async function clearForeignPortalSession(): Promise<void> {
-  clearLocalSession();
   try {
     await api.post('/auth/logout');
   } catch {

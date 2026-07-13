@@ -5,7 +5,8 @@ import { Inter } from 'next/font/google';
 import { AuthProvider } from '@/components/providers/auth-provider';
 import { TenantDataProvider } from '@/components/providers/tenant-data-provider';
 import { ThemeProvider } from '@/components/theme-provider';
-import { TutorialGate } from '@/components/tenant/tutorial-gate';
+import { SystemAccessAgreementGate } from '@/components/auth/system-access-agreement-gate';
+import { OnboardingGuideGate } from '@/components/tenant/onboarding-guide-gate';
 import { Toaster } from '@/components/ui/sonner';
 import './globals.css';
 
@@ -40,7 +41,8 @@ export default function RootLayout({
         <ThemeProvider>
           <AuthProvider>
             <TenantDataProvider>
-              <TutorialGate />
+              <SystemAccessAgreementGate />
+              <OnboardingGuideGate />
               {children}
             </TenantDataProvider>
           </AuthProvider>

@@ -1,35 +1,4 @@
-import {
-  APPLICATIONS,
-  ARREARS,
-  DEMO_FINAL_STATEMENT,
-  DEMO_VACATING,
-  FINAL_STATEMENT,
-  INGOING_REPORT,
-  INSPECTIONS_LIST,
-  LEASE,
-  MAINTENANCE as DEMO_MAINTENANCE,
-  MESSAGE_THREADS,
-  NOTIFICATIONS as DEMO_NOTIFICATIONS,
-  ONBOARDING_STEPS,
-  OUTGOING_REPORT,
-  OUTSTANDING_BALANCE,
-  PAYMENT_PROOFS,
-  PENDING_ACTIONS,
-  RENEWAL,
-  RENT_RECEIPTS,
-  RENT_REVIEWS,
-  SHOW_PHASE3_DEMO,
-  TERMINATION_NOTICE,
-  VACATING,
-} from '@/lib/mock-data';
-import { resolveUseDemoData } from '@/lib/demo-mode';
-import {
-  mergeApplications,
-  mergeMaintenance,
-  mergeMessages,
-  mergeNotifications,
-  readTenantStore,
-} from '@/lib/tenant-store';
+import { readTenantStore } from '@/lib/tenant-store';
 import type {
   ArrearsNotice,
   FinalStatement,
@@ -72,29 +41,12 @@ export interface LoadedTenantState {
   renewal: RenewalDecision | null;
   terminationNotice: TerminationNotice | null;
   finalStatement: FinalStatement | null;
-  showPhase3Demo: boolean;
   vacating: VacatingCase | null;
 }
 
-const EMPTY_OUTGOING: OutgoingReport = {
-  id: 'out-empty',
-  propertyAddress: '—',
-  status: 'report_sent',
-  sections: [],
-  confirmedCount: 0,
-};
-
-function mergeRentReceipts(
-  seed: RentReceipt[],
-  persisted: RentReceipt[] | undefined,
-): RentReceipt[] {
-  if (!persisted?.length) return seed;
-  const seedIds = new Set(seed.map((r) => r.id));
-  const added = persisted.filter((r) => !seedIds.has(r.id));
-  return [...added, ...seed];
-}
-
-function loadLiveInitialState(stored: ReturnType<typeof readTenantStore>): LoadedTenantState {
+/** Browser-persisted optimistic state before the API refresh reconciles. */
+export function loadInitialState(): LoadedTenantState {
+  const stored = readTenantStore();
   return {
     maintenance: stored.maintenance ?? [],
     applications: stored.applications ?? [],
@@ -115,47 +67,6 @@ function loadLiveInitialState(stored: ReturnType<typeof readTenantStore>): Loade
     renewal: null,
     terminationNotice: null,
     finalStatement: null,
-    showPhase3Demo: false,
     vacating: stored.vacating ?? null,
-  };
-}
-
-/** Demo tenancy + per-browser persisted changes when `NEXT_PUBLIC_USE_DEMO_DATA=true`. */
-export function loadInitialState(): LoadedTenantState {
-  const stored = readTenantStore();
-  if (!resolveUseDemoData()) {
-    return loadLiveInitialState(stored);
-  }
-
-  return {
-    maintenance: mergeMaintenance(DEMO_MAINTENANCE, stored.maintenance),
-    applications: mergeApplications(APPLICATIONS, stored.applications),
-    messages: mergeMessages(MESSAGE_THREADS, stored.messages),
-    notifications: mergeNotifications(DEMO_NOTIFICATIONS, stored.notifications),
-    ingoing: stored.ingoingReport ?? INGOING_REPORT,
-    outgoing: stored.outgoingReport ?? OUTGOING_REPORT,
-    rentReviews: stored.rentReviews.length ? stored.rentReviews : RENT_REVIEWS,
-    vacatingState:
-      stored.vacating?.status === 'open' ? stored.vacating : VACATING,
-    lease: LEASE,
-    rentReceipts: mergeRentReceipts(RENT_RECEIPTS, stored.rentReceipts),
-    arrears: stored.arrears !== undefined ? stored.arrears : ARREARS,
-    outstandingBalance:
-      stored.outstandingBalance !== undefined
-        ? stored.outstandingBalance
-        : OUTSTANDING_BALANCE,
-    paymentProofs: PAYMENT_PROOFS,
-    onboardingSteps: ONBOARDING_STEPS,
-    pendingActions: PENDING_ACTIONS,
-    inspections: INSPECTIONS_LIST,
-    renewal: RENEWAL,
-    terminationNotice: TERMINATION_NOTICE,
-    finalStatement: SHOW_PHASE3_DEMO ? DEMO_FINAL_STATEMENT : FINAL_STATEMENT,
-    showPhase3Demo: SHOW_PHASE3_DEMO,
-    vacating: SHOW_PHASE3_DEMO
-      ? DEMO_VACATING
-      : stored.vacating?.status === 'open'
-        ? stored.vacating
-        : VACATING,
   };
 }

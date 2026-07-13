@@ -23,12 +23,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PASSWORD_MAX, PASSWORD_MIN } from '@/constants/auth';
-import { Role } from '@/constants/roles';
 import { ROUTES } from '@/constants/routes';
 import { ApiError, api } from '@/lib/api';
 import type { AuthUser } from '@/lib/auth-types';
-import { loginLocalAccount } from '@/lib/local-auth';
 import { clearForeignPortalSession, isTenantPortalUser } from '@/lib/tenant-auth';
+import { tenantPostAuthPath } from '@/lib/tenant-post-auth';
 
 const loginSchema = z.object({
   email: z.string().email('Enter a valid email'),
@@ -41,15 +40,15 @@ const loginSchema = z.object({
 type LoginValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
-  const { refresh, status } = useAuth();
+  const { refresh, status, user } = useAuth();
   const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
   const wrongPortal = searchParams.get('wrongPortal') === '1';
 
   useLayoutEffect(() => {
-    if (status !== 'authed') return;
-    window.location.replace(ROUTES.DASHBOARD);
-  }, [status]);
+    if (status !== 'authed' || !user) return;
+    window.location.replace(tenantPostAuthPath(user));
+  }, [status, user]);
 
   useLayoutEffect(() => {
     if (!wrongPortal) return;
@@ -74,27 +73,19 @@ export default function LoginPage() {
         return;
       }
       await refresh();
-      window.location.assign(ROUTES.DASHBOARD);
+      window.location.assign(tenantPostAuthPath(result.user));
       return;
     } catch (err) {
-      if (err instanceof ApiError && err.status !== 401 && err.status >= 400) {
-        if (err.status >= 500 || err.status === 0) {
-          /* API unreachable — fall through to the local demo account */
-        } else if (err.status !== 401) {
-          toast.error(`Sign in failed (${err.status}). Is crossub_web API running?`);
+      if (err instanceof ApiError) {
+        if (err.status === 401) {
+          toast.error('Invalid email or password.');
           return;
         }
+        toast.error(`Sign in failed (${err.status}). Is crossub_web API running?`);
+        return;
       }
+      toast.error('Unable to sign in. Check your connection and try again.');
     }
-
-    const localUser = loginLocalAccount(values.email, values.password);
-    if (localUser) {
-      await refresh();
-      window.location.assign(ROUTES.DASHBOARD);
-      return;
-    }
-
-    toast.error('Invalid email or password.');
   };
 
   const isSubmitting = loginForm.formState.isSubmitting;
