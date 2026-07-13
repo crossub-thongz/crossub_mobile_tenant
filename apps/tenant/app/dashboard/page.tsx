@@ -4,6 +4,8 @@ import {
   AlertTriangle,
   Building2,
   ClipboardList,
+  DoorOpen,
+  KeyRound,
   MessageSquare,
   Wallet,
   Wrench,
@@ -17,11 +19,29 @@ import { useAuth } from '@/components/providers/auth-provider';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
 import {
   ingoingReport as ingoingReportPath,
+  outgoingReport as outgoingReportPath,
+  routineInspection as routineInspectionPath,
   rentReviewDetail,
   repairDetail,
   ROUTES,
 } from '@/constants/routes';
 import { hrefWithFrom } from '@/lib/back-navigation';
+import { findUrgentIngoingInspection, needsIngoingConfirmationAction } from '@/lib/ingoing-inspection';
+import {
+  findUrgentOutgoingInspection,
+  needsOutgoingConfirmationAction,
+} from '@/lib/outgoing-inspection';
+import {
+  findUrgentRoutineInspection,
+  needsRoutineInspectionAction,
+} from '@/lib/routine-inspection';
+import { findPendingRentReview } from '@/lib/rent-review';
+import { needsVacatingSettlementAction } from '@/lib/end-leasing';
+import {
+  findUrgentNewLeasingCase,
+  needsNewLeasingOnboardingAction,
+  NEW_LEASING_STEP_LABEL,
+} from '@/lib/new-leasing';
 import { displayName, formatCurrency } from '@/lib/utils';
 
 export default function DashboardPage() {
@@ -29,19 +49,30 @@ export default function DashboardPage() {
   const {
     lease,
     ingoingReport,
+    ingoingInspections,
+    outgoingReport,
+    outgoingInspections,
+    routineInspections,
     maintenance,
     rentReviews,
+    newLeasingCases,
+    onboardingSteps,
     messages,
     rentReceipts,
     inspections,
     terminationNotice,
+    vacatingCase,
   } = useTenantData();
 
   const openRepairs = maintenance.filter(
     (m) => m.status !== 'closed' && !m.tenantCompletionApproved,
   );
   const unreadMessages = messages.reduce((s, m) => s + m.unread, 0);
-  const pendingRentReview = rentReviews.find((r) => r.status === 'pending');
+  const urgentIngoing = findUrgentIngoingInspection(ingoingInspections);
+  const urgentOutgoing = findUrgentOutgoingInspection(outgoingInspections);
+  const urgentRoutine = findUrgentRoutineInspection(routineInspections);
+  const pendingRentReview = findPendingRentReview(rentReviews);
+  const urgentNewLeasing = findUrgentNewLeasingCase(newLeasingCases, onboardingSteps);
   const needsCompletion = openRepairs.some((r) => r.completionApprovalPending);
 
   const summaries = [
@@ -55,12 +86,17 @@ export default function DashboardPage() {
     },
     {
       title: 'Inspection',
-      summary: ingoingReport
-        ? `Ingoing ${ingoingReport.confirmedCount}/${ingoingReport.sections.length} confirmed · ${inspections.length} on file`
-        : `${inspections.length} inspection record(s)`,
+      summary:
+        urgentIngoing && ingoingReport
+          ? `Ingoing ${ingoingReport.confirmedCount}/${ingoingReport.sections.length} confirmed · ${inspections.length} on file`
+          : `${inspections.length} inspection record(s)`,
       href: ROUTES.PROPERTY,
       badge:
-        ingoingReport && ingoingReport.status !== 'confirmed' ? 'Action' : undefined,
+        urgentIngoing &&
+        ingoingReport &&
+        needsIngoingConfirmationAction(ingoingReport)
+          ? 'Action'
+          : undefined,
       icon: ClipboardList,
     },
     {
@@ -102,6 +138,24 @@ export default function DashboardPage() {
       icon: AlertTriangle,
       variant: 'urgent' as const,
     },
+    urgentNewLeasing &&
+      needsNewLeasingOnboardingAction(urgentNewLeasing, onboardingSteps) && {
+        title: 'New lease onboarding',
+        summary: `${urgentNewLeasing.propertyAddress} · complete move-in steps`,
+        href: ROUTES.ONBOARDING,
+        badge: 'Required',
+        icon: KeyRound,
+        variant: 'urgent' as const,
+      },
+    urgentNewLeasing &&
+      !needsNewLeasingOnboardingAction(urgentNewLeasing, onboardingSteps) && {
+        title: 'New leasing',
+        summary: `${NEW_LEASING_STEP_LABEL[urgentNewLeasing.lifecycleStep]} · ${urgentNewLeasing.propertyAddress}`,
+        href: ROUTES.APPLICATIONS,
+        badge: 'Active',
+        icon: KeyRound,
+        variant: 'urgent' as const,
+      },
     pendingRentReview && {
       title: 'Rent review',
       summary: `Proposed ${formatCurrency(pendingRentReview.proposedRentWeekly)}/week — ${
@@ -114,6 +168,29 @@ export default function DashboardPage() {
       icon: Wallet,
       variant: 'urgent' as const,
     },
+    vacatingCase &&
+      needsVacatingSettlementAction(vacatingCase) && {
+        title: 'End of lease settlement',
+        summary: `Confirm bond settlement · respond by ${
+          vacatingCase.tenantConfirmationDueAt
+            ? new Date(vacatingCase.tenantConfirmationDueAt).toLocaleDateString()
+            : 'deadline'
+        }`,
+        href: ROUTES.VACATING,
+        badge: 'Required',
+        icon: DoorOpen,
+        variant: 'urgent' as const,
+      },
+    vacatingCase &&
+      vacatingCase.status === 'open' &&
+      !needsVacatingSettlementAction(vacatingCase) && {
+        title: 'End of lease',
+        summary: `Vacate ${vacatingCase.vacatingDate} · ${vacatingCase.currentStage.replace('_', ' ')}`,
+        href: ROUTES.VACATING,
+        badge: 'Active',
+        icon: DoorOpen,
+        variant: 'urgent' as const,
+      },
     needsCompletion && {
       title: 'Completion approval needed',
       summary: 'A repair is finished — confirm work completed',
@@ -122,12 +199,35 @@ export default function DashboardPage() {
       icon: Wrench,
       variant: 'urgent' as const,
     },
-    ingoingReport &&
-      ingoingReport.status !== 'confirmed' && {
+    urgentIngoing &&
+      ingoingReport &&
+      needsIngoingConfirmationAction(ingoingReport) && {
         title: 'Ingoing inspection',
         summary: 'Confirm each section before move-in is official',
         href: hrefWithFrom(ingoingReportPath(ingoingReport.id), 'dashboard'),
         badge: 'Move-in',
+        icon: ClipboardList,
+        variant: 'urgent' as const,
+      },
+    urgentOutgoing &&
+      outgoingReport &&
+      needsOutgoingConfirmationAction(outgoingReport) && {
+        title: 'Outgoing inspection',
+        summary: 'Confirm each section of your move-out condition report',
+        href: hrefWithFrom(outgoingReportPath(outgoingReport.id), 'dashboard'),
+        badge: 'Move-out',
+        icon: ClipboardList,
+        variant: 'urgent' as const,
+      },
+    urgentRoutine &&
+      needsRoutineInspectionAction(urgentRoutine) && {
+        title: 'Routine inspection',
+        summary:
+          urgentRoutine.flow === 'self'
+            ? 'Complete your self-inspection checklist'
+            : 'Be available for your scheduled routine visit',
+        href: hrefWithFrom(routineInspectionPath(urgentRoutine.id), 'dashboard'),
+        badge: 'Required',
         icon: ClipboardList,
         variant: 'urgent' as const,
       },

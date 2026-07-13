@@ -31,7 +31,10 @@ export default function RentReviewPage() {
           </Link>
         ))}
         {rentReviews.length === 0 && (
-          <p className="text-muted-foreground text-sm">No active rent review notices.</p>
+          <p className="text-muted-foreground text-sm">
+            No rent review notices yet. You will see one here after your property manager
+            sends a rent review notice.
+          </p>
         )}
       </div>
     </TenantShell>

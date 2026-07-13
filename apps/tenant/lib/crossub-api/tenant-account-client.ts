@@ -29,34 +29,24 @@ export type TenantApplication =
   components['schemas']['TenantApplicationResponseDto'];
 export type TenantRentReview =
   components['schemas']['TenantRentReviewResponseDto'];
-
-/** Vacating case from tenant vacating API. */
-export type TenantVacatingCase = {
-  id: string;
-  propertyId: string | null;
-  propertyAddress: string | null;
-  status: 'open' | 'cancelled';
-  currentStage: VacatingStage;
-  vacatingDate: string | null;
-  initialVacatingDate: string | null;
-  vacateDateChanged: boolean;
-  keysReturned: boolean;
-  inspectionDate: string | null;
-  outgoingInspectionId: string | null;
-  inspectionReportAvailable: boolean;
-  tenantSettlementStatus: 'pending' | 'accepted' | 'declined';
-  tenantConfirmationDueAt: string | null;
-  refundAmount: number | null;
-  debtAmount: number | null;
-  bondRefundPaid: boolean;
-  terminationReason: string | null;
-  cancellationReason: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
-
-type VacatingStage =
-  import('@/constants/vacating').VacatingStage;
+export type TenantRentReviewRespond =
+  components['schemas']['TenantRentReviewRespondDto'];
+export type TenantVacatingCase =
+  components['schemas']['TenantVacatingCaseResponseDto'];
+export type TenantNewLeasing =
+  components['schemas']['TenantNewLeasingResponseDto'];
+export type TenantIngoingInspection =
+  components['schemas']['TenantIngoingInspectionResponseDto'];
+export type TenantIngoingDispute =
+  components['schemas']['TenantIngoingDisputeDto'];
+export type TenantOutgoingInspection =
+  components['schemas']['TenantOutgoingInspectionResponseDto'];
+export type TenantOutgoingDispute =
+  components['schemas']['TenantOutgoingDisputeDto'];
+export type TenantRoutineInspection =
+  components['schemas']['TenantRoutineInspectionResponseDto'];
+export type TenantDeclineVacatingSettlement =
+  components['schemas']['TenantDeclineVacatingSettlementDto'];
 
 /** Active leases for the signed-in tenant (`GET /api/v1/tenant/tenancies`). */
 export async function fetchTenancies(): Promise<TenantTenancy[]> {
@@ -100,6 +90,123 @@ export async function fetchTenantApplications(): Promise<TenantApplication[]> {
   return data.items;
 }
 
+/** Agent-scheduled ingoing inspections (`GET /api/v1/tenant/ingoing-inspections`). */
+export async function fetchTenantIngoingInspections(): Promise<TenantIngoingInspection[]> {
+  const { data, error } = await crossub.GET('/tenant/ingoing-inspections');
+  if (error || !data) throw new Error('Failed to load ingoing inspections');
+  return data;
+}
+
+/** Ingoing inspection detail with sections (`GET /api/v1/tenant/ingoing-inspections/:id`). */
+export async function fetchTenantIngoingInspection(
+  inspectionId: string,
+): Promise<TenantIngoingInspection> {
+  const { data, error } = await crossub.GET('/tenant/ingoing-inspections/{inspectionId}', {
+    params: { path: { inspectionId } },
+  });
+  if (error || !data) throw new Error('Failed to load ingoing inspection');
+  return data;
+}
+
+export async function disputeTenantIngoingSection(
+  inspectionId: string,
+  body: TenantIngoingDispute,
+): Promise<TenantIngoingInspection> {
+  const { data, error } = await crossub.POST(
+    '/tenant/ingoing-inspections/{inspectionId}/disputes',
+    {
+      params: { path: { inspectionId } },
+      body,
+    },
+  );
+  if (error || !data) throw new Error('Failed to submit ingoing dispute');
+  return data;
+}
+
+export async function approveTenantIngoingInspection(
+  inspectionId: string,
+): Promise<TenantIngoingInspection> {
+  const { data, error } = await crossub.PATCH(
+    '/tenant/ingoing-inspections/{inspectionId}/approve',
+    {
+      params: { path: { inspectionId } },
+    },
+  );
+  if (error || !data) throw new Error('Failed to approve ingoing inspection');
+  return data;
+}
+
+/** Agent-scheduled outgoing inspections (`GET /api/v1/tenant/outgoing-inspections`). */
+export async function fetchTenantOutgoingInspections(): Promise<TenantOutgoingInspection[]> {
+  const { data, error } = await crossub.GET('/tenant/outgoing-inspections');
+  if (error || !data) throw new Error('Failed to load outgoing inspections');
+  return data;
+}
+
+/** Outgoing inspection detail with sections (`GET /api/v1/tenant/outgoing-inspections/:id`). */
+export async function fetchTenantOutgoingInspection(
+  inspectionId: string,
+): Promise<TenantOutgoingInspection> {
+  const { data, error } = await crossub.GET('/tenant/outgoing-inspections/{inspectionId}', {
+    params: { path: { inspectionId } },
+  });
+  if (error || !data) throw new Error('Failed to load outgoing inspection');
+  return data;
+}
+
+export async function disputeTenantOutgoingSection(
+  inspectionId: string,
+  body: TenantOutgoingDispute,
+): Promise<TenantOutgoingInspection> {
+  const { data, error } = await crossub.POST(
+    '/tenant/outgoing-inspections/{inspectionId}/disputes',
+    {
+      params: { path: { inspectionId } },
+      body,
+    },
+  );
+  if (error || !data) throw new Error('Failed to submit outgoing dispute');
+  return data;
+}
+
+export async function approveTenantOutgoingInspection(
+  inspectionId: string,
+): Promise<TenantOutgoingInspection> {
+  const { data, error } = await crossub.PATCH(
+    '/tenant/outgoing-inspections/{inspectionId}/approve',
+    {
+      params: { path: { inspectionId } },
+    },
+  );
+  if (error || !data) throw new Error('Failed to approve outgoing inspection');
+  return data;
+}
+
+/** Agent-created routine inspections (`GET /api/v1/tenant/routine-inspections`). */
+export async function fetchTenantRoutineInspections(): Promise<TenantRoutineInspection[]> {
+  const { data, error } = await crossub.GET('/tenant/routine-inspections');
+  if (error || !data) throw new Error('Failed to load routine inspections');
+  return data;
+}
+
+/** Routine inspection detail (`GET /api/v1/tenant/routine-inspections/:id`). */
+export async function fetchTenantRoutineInspection(
+  id: string,
+): Promise<TenantRoutineInspection> {
+  const { data, error } = await crossub.GET('/tenant/routine-inspections/{id}', {
+    params: { path: { id } },
+  });
+  if (error || !data) throw new Error('Failed to load routine inspection');
+  return data;
+}
+
+/** Agent-opened new-leasing cases for the tenant (`GET /api/v1/tenant/new-leasing`). */
+export async function fetchTenantNewLeasingCases(): Promise<TenantNewLeasing[]> {
+  const { data, error } = await crossub.GET('/tenant/new-leasing');
+  if (error || !data) throw new Error('Failed to load new-leasing cases');
+  return data;
+}
+
 /** Rent reviews on the signed-in tenant's leased property (`GET /api/v1/tenant/rent-reviews`). */
 export async function fetchTenantRentReviews(): Promise<TenantRentReview[]> {
   const { data, error } = await crossub.GET('/tenant/rent-reviews');
@@ -107,36 +214,41 @@ export async function fetchTenantRentReviews(): Promise<TenantRentReview[]> {
   return data;
 }
 
-/** Vacating cases on the signed-in tenant's leased property (`GET /api/v1/tenant/vacating-cases`). */
-export async function fetchTenantVacatingCases(): Promise<TenantVacatingCase[]> {
-  const base = `${process.env.NEXT_PUBLIC_API_URL ?? '/api'}/v1`;
-  const res = await fetch(`${base}/tenant/vacating-cases`, { credentials: 'include' });
-  if (!res.ok) throw new Error('Failed to load vacating cases');
-  return (await res.json()) as TenantVacatingCase[];
+/** Respond to a dispatched rent-review notice (`PATCH /api/v1/tenant/rent-reviews/:id/respond`). */
+export async function submitTenantRentReviewResponse(
+  reviewId: string,
+  body: TenantRentReviewRespond,
+): Promise<TenantRentReview> {
+  const { data, error } = await crossub.PATCH('/tenant/rent-reviews/{reviewId}/respond', {
+    params: { path: { reviewId } },
+    body,
+  });
+  if (error || !data) throw new Error('Failed to submit rent review response');
+  return data;
 }
 
-/** Open a vacating case (`POST /api/v1/tenant/vacating-cases`). */
+/** Agent-opened end-leasing cases on the tenant's leased property (`GET /api/v1/tenant/vacating-cases`). */
+export async function fetchTenantVacatingCases(): Promise<TenantVacatingCase[]> {
+  const { data, error } = await crossub.GET('/tenant/vacating-cases');
+  if (error || !data) throw new Error('Failed to load end-leasing cases');
+  return data;
+}
+
+/** Open a vacating case (`POST /api/v1/tenant/vacating-cases`) — demo / legacy self-initiate only. */
 export async function createTenantVacatingCase(input: {
   expectedVacateDate: string;
   propertyId?: string;
   terminationReason?: string;
 }): Promise<TenantVacatingCase> {
-  const base = `${process.env.NEXT_PUBLIC_API_URL ?? '/api'}/v1`;
-  const res = await fetch(`${base}/tenant/vacating-cases`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
+  const { data, error } = await crossub.POST('/tenant/vacating-cases', {
+    body: {
       expectedVacateDate: new Date(input.expectedVacateDate).toISOString(),
       propertyId: input.propertyId,
       terminationReason: input.terminationReason,
-    }),
+    },
   });
-  if (!res.ok) {
-    const body = (await res.json().catch(() => null)) as { message?: string } | null;
-    throw new Error(body?.message ?? 'Failed to start vacating case');
-  }
-  return (await res.json()) as TenantVacatingCase;
+  if (error || !data) throw new Error('Failed to start vacating case');
+  return data;
 }
 
 /** Withdraw a vacating case (`PATCH /api/v1/tenant/vacating-cases/:caseId/cancel`). */
@@ -144,15 +256,12 @@ export async function cancelTenantVacatingCase(
   caseId: string,
   reason?: string,
 ): Promise<TenantVacatingCase> {
-  const base = `${process.env.NEXT_PUBLIC_API_URL ?? '/api'}/v1`;
-  const res = await fetch(`${base}/tenant/vacating-cases/${caseId}/cancel`, {
-    method: 'PATCH',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ reason }),
+  const { data, error } = await crossub.PATCH('/tenant/vacating-cases/{caseId}/cancel', {
+    params: { path: { caseId } },
+    body: { reason },
   });
-  if (!res.ok) throw new Error('Failed to withdraw vacating case');
-  return (await res.json()) as TenantVacatingCase;
+  if (error || !data) throw new Error('Failed to withdraw vacating case');
+  return data;
 }
 
 /** Update vacate date (`PATCH /api/v1/tenant/vacating-cases/:caseId/vacate-date`). */
@@ -160,15 +269,37 @@ export async function updateTenantVacateDate(
   caseId: string,
   date: string,
 ): Promise<TenantVacatingCase> {
-  const base = `${process.env.NEXT_PUBLIC_API_URL ?? '/api'}/v1`;
-  const res = await fetch(`${base}/tenant/vacating-cases/${caseId}/vacate-date`, {
-    method: 'PATCH',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ date: new Date(date).toISOString() }),
+  const { data, error } = await crossub.PATCH('/tenant/vacating-cases/{caseId}/vacate-date', {
+    params: { path: { caseId } },
+    body: { date: new Date(date).toISOString() },
   });
-  if (!res.ok) throw new Error('Failed to update vacate date');
-  return (await res.json()) as TenantVacatingCase;
+  if (error || !data) throw new Error('Failed to update vacate date');
+  return data;
+}
+
+/** Accept bond settlement (`PATCH /api/v1/tenant/vacating-cases/:caseId/settlement/accept`). */
+export async function acceptTenantVacatingSettlement(
+  caseId: string,
+): Promise<TenantVacatingCase> {
+  const { data, error } = await crossub.PATCH(
+    '/tenant/vacating-cases/{caseId}/settlement/accept',
+    { params: { path: { caseId } } },
+  );
+  if (error || !data) throw new Error('Failed to accept settlement');
+  return data;
+}
+
+/** Decline bond settlement (`PATCH /api/v1/tenant/vacating-cases/:caseId/settlement/decline`). */
+export async function declineTenantVacatingSettlement(
+  caseId: string,
+  body: TenantDeclineVacatingSettlement,
+): Promise<TenantVacatingCase> {
+  const { data, error } = await crossub.PATCH(
+    '/tenant/vacating-cases/{caseId}/settlement/decline',
+    { params: { path: { caseId } }, body },
+  );
+  if (error || !data) throw new Error('Failed to decline settlement');
+  return data;
 }
 
 /** Maintenance requests the signed-in tenant has filed (`GET /api/v1/tenant/maintenance-requests`). */

@@ -18,26 +18,47 @@ import {
   fetchTenantApplications,
   fetchTenantDocuments,
   fetchTenantInspections,
+  fetchTenantIngoingInspection,
+  fetchTenantIngoingInspections,
+  fetchTenantOutgoingInspection,
+  fetchTenantOutgoingInspections,
+  fetchTenantRoutineInspection,
+  fetchTenantRoutineInspections,
   fetchTenantMessages,
+  fetchTenantNewLeasingCases,
   fetchTenantNotifications,
   fetchTenantRentReviews,
   fetchTenantVacatingCases,
+  submitTenantRentReviewResponse,
+  acceptTenantVacatingSettlement,
+  declineTenantVacatingSettlement,
   createTenantVacatingCase,
   cancelTenantVacatingCase,
   updateTenantVacateDate,
   markTenantNotificationRead,
   replyToTenantMessageThread,
+  approveTenantIngoingInspection,
+  disputeTenantIngoingSection,
+  approveTenantOutgoingInspection,
+  disputeTenantOutgoingSection,
 } from '@/lib/crossub-api/tenant-account-client';
+import type { TenantRoutineInspection } from '@/lib/crossub-api/tenant-account-client';
 import {
   categoryToDepartment,
   toLeaseSummary,
   toMessageThreads,
   toRentPaymentReceipts,
+  toIngoingReport,
+  toIngoingReportSummaries,
+  toOutgoingReport,
+  toOutgoingReportSummaries,
+  toRoutineInspectionSummaries,
   toTenantApplications,
   toTenantDocuments,
   toTenantInspections,
   toTenantMaintenanceRequests,
   toTenantNotifications,
+  toTenantNewLeasingCases,
   toTenantRentReviews,
   pickActiveVacatingCase,
   pickDisplayVacatingCase,
@@ -70,6 +91,7 @@ import type {
   MessageCategory,
   MessageParty,
   MessageThread,
+  NewLeasingCase,
   ThreadMessage,
   OnboardingStep,
   OutgoingReport,
@@ -132,11 +154,16 @@ interface TenantDataContextValue {
   listingsLoading: boolean;
   listingsError: string | null;
   applications: RentalApplication[];
+  newLeasingCases: NewLeasingCase[];
   onboardingSteps: OnboardingStep[];
   leasingOnboarding: TenantLeasingOnboardingDto | null;
   refreshLeasingOnboarding: () => Promise<void>;
   lease: LeaseSummary | null;
   ingoingReport: IngoingReport | null;
+  ingoingInspections: IngoingReport[];
+  outgoingReport: OutgoingReport | null;
+  outgoingInspections: OutgoingReport[];
+  routineInspections: TenantRoutineInspection[];
   maintenance: MaintenanceRequest[];
   messages: MessageThread[];
   rentReceipts: RentReceipt[];
@@ -150,7 +177,6 @@ interface TenantDataContextValue {
   arrears: ArrearsNotice | null;
   paymentProofs: PaymentProofRecord[];
   outstandingBalance: OutstandingBalance | null;
-  outgoingReport: OutgoingReport;
   showPhase3Demo: boolean;
   inspections: InspectionSummary[];
   terminationNotice: TerminationNotice | null;
@@ -166,14 +192,16 @@ interface TenantDataContextValue {
   startVacating: (date: string, reason?: string) => Promise<void>;
   cancelVacatingCase: (reason?: string) => Promise<void>;
   updateVacateDate: (date: string) => Promise<void>;
+  acceptVacatingSettlement: (caseId: string) => Promise<void>;
+  declineVacatingSettlement: (caseId: string, reason: string) => Promise<void>;
   markNotificationRead: (id: string) => void;
-  confirmIngoingSection: (sectionId: string, dispute?: string) => void;
-  confirmOutgoingSection: (sectionId: string, dispute?: string) => void;
+  confirmIngoingSection: (sectionId: string, dispute?: string) => Promise<void>;
+  confirmOutgoingSection: (sectionId: string, dispute?: string) => Promise<void>;
   respondRentReview: (
     id: string,
     action: 'accept' | 'reject' | 'counter',
     payload?: { amount?: number; moveOutDate?: string; reason?: string },
-  ) => void;
+  ) => Promise<void>;
 }
 
 type ListingProperty = import('@/lib/types').ListingProperty;
@@ -188,7 +216,7 @@ function applyLoadedState(
     setMessages: (v: MessageThread[]) => void;
     setNotifications: (v: TenantNotification[]) => void;
     setIngoing: (v: IngoingReport | null) => void;
-    setOutgoing: (v: OutgoingReport) => void;
+    setOutgoing: (v: OutgoingReport | null) => void;
     setRentReviews: (v: RentReviewCase[]) => void;
     setVacatingState: (v: VacatingCase | null) => void;
     setLease: (v: LeaseSummary | null) => void;
@@ -238,6 +266,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
   const [notifications, setNotifications] = useState<TenantNotification[]>([]);
   const [maintenance, setMaintenance] = useState<MaintenanceRequest[]>([]);
   const [applications, setApplications] = useState<RentalApplication[]>([]);
+  const [newLeasingCases, setNewLeasingCases] = useState<NewLeasingCase[]>([]);
   const [messages, setMessages] = useState<MessageThread[]>([]);
   // Live-mode per-thread message history (keyed by thread id, incl. optimistic temp ids).
   // Empty in demo mode — there the screens read from the mock SEED/store instead.
@@ -245,14 +274,11 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     Record<string, ThreadMessage[]>
   >({});
   const [ingoing, setIngoing] = useState<IngoingReport | null>(null);
+  const [ingoingInspections, setIngoingInspections] = useState<IngoingReport[]>([]);
+  const [outgoing, setOutgoing] = useState<OutgoingReport | null>(null);
+  const [outgoingInspections, setOutgoingInspections] = useState<OutgoingReport[]>([]);
+  const [routineInspections, setRoutineInspections] = useState<TenantRoutineInspection[]>([]);
   const [rentReviews, setRentReviews] = useState<RentReviewCase[]>([]);
-  const [outgoing, setOutgoing] = useState<OutgoingReport>({
-    id: 'out-empty',
-    propertyAddress: '—',
-    status: 'report_sent',
-    sections: [],
-    confirmedCount: 0,
-  });
   const [vacatingState, setVacatingState] = useState<VacatingCase | null>(null);
   const [vacatingDisplay, setVacatingDisplay] = useState<VacatingCase | null>(null);
   const [lease, setLease] = useState<LeaseSummary | null>(null);
@@ -380,6 +406,10 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       inspectionsRes,
       documentsRes,
       applicationsRes,
+      newLeasingRes,
+      ingoingInspectionsRes,
+      outgoingInspectionsRes,
+      routineInspectionsRes,
       rentReviewsRes,
       vacatingCasesRes,
     ] = await Promise.allSettled([
@@ -391,6 +421,10 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       fetchTenantInspections(),
       fetchTenantDocuments(),
       fetchTenantApplications(),
+      fetchTenantNewLeasingCases(),
+      fetchTenantIngoingInspections(),
+      fetchTenantOutgoingInspections(),
+      fetchTenantRoutineInspections(),
       fetchTenantRentReviews(),
       fetchTenantVacatingCases(),
     ]);
@@ -443,7 +477,10 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
 
     if (inspectionsRes.status === 'fulfilled') {
       connected = true;
-      setInspections(toTenantInspections(inspectionsRes.value));
+      const fromApi = toTenantInspections(inspectionsRes.value).filter(
+        (i) => i.type !== 'routine',
+      );
+      setInspections(fromApi);
     }
 
     if (documentsRes.status === 'fulfilled') {
@@ -454,13 +491,59 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
 
     if (applicationsRes.status === 'fulfilled') {
       connected = true;
-      // Real applications REPLACE the demo list (read-only — the apply SUBMIT is deferred).
+      // Real applications REPLACE the demo list (agent-opened new-leasing only).
       setApplications(toTenantApplications(applicationsRes.value));
+    }
+
+    if (newLeasingRes.status === 'fulfilled') {
+      connected = true;
+      setNewLeasingCases(toTenantNewLeasingCases(newLeasingRes.value));
+    }
+
+    if (ingoingInspectionsRes.status === 'fulfilled') {
+      connected = true;
+      const summaries = toIngoingReportSummaries(ingoingInspectionsRes.value);
+      setIngoingInspections(summaries);
+      const urgent = summaries.find((r) => r.status !== 'confirmed');
+      if (urgent) {
+        try {
+          const detail = await fetchTenantIngoingInspection(urgent.id);
+          setIngoing(toIngoingReport(detail));
+        } catch {
+          setIngoing(urgent);
+        }
+      } else {
+        setIngoing(null);
+      }
+    }
+
+    if (outgoingInspectionsRes.status === 'fulfilled') {
+      connected = true;
+      const summaries = toOutgoingReportSummaries(outgoingInspectionsRes.value);
+      setOutgoingInspections(summaries);
+      const urgent = summaries.find(
+        (r) => r.status !== 'confirmed' && r.status !== 'finalized',
+      );
+      if (urgent) {
+        try {
+          const detail = await fetchTenantOutgoingInspection(urgent.id);
+          setOutgoing(toOutgoingReport(detail));
+        } catch {
+          setOutgoing(urgent);
+        }
+      } else {
+        setOutgoing(null);
+      }
+    }
+
+    if (routineInspectionsRes.status === 'fulfilled') {
+      connected = true;
+      setRoutineInspections(routineInspectionsRes.value);
     }
 
     if (rentReviewsRes.status === 'fulfilled') {
       connected = true;
-      // Real rent reviews REPLACE the demo list (read-only — accept/dispute stays local).
+      // Real rent reviews REPLACE the demo list (only agent-dispatched notices).
       setRentReviews(toTenantRentReviews(rentReviewsRes.value));
     }
 
@@ -762,60 +845,171 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
   );
 
   const confirmIngoingSection = useCallback(
-    (sectionId: string, dispute?: string) => {
-      setIngoing((prev) => {
-        if (!prev) return prev;
-        const sections = prev.sections.map((s) =>
-          s.id === sectionId
-            ? {
-                ...s,
-                tenantConfirmed: !dispute,
-                tenantDispute: dispute,
-                confirmedAt: dispute ? undefined : new Date().toISOString(),
-              }
-            : s,
+    async (sectionId: string, dispute?: string) => {
+      if (!ingoing) return;
+
+      if (demo || !apiConnected) {
+        setIngoing((prev) => {
+          if (!prev) return prev;
+          const sections = prev.sections.map((s) =>
+            s.id === sectionId
+              ? {
+                  ...s,
+                  tenantConfirmed: !dispute,
+                  tenantDispute: dispute,
+                  confirmedAt: dispute ? undefined : new Date().toISOString(),
+                }
+              : s,
+          );
+          const confirmedCount = sections.filter((s) => s.tenantConfirmed).length;
+          const hasDispute = sections.some((s) => s.tenantDispute);
+          const allConfirmed = sections.every(
+            (s) => s.tenantConfirmed || s.tenantDispute,
+          );
+          let reportStatus = prev.status;
+          if (hasDispute) reportStatus = 'disputed';
+          else if (allConfirmed) reportStatus = 'confirmed';
+          else if (confirmedCount > 0) reportStatus = 'partially_confirmed';
+          const next = { ...prev, sections, confirmedCount, status: reportStatus };
+          patchTenantStore({ ingoingReport: next });
+          return next;
+        });
+        return;
+      }
+
+      if (dispute) {
+        const section = ingoing.sections.find((s) => s.id === sectionId);
+        const updated = await disputeTenantIngoingSection(ingoing.id, {
+          area: section?.room ?? 'Area',
+          description: dispute,
+          sectionId,
+        });
+        const mapped = toIngoingReport(updated);
+        setIngoing(mapped);
+        setIngoingInspections((prev) =>
+          prev.map((r) => (r.id === mapped.id ? mapped : r)),
         );
-        const confirmedCount = sections.filter((s) => s.tenantConfirmed).length;
-        const hasDispute = sections.some((s) => s.tenantDispute);
-        const allConfirmed = sections.every((s) => s.tenantConfirmed || s.tenantDispute);
-        let reportStatus = prev.status;
-        if (hasDispute) reportStatus = 'disputed';
-        else if (allConfirmed) reportStatus = 'confirmed';
-        else if (confirmedCount > 0) reportStatus = 'partially_confirmed';
-        const next = { ...prev, sections, confirmedCount, status: reportStatus };
-        patchTenantStore( { ingoingReport: next });
-        return next;
-      });
+        return;
+      }
+
+      const sections = ingoing.sections.map((s) =>
+        s.id === sectionId
+          ? {
+              ...s,
+              tenantConfirmed: true,
+              tenantDispute: undefined,
+              confirmedAt: new Date().toISOString(),
+            }
+          : s,
+      );
+      const confirmedCount = sections.filter((s) => s.tenantConfirmed).length;
+      const allConfirmed = sections.every(
+        (s) => s.tenantConfirmed || s.tenantDispute,
+      );
+      const hasDispute = sections.some((s) => s.tenantDispute);
+      const interim: IngoingReport = {
+        ...ingoing,
+        sections,
+        confirmedCount,
+        status: hasDispute
+          ? 'disputed'
+          : allConfirmed
+            ? 'partially_confirmed'
+            : 'partially_confirmed',
+      };
+      setIngoing(interim);
+
+      if (allConfirmed && !hasDispute) {
+        const approved = await approveTenantIngoingInspection(ingoing.id);
+        const mapped = toIngoingReport(approved);
+        setIngoing(mapped);
+        setIngoingInspections((prev) =>
+          prev.map((r) => (r.id === mapped.id ? mapped : r)),
+        );
+      }
     },
-    [],
+    [demo, apiConnected, ingoing],
   );
 
   const confirmOutgoingSection = useCallback(
-    (sectionId: string, dispute?: string) => {
-      setOutgoing((prev) => {
-        const sections = prev.sections.map((s) =>
-          s.id === sectionId
-            ? {
-                ...s,
-                tenantConfirmed: !dispute,
-                tenantDispute: dispute,
-                confirmedAt: dispute ? undefined : new Date().toISOString(),
-              }
-            : s,
+    async (sectionId: string, dispute?: string) => {
+      if (!outgoing) return;
+
+      if (demo || !apiConnected) {
+        setOutgoing((prev) => {
+          if (!prev) return prev;
+          const sections = prev.sections.map((s) =>
+            s.id === sectionId
+              ? {
+                  ...s,
+                  tenantConfirmed: !dispute,
+                  tenantDispute: dispute,
+                  confirmedAt: dispute ? undefined : new Date().toISOString(),
+                }
+              : s,
+          );
+          const confirmedCount = sections.filter((s) => s.tenantConfirmed).length;
+          const hasDispute = sections.some((s) => s.tenantDispute);
+          let status = prev.status;
+          if (hasDispute) status = 'disputed';
+          else if (sections.every((s) => s.tenantConfirmed || s.tenantDispute)) {
+            status = 'confirmed';
+          }
+          const next = { ...prev, sections, confirmedCount, status };
+          patchTenantStore({ outgoingReport: next });
+          return next;
+        });
+        return;
+      }
+
+      if (dispute) {
+        const section = outgoing.sections.find((s) => s.id === sectionId);
+        const updated = await disputeTenantOutgoingSection(outgoing.id, {
+          area: section?.room ?? 'Area',
+          description: dispute,
+          sectionId,
+        });
+        const mapped = toOutgoingReport(updated);
+        setOutgoing(mapped);
+        setOutgoingInspections((prev) =>
+          prev.map((r) => (r.id === mapped.id ? mapped : r)),
         );
-        const confirmedCount = sections.filter((s) => s.tenantConfirmed).length;
-        const hasDispute = sections.some((s) => s.tenantDispute);
-        let status = prev.status;
-        if (hasDispute) status = 'disputed';
-        else if (sections.every((s) => s.tenantConfirmed || s.tenantDispute)) {
-          status = 'confirmed';
-        }
-        const next = { ...prev, sections, confirmedCount, status };
-        patchTenantStore( { outgoingReport: next });
-        return next;
-      });
+        return;
+      }
+
+      const sections = outgoing.sections.map((s) =>
+        s.id === sectionId
+          ? {
+              ...s,
+              tenantConfirmed: true,
+              tenantDispute: undefined,
+              confirmedAt: new Date().toISOString(),
+            }
+          : s,
+      );
+      const confirmedCount = sections.filter((s) => s.tenantConfirmed).length;
+      const allConfirmed = sections.every(
+        (s) => s.tenantConfirmed || s.tenantDispute,
+      );
+      const hasDispute = sections.some((s) => s.tenantDispute);
+      const interim: OutgoingReport = {
+        ...outgoing,
+        sections,
+        confirmedCount,
+        status: hasDispute ? 'disputed' : 'report_sent',
+      };
+      setOutgoing(interim);
+
+      if (allConfirmed && !hasDispute) {
+        const approved = await approveTenantOutgoingInspection(outgoing.id);
+        const mapped = toOutgoingReport(approved);
+        setOutgoing(mapped);
+        setOutgoingInspections((prev) =>
+          prev.map((r) => (r.id === mapped.id ? mapped : r)),
+        );
+      }
     },
-    [],
+    [demo, apiConnected, outgoing],
   );
 
   const approveRepairCompletion = useCallback(
@@ -945,45 +1139,120 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     [vacatingDisplay],
   );
 
+  const applyVacatingCaseUpdate = useCallback((updated: VacatingCase | null) => {
+    setVacatingState(updated?.status === 'open' ? updated : null);
+    setVacatingDisplay(updated);
+    patchTenantStore({ vacating: updated?.status === 'open' ? updated : null });
+  }, []);
+
+  const acceptVacatingSettlement = useCallback(
+    async (caseId: string) => {
+      if (demo || status !== 'authed') {
+        setVacatingDisplay((prev) =>
+          prev && prev.id === caseId
+            ? { ...prev, tenantSettlementStatus: 'accepted' }
+            : prev,
+        );
+        return;
+      }
+      try {
+        const updated = await acceptTenantVacatingSettlement(caseId);
+        applyVacatingCaseUpdate(toTenantVacatingCases([updated])[0] ?? null);
+      } catch {
+        /* keep current state; a later refresh reconciles */
+      }
+    },
+    [demo, status, applyVacatingCaseUpdate],
+  );
+
+  const declineVacatingSettlement = useCallback(
+    async (caseId: string, reason: string) => {
+      if (demo || status !== 'authed') {
+        setVacatingDisplay((prev) =>
+          prev && prev.id === caseId
+            ? { ...prev, tenantSettlementStatus: 'declined' }
+            : prev,
+        );
+        return;
+      }
+      try {
+        const updated = await declineTenantVacatingSettlement(caseId, { reason });
+        applyVacatingCaseUpdate(toTenantVacatingCases([updated])[0] ?? null);
+      } catch {
+        /* keep current state; a later refresh reconciles */
+      }
+    },
+    [demo, status, applyVacatingCaseUpdate],
+  );
+
   const respondRentReview = useCallback(
-    (
+    async (
       id: string,
       action: 'accept' | 'reject' | 'counter',
       payload?: { amount?: number; moveOutDate?: string; reason?: string },
     ) => {
-      setRentReviews((prev) => {
-        const current = prev.find((r) => r.id === id);
-        if (action === 'counter' && current?.rentNegotiable !== true) {
-          return prev;
-        }
-        const next = prev.map((r) => {
-          if (r.id !== id) return r;
-          if (action === 'accept') return { ...r, status: 'accepted' as const };
-          if (action === 'reject') {
+      const applyLocal = () => {
+        setRentReviews((prev) => {
+          const current = prev.find((r) => r.id === id);
+          if (action === 'counter' && current?.rentNegotiable !== true) {
+            return prev;
+          }
+          const next = prev.map((r) => {
+            if (r.id !== id) return r;
+            if (action === 'accept') return { ...r, status: 'accepted' as const };
+            if (action === 'reject') {
+              return {
+                ...r,
+                status: 'rejected' as const,
+                moveOutDate: payload?.moveOutDate,
+              };
+            }
             return {
               ...r,
-              status: 'rejected' as const,
-              moveOutDate: payload?.moveOutDate,
+              status: 'countered' as const,
+              counterHistory: [
+                ...r.counterHistory,
+                {
+                  at: new Date().toISOString(),
+                  amount: payload?.amount ?? r.currentRentWeekly,
+                  by: 'tenant' as const,
+                },
+              ],
             };
-          }
-          return {
-            ...r,
-            status: 'countered' as const,
-            counterHistory: [
-              ...r.counterHistory,
-              {
-                at: new Date().toISOString(),
-                amount: payload?.amount ?? r.currentRentWeekly,
-                by: 'tenant' as const,
-              },
-            ],
-          };
+          });
+          patchTenantStore({ rentReviews: next });
+          return next;
         });
-        patchTenantStore( { rentReviews: next });
-        return next;
-      });
+      };
+
+      if (demo || status !== 'authed') {
+        applyLocal();
+        return;
+      }
+
+      const decision =
+        action === 'accept' ? 'accept' : action === 'reject' ? 'reject' : 'counter';
+      try {
+        const updated = await submitTenantRentReviewResponse(id, {
+          decision,
+          moveOutDate: payload?.moveOutDate,
+          counterWeekly: payload?.amount,
+        });
+        setRentReviews((prev) => {
+          const mapped = toTenantRentReviews([updated])[0];
+          if (!mapped) return prev;
+          const next = prev.map((r) => (r.id === id ? mapped : r));
+          patchTenantStore({ rentReviews: next });
+          return next;
+        });
+      } catch {
+        applyLocal();
+        if (action === 'reject' && payload?.moveOutDate && demo) {
+          await startVacating(payload.moveOutDate, payload.reason);
+        }
+      }
     },
-    [],
+    [demo, status, startVacating],
   );
 
   const phase: TenantLifecyclePhase = lease ? 'active' : 'searching';
@@ -1032,6 +1301,12 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
 
   const vacatingCase = useMemo(() => vacatingDisplay, [vacatingDisplay]);
 
+  const displayedInspections = useMemo(() => {
+    const routineCards = toRoutineInspectionSummaries(routineInspections);
+    const nonRoutine = inspections.filter((i) => i.type !== 'routine');
+    return [...routineCards, ...nonRoutine];
+  }, [inspections, routineInspections]);
+
   const value = useMemo<TenantDataContextValue>(
     () => ({
       loading,
@@ -1044,11 +1319,16 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       listingsLoading,
       listingsError,
       applications,
+      newLeasingCases,
+      ingoingInspections,
+      outgoingInspections,
+      routineInspections,
       onboardingSteps,
       leasingOnboarding,
       refreshLeasingOnboarding,
       lease,
       ingoingReport: ingoing,
+      outgoingReport: outgoing,
       maintenance,
       messages,
       rentReceipts,
@@ -1056,7 +1336,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       renewal,
       vacating: activeVacating,
       vacatingCase,
-      inspections,
+      inspections: displayedInspections,
       terminationNotice,
       addRepair,
       addApplication,
@@ -1069,11 +1349,12 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       startVacating,
       cancelVacatingCase,
       updateVacateDate,
+      acceptVacatingSettlement,
+      declineVacatingSettlement,
       finalStatement,
       arrears,
       paymentProofs,
       outstandingBalance,
-      outgoingReport: outgoing,
       showPhase3Demo,
       storedDocuments,
       markNotificationRead,
@@ -1092,11 +1373,16 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       listingsLoading,
       listingsError,
       applications,
+      newLeasingCases,
+      ingoingInspections,
+      outgoingInspections,
+      routineInspections,
       onboardingSteps,
       leasingOnboarding,
       refreshLeasingOnboarding,
       lease,
       ingoing,
+      outgoing,
       maintenance,
       messages,
       rentReceipts,
@@ -1104,7 +1390,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       renewal,
       activeVacating,
       vacatingCase,
-      inspections,
+      displayedInspections,
       terminationNotice,
       addRepair,
       addApplication,
@@ -1120,12 +1406,13 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       startVacating,
       cancelVacatingCase,
       updateVacateDate,
+      acceptVacatingSettlement,
+      declineVacatingSettlement,
       respondRentReview,
       finalStatement,
       arrears,
       paymentProofs,
       outstandingBalance,
-      outgoing,
       showPhase3Demo,
       storedDocuments,
     ],

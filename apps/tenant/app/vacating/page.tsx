@@ -11,42 +11,50 @@ import { ROUTES } from '@/constants/routes';
 export default function VacatingPage() {
   const {
     vacatingCase,
+    apiConnected,
     startVacating,
     cancelVacatingCase,
     updateVacateDate,
+    acceptVacatingSettlement,
+    declineVacatingSettlement,
     showPhase3Demo,
   } = useTenantData();
   const [starting, setStarting] = useState(false);
 
   if (!vacatingCase) {
     return (
-      <TenantShell title="Vacating">
+      <TenantShell title="End of lease">
         <div className="space-y-4">
           <p className="text-muted-foreground text-sm">
-            End your lease with the same workflow your agent uses in End Leasing — key return,
-            outgoing inspection, make-good, and bond settlement.
+            {apiConnected
+              ? 'Your property manager will open an end-leasing case here when your lease is ending. You will receive a notification when action is required.'
+              : 'End your lease with the same workflow your agent uses in End Leasing — key return, outgoing inspection, make-good, and bond settlement.'}
           </p>
-          <VacatingStartForm
-            loading={starting}
-            onStart={async (date) => {
-              setStarting(true);
-              try {
-                await startVacating(date);
-              } finally {
-                setStarting(false);
-              }
-            }}
-          />
-          <p className="text-muted-foreground text-xs">
-            You can also set a move-out date from{' '}
-            <Link href={ROUTES.RENEWAL} className="text-primary font-medium">
-              Lease renewal
-            </Link>{' '}
-            if your lease is ending soon.
-          </p>
+          {!apiConnected && (
+            <>
+              <VacatingStartForm
+                loading={starting}
+                onStart={async (date) => {
+                  setStarting(true);
+                  try {
+                    await startVacating(date);
+                  } finally {
+                    setStarting(false);
+                  }
+                }}
+              />
+              <p className="text-muted-foreground text-xs">
+                You can also set a move-out date from{' '}
+                <Link href={ROUTES.RENEWAL} className="text-primary font-medium">
+                  Lease renewal
+                </Link>{' '}
+                if your lease is ending soon.
+              </p>
+            </>
+          )}
           {showPhase3Demo && (
             <p className="text-muted-foreground text-xs">
-              Demo mode: enable SHOW_PHASE3_DEMO in mock-data for a sample vacating case.
+              Demo mode: enable SHOW_PHASE3_DEMO in mock-data for a sample end-leasing case.
             </p>
           )}
         </div>
@@ -55,14 +63,16 @@ export default function VacatingPage() {
   }
 
   return (
-    <TenantShell title="Vacating">
+    <TenantShell title="End of lease">
       <div className="space-y-6">
         <VacatingCaseView
           vacating={vacatingCase}
           cancelVacatingCase={cancelVacatingCase}
           updateVacateDate={updateVacateDate}
+          acceptVacatingSettlement={acceptVacatingSettlement}
+          declineVacatingSettlement={declineVacatingSettlement}
         />
-        {vacatingCase.status === 'cancelled' && (
+        {vacatingCase.status === 'cancelled' && !apiConnected && (
           <div className="space-y-3 border-t pt-6">
             <p className="text-muted-foreground text-sm">
               Start a new vacating case if your plans change.

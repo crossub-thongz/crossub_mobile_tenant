@@ -18,6 +18,7 @@ import {
 import { outgoingReport, ROUTES, statementDetail } from '@/constants/routes';
 import { hrefWithFrom } from '@/lib/back-navigation';
 import { OUTGOING_STATUS_LABEL } from '@/lib/tenant-labels';
+import { needsVacatingSettlementAction } from '@/lib/end-leasing';
 import type { VacatingCase } from '@/lib/types';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 
@@ -64,6 +65,9 @@ function PhasePanel({
   onSaveDate,
   withdrawing,
   onWithdraw,
+  settlementBusy,
+  onAcceptSettlement,
+  onDeclineSettlement,
 }: {
   vacating: VacatingCase;
   dateValue: string;
@@ -73,8 +77,13 @@ function PhasePanel({
   onSaveDate: () => void;
   withdrawing: boolean;
   onWithdraw: () => void;
+  settlementBusy: boolean;
+  onAcceptSettlement: () => void;
+  onDeclineSettlement: (reason: string) => void;
 }) {
   const stage = vacating.currentStage;
+  const [declineReason, setDeclineReason] = useState('');
+  const showSettlementActions = needsVacatingSettlementAction(vacating);
 
   return (
     <div className="space-y-3">
@@ -128,7 +137,7 @@ function PhasePanel({
               : 'Your outgoing inspection will be scheduled after key return.'}
           </p>
           <p className="mt-2 text-xs">{OUTGOING_STATUS_LABEL[vacating.outgoingStatus]}</p>
-          {vacating.outgoingReportId && (
+          {vacating.outgoingReportId && vacating.inspectionReportAvailable && (
             <Link
               href={hrefWithFrom(outgoingReport(vacating.outgoingReportId), 'vacating')}
               className="text-primary mt-3 inline-block text-xs font-medium"
@@ -175,6 +184,32 @@ function PhasePanel({
           </p>
           {vacating.bondRefundPaid && (
             <p className="mt-2 text-xs font-medium text-emerald-600">Bond refund processed</p>
+          )}
+          {showSettlementActions && (
+            <div className="mt-4 space-y-3 border-t border-border/60 pt-3">
+              <p className="text-xs font-medium">Confirm bond settlement</p>
+              <Button
+                className="w-full"
+                disabled={settlementBusy}
+                onClick={onAcceptSettlement}
+              >
+                Accept proposed settlement
+              </Button>
+              <textarea
+                className="border-input bg-background w-full rounded-xl border px-3 py-2 text-sm"
+                placeholder="Reason for declining (required)"
+                value={declineReason}
+                onChange={(e) => setDeclineReason(e.target.value)}
+              />
+              <Button
+                variant="destructive"
+                className="w-full"
+                disabled={settlementBusy || !declineReason.trim()}
+                onClick={() => onDeclineSettlement(declineReason.trim())}
+              >
+                Decline settlement
+              </Button>
+            </div>
           )}
           <Link
             href={statementDetail()}
@@ -236,14 +271,19 @@ export function VacatingCaseView({
   vacating,
   cancelVacatingCase,
   updateVacateDate,
+  acceptVacatingSettlement,
+  declineVacatingSettlement,
 }: {
   vacating: VacatingCase;
   cancelVacatingCase: (reason?: string) => Promise<void>;
   updateVacateDate: (date: string) => Promise<void>;
+  acceptVacatingSettlement: (caseId: string) => Promise<void>;
+  declineVacatingSettlement: (caseId: string, reason: string) => Promise<void>;
 }) {
   const [withdrawing, setWithdrawing] = useState(false);
   const [draftDate, setDraftDate] = useState('');
   const [savingDate, setSavingDate] = useState(false);
+  const [settlementBusy, setSettlementBusy] = useState(false);
   const isDeleted = vacating.status === 'cancelled';
   const dateValue = draftDate || vacating.vacatingDate.slice(0, 10);
 
@@ -314,6 +354,19 @@ export function VacatingCaseView({
             onSaveDate={() => void handleDateSave()}
             withdrawing={withdrawing}
             onWithdraw={() => void handleWithdraw()}
+            settlementBusy={settlementBusy}
+            onAcceptSettlement={() => {
+              setSettlementBusy(true);
+              void acceptVacatingSettlement(vacating.id)
+                .then(() => toast.success('Settlement accepted'))
+                .finally(() => setSettlementBusy(false));
+            }}
+            onDeclineSettlement={(reason) => {
+              setSettlementBusy(true);
+              void declineVacatingSettlement(vacating.id, reason)
+                .then(() => toast.success('Settlement declined — your agent will follow up'))
+                .finally(() => setSettlementBusy(false));
+            }}
           />
         </>
       )}

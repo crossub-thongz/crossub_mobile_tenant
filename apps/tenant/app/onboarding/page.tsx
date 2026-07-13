@@ -71,8 +71,8 @@ export default function OnboardingPage() {
 
       {onboardingSteps.length === 0 && !loading && (
         <p className="text-muted-foreground rounded-xl border border-dashed p-6 text-center text-sm">
-          No onboarding steps yet. After your agent approves your application and creates your
-          tenant login, your leasing checklist will appear here.
+          No onboarding steps yet. After your agent opens a new-leasing case and approves your
+          application, your move-in checklist will appear here.
         </p>
       )}
     </TenantShell>

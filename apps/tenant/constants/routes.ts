@@ -54,6 +54,7 @@ export const maintenanceNew = repairNew;
 export const messageDetail = (id: string) => `/messages/${id}`;
 export const rentReviewDetail = (id: string) => `/rent-review/${id}`;
 export const ingoingReport = (id: string) => `/inspections/ingoing/${id}`;
+export const routineInspection = (id: string) => `/inspections/routine/${id}`;
 export const outgoingReport = (id: string) => `/vacating/outgoing/${id}`;
 export const statementDetail = () => ROUTES.STATEMENT;
 export const leaseDocumentView = (id: string) => `/lease/documents/${id}`;

@@ -10,13 +10,12 @@ import { APPLICATION_STATUS_LABEL } from '@/lib/tenant-labels';
 import { formatDateTime } from '@/lib/utils';
 
 export default function ApplicationsPage() {
-  const { applications } = useTenantData();
+  const { applications, apiConnected } = useTenantData();
 
   return (
     <TenantShell title="Applications">
       <p className="text-muted-foreground mb-4 text-sm">
-        Track status from submission through approval. Reference number and timestamp recorded for
-        audit.
+        Track your application on properties where your agent has opened a new-leasing case.
       </p>
       <div className="space-y-3">
         {applications.map((app) => (
@@ -49,6 +48,13 @@ export default function ApplicationsPage() {
             )}
           </Link>
         ))}
+        {applications.length === 0 && (
+          <p className="text-muted-foreground rounded-xl border border-dashed p-6 text-center text-sm">
+            {apiConnected
+              ? 'Your property manager will open a new-leasing case here when you are applying for a property. You will receive a notification when action is required.'
+              : 'No applications yet. In live mode, applications appear when your agent opens a new-leasing case for you.'}
+          </p>
+        )}
       </div>
     </TenantShell>
   );

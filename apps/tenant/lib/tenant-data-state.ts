@@ -58,7 +58,7 @@ export interface LoadedTenantState {
   messages: MessageThread[];
   notifications: TenantNotification[];
   ingoing: IngoingReport | null;
-  outgoing: OutgoingReport;
+  outgoing: OutgoingReport | null;
   rentReviews: RentReviewCase[];
   vacatingState: VacatingCase | null;
   lease: LeaseSummary | null;
@@ -101,7 +101,7 @@ function loadLiveInitialState(stored: ReturnType<typeof readTenantStore>): Loade
     messages: stored.messages ?? [],
     notifications: stored.notifications ?? [],
     ingoing: stored.ingoingReport ?? null,
-    outgoing: stored.outgoingReport ?? EMPTY_OUTGOING,
+    outgoing: stored.outgoingReport ?? null,
     rentReviews: stored.rentReviews ?? [],
     vacatingState: stored.vacating?.status === 'open' ? stored.vacating : null,
     lease: null,

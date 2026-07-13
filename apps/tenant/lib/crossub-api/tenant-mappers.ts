@@ -5,6 +5,7 @@
  * the provider swaps seed data for these mapped results with no component changes.
  */
 import { VACATING_STAGE } from '@/constants/vacating';
+import { routineInspection } from '@/constants/routes';
 import {
   APPLICATION_STATUS,
   COMM_CHANNEL,
@@ -18,8 +19,10 @@ import {
   RENT_REVIEW_WORKFLOW_STATE,
   TENANT_NOTIFICATION_TYPE,
 } from '@/constants/api-enums';
+import { routineInspectionStatusLabel } from '@/lib/routine-inspection';
 import type {
   ApplicationStatus,
+  IngoingReport,
   InspectionListType,
   InspectionSummary,
   LeaseSummary,
@@ -28,6 +31,8 @@ import type {
   MessageCategory,
   MessageThread,
   MessageType,
+  NewLeasingCase,
+  OutgoingReport,
   RentReceipt,
   RentReviewCase,
   RentReviewTenantStatus,
@@ -40,12 +45,16 @@ import type {
 import type {
   TenantApplication,
   TenantDocument,
+  TenantIngoingInspection,
   TenantInspection,
   TenantLedgerEntry,
   TenantMaintenanceRequestSummary,
   TenantMessageThread,
+  TenantNewLeasing,
   TenantNotificationDto,
+  TenantOutgoingInspection,
   TenantRentReview,
+  TenantRoutineInspection,
   TenantTenancy,
   TenantVacatingCase,
 } from './tenant-account-client';
@@ -398,6 +407,20 @@ export function toTenantInspections(
   });
 }
 
+/** Project agent-created routine inspections onto inspection list cards. */
+export function toRoutineInspectionSummaries(
+  items: TenantRoutineInspection[],
+): InspectionSummary[] {
+  return items.map((r) => ({
+    id: r.id,
+    type: 'routine' as const,
+    propertyAddress: asString(r.propertyAddress) ?? '—',
+    status: routineInspectionStatusLabel(r.status),
+    scheduledAt: asString(r.scheduledAt) ?? undefined,
+    href: routineInspection(r.id),
+  }));
+}
+
 /** Friendly label for the aggregated document category (the screen shows it verbatim). */
 function documentCategoryLabel(category: TenantDocument['category']): string {
   switch (category) {
@@ -446,6 +469,81 @@ function applicationStatus(status: TenantApplication['status']): ApplicationStat
   }
 }
 
+export function toIngoingReport(dto: TenantIngoingInspection): IngoingReport {
+  const sections =
+    dto.sections?.map((section) => ({
+      id: section.id,
+      room: section.room,
+      description: section.description,
+      photos: section.photos ?? [],
+      tenantConfirmed: dto.tenantApproved ? !section.disputed : false,
+      tenantDispute: section.disputeComment ?? undefined,
+      confirmedAt: undefined,
+    })) ?? [];
+
+  const confirmedCount = sections.filter(
+    (s) => s.tenantConfirmed || s.tenantDispute,
+  ).length;
+  const hasDispute = sections.some((s) => s.tenantDispute);
+  let status: IngoingReport['status'] = 'pending_tenant_review';
+  if (dto.tenantApproved || dto.status === 'confirmed') status = 'confirmed';
+  else if (hasDispute) status = 'disputed';
+  else if (confirmedCount > 0) status = 'partially_confirmed';
+
+  return {
+    id: dto.id,
+    propertyAddress: asString(dto.propertyAddress) ?? '—',
+    status,
+    dueBy: asString(dto.dueBy)?.slice(0, 10) ?? '',
+    sections,
+    confirmedCount,
+  };
+}
+
+/** Lightweight ingoing cards from the list endpoint (sections loaded on detail). */
+export function toIngoingReportSummaries(
+  inspections: TenantIngoingInspection[],
+): IngoingReport[] {
+  return inspections.map((dto) => toIngoingReport({ ...dto, sections: [] }));
+}
+
+export function toOutgoingReport(dto: TenantOutgoingInspection): OutgoingReport {
+  const sections =
+    dto.sections?.map((section) => ({
+      id: section.id,
+      room: section.room,
+      description: section.description,
+      photos: section.photos ?? [],
+      tenantConfirmed: dto.tenantApproved ? !section.disputed : false,
+      tenantDispute: section.disputeComment ?? undefined,
+      confirmedAt: undefined,
+    })) ?? [];
+
+  const confirmedCount = sections.filter(
+    (s) => s.tenantConfirmed || s.tenantDispute,
+  ).length;
+  const hasDispute = sections.some((s) => s.tenantDispute);
+  let status: OutgoingReport['status'] = 'report_sent';
+  if (dto.tenantApproved || dto.status === 'confirmed') status = 'confirmed';
+  else if (hasDispute) status = 'disputed';
+  else if (confirmedCount > 0) status = 'report_sent';
+
+  return {
+    id: dto.id,
+    propertyAddress: asString(dto.propertyAddress) ?? '—',
+    status,
+    sections,
+    confirmedCount,
+  };
+}
+
+/** Lightweight outgoing cards from the list endpoint (sections loaded on detail). */
+export function toOutgoingReportSummaries(
+  inspections: TenantOutgoingInspection[],
+): OutgoingReport[] {
+  return inspections.map((dto) => toOutgoingReport({ ...dto, sections: [] }));
+}
+
 /** Project the tenant's API applications onto the app's RentalApplication cards. */
 export function toTenantApplications(
   applications: TenantApplication[],
@@ -460,31 +558,49 @@ export function toTenantApplications(
   }));
 }
 
+/** Project agent-opened new-leasing cases onto the app's NewLeasingCase cards. */
+export function toTenantNewLeasingCases(cases: TenantNewLeasing[]): NewLeasingCase[] {
+  return cases.map((c) => ({
+    applicationId: c.applicationId,
+    referenceNumber: asString(c.reference) ?? c.applicationId.slice(0, 8).toUpperCase(),
+    propertyId: c.propertyId,
+    propertyAddress: asString(c.propertyAddress) ?? '—',
+    applicationStatus: applicationStatus(c.applicationStatus),
+    cycleId: c.cycleId,
+    lifecycleStep: c.lifecycleStep,
+    onboardingActive: c.onboardingActive,
+    submittedAt: asString(c.submittedAt) ?? '',
+  }));
+}
+
 /** Map the API rent-review workflow state onto the app's tenant-facing status. */
 function rentReviewStatus(
   state: TenantRentReview['workflowState'],
+  tenantCounterWeekly: number | null,
+  tenantMoveOutDate: string | null,
 ): RentReviewTenantStatus {
   switch (state) {
     case RENT_REVIEW_WORKFLOW_STATE.TENANT_ACCEPTED:
     case RENT_REVIEW_WORKFLOW_STATE.ACCOUNTING:
-    case RENT_REVIEW_WORKFLOW_STATE.COMPLETED:
       return 'accepted';
+    case RENT_REVIEW_WORKFLOW_STATE.COMPLETED:
+      return tenantMoveOutDate ? 'rejected' : 'accepted';
     case RENT_REVIEW_WORKFLOW_STATE.TENANT_REJECTED:
     case RENT_REVIEW_WORKFLOW_STATE.CANCELLED:
       return 'rejected';
     case RENT_REVIEW_WORKFLOW_STATE.NEGOTIATION:
       return 'countered';
+    case RENT_REVIEW_WORKFLOW_STATE.AGENT_REVIEW:
+      return tenantCounterWeekly != null ? 'countered' : 'pending';
     default:
-      // PENDING_CONFIRMATION / AGENT_REVIEW / TENANT_NOTIFIED / POSTPONED.
+      // TENANT_NOTIFIED / POSTPONED — awaiting tenant action or follow-up.
       return 'pending';
   }
 }
 
 /**
- * Project the tenant's API rent reviews onto the app's RentReviewCase cards. Read-only —
- * the accept/dispute/counter actions stay local (no tenant write anchor). When the tenant
- * has countered, a single counter-history entry is synthesised (the read carries the latest
- * counter weekly, not a per-event log).
+ * Project the tenant's API rent reviews onto the app's RentReviewCase cards. Only
+ * tenant-visible reviews are returned by the API (dispatched notices and history).
  */
 export function toTenantRentReviews(
   reviews: TenantRentReview[],
@@ -492,6 +608,7 @@ export function toTenantRentReviews(
   return reviews.map((r) => {
     const effectiveDate = asString(r.effectiveDate) ?? '';
     const counter = asNumber(r.tenantCounterWeekly);
+    const moveOut = asString(r.tenantMoveOutDate);
     const createdAt = asString(r.createdAt) ?? effectiveDate;
     return {
       id: r.id,
@@ -501,11 +618,12 @@ export function toTenantRentReviews(
       effectiveDate,
       explanation: asString(r.explanation) ?? undefined,
       rentNegotiable: r.rentNegotiable ?? null,
-      status: rentReviewStatus(r.workflowState),
+      status: rentReviewStatus(r.workflowState, counter, moveOut),
       counterHistory:
         counter != null
           ? [{ at: createdAt, amount: counter, by: 'tenant' as const }]
           : [],
+      moveOutDate: moveOut?.slice(0, 10),
     };
   });
 }

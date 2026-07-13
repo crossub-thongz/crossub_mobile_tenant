@@ -1,6 +1,6 @@
 import type { OnboardingStep } from '@/lib/types';
 import { fileToBase64 } from '@/lib/utils';
-import { onboardingStep } from '@/constants/routes';
+import { ingoingReport, onboardingStep } from '@/constants/routes';
 
 const API_BASE = `${process.env.NEXT_PUBLIC_API_URL ?? '/api'}/v1`;
 
@@ -38,6 +38,7 @@ export interface TenantLeasingOnboardingDto {
     fileName: string | null;
     proofUrl: string | null;
   };
+  ingoingInspectionId: string | null;
 }
 
 export interface SetKeyCollectionInput {
@@ -63,7 +64,10 @@ export function mapLeasingOnboardingToSteps(
     title: s.title,
     description: s.description,
     status: mapStepStatus(s.status),
-    href: onboardingStep(s.id),
+    href:
+      s.id === 'ingoing_report' && dto.ingoingInspectionId
+        ? ingoingReport(dto.ingoingInspectionId)
+        : onboardingStep(s.id),
   }));
 }
 

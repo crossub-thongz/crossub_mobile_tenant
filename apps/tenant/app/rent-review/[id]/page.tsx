@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { ArrowRight, TrendingUp, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -16,11 +16,13 @@ import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
 
 export default function RentReviewDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const { rentReviews, respondRentReview } = useTenantData();
   const review = rentReviews.find((r) => r.id === id);
   const [counter, setCounter] = useState('');
   const [moveOut, setMoveOut] = useState('');
   const [rejectReason, setRejectReason] = useState('');
+  const [busy, setBusy] = useState(false);
 
   if (!review) {
     return (
@@ -89,9 +91,17 @@ export default function RentReviewDetailPage() {
           <div className="space-y-4">
             <Button
               className="h-12 w-full text-base"
-              onClick={() => {
-                respondRentReview(review.id, 'accept');
-                toast.success('Acceptance recorded — sent to agent workflow');
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                try {
+                  await respondRentReview(review.id, 'accept');
+                  toast.success('Acceptance recorded — sent to your property manager');
+                } catch {
+                  toast.error('Could not record acceptance');
+                } finally {
+                  setBusy(false);
+                }
               }}
             >
               Approve new rent
@@ -113,11 +123,19 @@ export default function RentReviewDetailPage() {
                 <Button
                   variant="outline"
                   className="mt-3 w-full"
-                  onClick={() => {
+                  disabled={busy}
+                  onClick={async () => {
                     const amount = Number(counter);
                     if (!amount) return toast.error('Enter an amount');
-                    respondRentReview(review.id, 'counter', { amount });
-                    toast.success('Counter offer submitted');
+                    setBusy(true);
+                    try {
+                      await respondRentReview(review.id, 'counter', { amount });
+                      toast.success('Counter offer submitted');
+                    } catch {
+                      toast.error('Could not submit counter offer');
+                    } finally {
+                      setBusy(false);
+                    }
                   }}
                 >
                   Submit counter offer
@@ -158,17 +176,25 @@ export default function RentReviewDetailPage() {
               <Button
                 variant="destructive"
                 className="mt-3 w-full"
-                onClick={() => {
+                disabled={busy}
+                onClick={async () => {
                   if (!rejectReason.trim()) return toast.error('Provide a reason');
                   if (!moveOut) return toast.error('Select intended move-out date');
-                  respondRentReview(review.id, 'reject', {
-                    moveOutDate: moveOut,
-                    reason: rejectReason,
-                  });
+                  setBusy(true);
+                  try {
+                    await respondRentReview(review.id, 'reject', {
+                      moveOutDate: moveOut,
+                      reason: rejectReason,
+                    });
                   toast.success('Rejection recorded', {
-                    description: 'Vacating workflow started — see move-out services',
+                    description: 'Your property manager will open an end-leasing case',
                   });
-                  window.location.href = ROUTES.MOVE_OUT_SERVICES;
+                  router.push(ROUTES.VACATING);
+                  } catch {
+                    toast.error('Could not record rejection');
+                  } finally {
+                    setBusy(false);
+                  }
                 }}
               >
                 Decline rent & indicate move-out

@@ -147,6 +147,19 @@ export interface RentalApplication {
   declineReason?: string;
 }
 
+/** Agent-opened new-leasing engagement linked to the tenant's application. */
+export interface NewLeasingCase {
+  applicationId: string;
+  referenceNumber: string;
+  propertyId: string;
+  propertyAddress: string;
+  applicationStatus: ApplicationStatus;
+  cycleId: string;
+  lifecycleStep: 'open_inspection' | 'open_report' | 'application_approval' | 'onboarding';
+  onboardingActive: boolean;
+  submittedAt: string;
+}
+
 export interface OnboardingStep {
   id: OnboardingStepId;
   title: string;

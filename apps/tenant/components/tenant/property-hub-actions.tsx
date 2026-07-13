@@ -4,6 +4,7 @@ import Link from 'next/link';
 import {
   ClipboardList,
   DoorOpen,
+  KeyRound,
   TrendingUp,
   Wrench,
   type LucideIcon,
@@ -15,6 +16,22 @@ import {
   ROUTES,
 } from '@/constants/routes';
 import { VACATING_STAGE_LABEL } from '@/constants/vacating';
+import { findPendingRentReview } from '@/lib/rent-review';
+import { findUrgentIngoingInspection, needsIngoingConfirmationAction } from '@/lib/ingoing-inspection';
+import {
+  findUrgentOutgoingInspection,
+  needsOutgoingConfirmationAction,
+} from '@/lib/outgoing-inspection';
+import {
+  findUrgentRoutineInspection,
+  needsRoutineInspectionAction,
+} from '@/lib/routine-inspection';
+import { needsVacatingSettlementAction } from '@/lib/end-leasing';
+import {
+  findUrgentNewLeasingCase,
+  needsNewLeasingOnboardingAction,
+  NEW_LEASING_STEP_LABEL,
+} from '@/lib/new-leasing';
 import { cn, formatCurrency } from '@/lib/utils';
 
 function HubLink({
@@ -68,23 +85,32 @@ export function PropertyHubActions() {
     inspections,
     maintenance,
     rentReviews,
-    vacating,
+    newLeasingCases,
+    onboardingSteps,
+    vacatingCase,
     ingoingReport,
-    renewal,
+    ingoingInspections,
+    outgoingReport,
+    outgoingInspections,
+    routineInspections,
   } = useTenantData();
 
   const openRepairs = maintenance.filter(
     (m) => m.status !== 'closed' && !m.tenantCompletionApproved,
   );
-  const pendingRentReview = rentReviews.find((r) => r.status === 'pending');
+  const pendingRentReview = findPendingRentReview(rentReviews);
+  const urgentNewLeasing = findUrgentNewLeasingCase(newLeasingCases, onboardingSteps);
+  const urgentIngoing = findUrgentIngoingInspection(ingoingInspections);
+  const urgentOutgoing = findUrgentOutgoingInspection(outgoingInspections);
+  const urgentRoutine = findUrgentRoutineInspection(routineInspections);
   const ingoingAction =
-    ingoingReport && ingoingReport.status !== 'confirmed' ? 'Confirm' : undefined;
-
-  const vacatingSubtitle = vacating
-    ? `${VACATING_STAGE_LABEL[vacating.currentStage]} · vacate ${vacating.vacatingDate}`
-    : renewal
-      ? 'Set move-out date if not renewing'
-      : 'Start when you plan to move out';
+    urgentIngoing &&
+    ingoingReport &&
+    needsIngoingConfirmationAction(ingoingReport)
+      ? 'Confirm'
+      : undefined;
+  const routineAction =
+    urgentRoutine && needsRoutineInspectionAction(urgentRoutine) ? 'Required' : undefined;
 
   return (
     <section className="space-y-2">
@@ -97,12 +123,14 @@ export function PropertyHubActions() {
           icon={ClipboardList}
           title="Inspections"
           subtitle={
-            ingoingReport
+            urgentIngoing && ingoingReport
               ? `Ingoing ${ingoingReport.confirmedCount}/${ingoingReport.sections.length} confirmed · ${inspections.length} on file`
-              : `${inspections.length} inspection record(s)`
+              : urgentRoutine && needsRoutineInspectionAction(urgentRoutine)
+                ? `Routine inspection · ${inspections.length} on file`
+                : `${inspections.length} inspection record(s)`
           }
-          badge={ingoingAction ?? (inspections.length ? String(inspections.length) : undefined)}
-          urgent={!!ingoingAction}
+          badge={ingoingAction ?? routineAction ?? (inspections.length ? String(inspections.length) : undefined)}
+          urgent={!!ingoingAction || !!routineAction}
         />
         <HubLink
           href={ROUTES.REPAIRS}
@@ -115,32 +143,83 @@ export function PropertyHubActions() {
           }
           badge={openRepairs.length ? String(openRepairs.length) : undefined}
         />
-        <HubLink
-          href={
-            pendingRentReview
-              ? rentReviewDetail(pendingRentReview.id)
-              : ROUTES.RENT_REVIEW
-          }
-          icon={TrendingUp}
-          title="Rent review"
-          subtitle={
-            pendingRentReview
-              ? `Proposed ${formatCurrency(pendingRentReview.proposedRentWeekly)}/week`
-              : rentReviews.length
-                ? `${rentReviews.length} review(s) on file`
-                : 'No rent review in progress'
-          }
-          badge={pendingRentReview ? 'Action' : undefined}
-          urgent={!!pendingRentReview}
-        />
-        <HubLink
-          href={vacating ? ROUTES.VACATING : renewal ? ROUTES.RENEWAL : ROUTES.VACATING}
-          icon={DoorOpen}
-          title="Vacating"
-          subtitle={vacatingSubtitle}
-          badge={vacating ? 'Active' : undefined}
-          urgent={!!vacating}
-        />
+        {newLeasingCases.length > 0 && urgentNewLeasing && (
+          <HubLink
+            href={
+              needsNewLeasingOnboardingAction(urgentNewLeasing, onboardingSteps)
+                ? ROUTES.ONBOARDING
+                : ROUTES.APPLICATIONS
+            }
+            icon={KeyRound}
+            title="New leasing"
+            subtitle={
+              needsNewLeasingOnboardingAction(urgentNewLeasing, onboardingSteps)
+                ? `Onboarding · ${urgentNewLeasing.propertyAddress}`
+                : `${NEW_LEASING_STEP_LABEL[urgentNewLeasing.lifecycleStep]} · ${urgentNewLeasing.propertyAddress}`
+            }
+            badge={
+              needsNewLeasingOnboardingAction(urgentNewLeasing, onboardingSteps)
+                ? 'Required'
+                : 'Active'
+            }
+            urgent={
+              needsNewLeasingOnboardingAction(urgentNewLeasing, onboardingSteps) ||
+              urgentNewLeasing.lifecycleStep !== 'onboarding'
+            }
+          />
+        )}
+        {rentReviews.length > 0 && (
+          <HubLink
+            href={
+              pendingRentReview
+                ? rentReviewDetail(pendingRentReview.id)
+                : ROUTES.RENT_REVIEW
+            }
+            icon={TrendingUp}
+            title="Rent review"
+            subtitle={
+              pendingRentReview
+                ? `Proposed ${formatCurrency(pendingRentReview.proposedRentWeekly)}/week`
+                : `${rentReviews.length} past review(s)`
+            }
+            badge={pendingRentReview ? 'Action' : undefined}
+            urgent={!!pendingRentReview}
+          />
+        )}
+        {vacatingCase && (
+          <HubLink
+            href={ROUTES.VACATING}
+            icon={DoorOpen}
+            title="End of lease"
+            subtitle={
+              needsVacatingSettlementAction(vacatingCase)
+                ? `Settlement due · vacate ${vacatingCase.vacatingDate}`
+                : urgentOutgoing &&
+                    outgoingReport &&
+                    needsOutgoingConfirmationAction(outgoingReport)
+                  ? `Outgoing report · ${outgoingReport.confirmedCount} section(s) reviewed · vacate ${vacatingCase.vacatingDate}`
+                  : `${VACATING_STAGE_LABEL[vacatingCase.currentStage]} · vacate ${vacatingCase.vacatingDate}`
+            }
+            badge={
+              needsVacatingSettlementAction(vacatingCase)
+                ? 'Required'
+                : urgentOutgoing &&
+                    outgoingReport &&
+                    needsOutgoingConfirmationAction(outgoingReport)
+                  ? 'Confirm'
+                  : vacatingCase.status === 'open'
+                    ? 'Active'
+                    : undefined
+            }
+            urgent={
+              needsVacatingSettlementAction(vacatingCase) ||
+              vacatingCase.status === 'open' ||
+              (!!urgentOutgoing &&
+                !!outgoingReport &&
+                needsOutgoingConfirmationAction(outgoingReport))
+            }
+          />
+        )}
       </div>
     </section>
   );
