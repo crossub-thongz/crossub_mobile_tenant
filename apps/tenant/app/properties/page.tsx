@@ -1,16 +1,17 @@
 'use client';
 
 import Link from 'next/link';
+import { MapPin } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { Calendar, MapPin } from 'lucide-react';
 
 import { TenantShell } from '@/components/layout/tenant-shell';
 import { PropertyFiltersBar } from '@/components/tenant/property-filters';
+import { ListingOpenInspectionFacts } from '@/components/tenant/listing-open-inspection-facts';
 import { StatusBadge } from '@/components/tenant/status-badge';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
 import { DEFAULT_PROPERTY_FILTERS, filterAndSortListings } from '@/lib/filter-listings';
 import { propertyApply, propertyDetail } from '@/constants/routes';
-import { formatCurrency, formatDateTime } from '@/lib/utils';
+import { formatCurrency } from '@/lib/utils';
 
 export default function PropertiesPage() {
   const { listings, listingsLoading, listingsError } = useTenantData();
@@ -104,12 +105,7 @@ export default function PropertiesPage() {
                 {p.parking != null && p.parking > 0 ? ` · ${p.parking} parking` : ''}
                 {p.availableFrom !== 'TBC' ? ` · Available ${p.availableFrom}` : ''}
               </p>
-              {p.openInspectionAt && (
-                <p className="text-muted-foreground mt-2 flex items-center gap-1 text-xs">
-                  <Calendar className="size-3" />
-                  Open inspection {formatDateTime(p.openInspectionAt)}
-                </p>
-              )}
+              <ListingOpenInspectionFacts property={p} compact />
               <span className="text-primary mt-3 inline-block text-xs font-medium">
                 {p.canApply ? 'View & apply →' : 'View details →'}
               </span>

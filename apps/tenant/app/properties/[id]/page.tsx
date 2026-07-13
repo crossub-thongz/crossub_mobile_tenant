@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import { TenantShell } from '@/components/layout/tenant-shell';
+import { ListingOpenInspectionFacts } from '@/components/tenant/listing-open-inspection-facts';
 import { Button } from '@/components/ui/button';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
 import { propertyApply, ROUTES } from '@/constants/routes';
@@ -12,7 +13,7 @@ import {
   fetchPublicListing,
 } from '@/lib/crossub-api/public-listings-client';
 import type { ListingProperty } from '@/lib/types';
-import { formatCurrency, formatDateTime } from '@/lib/utils';
+import { formatCurrency } from '@/lib/utils';
 
 export default function PropertyDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -97,11 +98,7 @@ export default function PropertyDetailPage() {
             {property.status ? ` · ${property.status.replace('_', ' ')}` : ''}
             {property.availableFrom !== 'TBC' ? ` · Available ${property.availableFrom}` : ''}
           </p>
-          {property.openInspectionAt && (
-            <p className="mt-2 text-sm">
-              Open inspection: {formatDateTime(property.openInspectionAt)}
-            </p>
-          )}
+          <ListingOpenInspectionFacts property={property} />
         </div>
         <div>
           <h2 className="text-sm font-semibold">Features</h2>

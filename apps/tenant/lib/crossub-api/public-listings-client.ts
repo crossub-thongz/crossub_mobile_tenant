@@ -26,6 +26,7 @@ export interface PublicListingDto {
   availableFrom: string | null;
   leaseTerm: string | null;
   openInspectionAt: string | null;
+  openInspectionEndAt: string | null;
   listedAt: string | null;
   bedrooms: number | null;
   bathrooms: number | null;
@@ -80,6 +81,7 @@ export function mapPublicListingToProperty(dto: PublicListingDto): ListingProper
     availableFrom: dto.availableFrom ?? 'TBC',
     leaseTerm: dto.leaseTerm ?? undefined,
     openInspectionAt: dto.openInspectionAt ?? undefined,
+    openInspectionEndAt: dto.openInspectionEndAt ?? undefined,
     listedAt: dto.listedAt ?? undefined,
     features: dto.features.length > 0 ? dto.features : ['Contact agent for details'],
     imageUrl: dto.imageUrl ?? undefined,

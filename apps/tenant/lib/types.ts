@@ -130,6 +130,7 @@ export interface ListingProperty {
   availableFrom: string;
   leaseTerm?: string;
   openInspectionAt?: string;
+  openInspectionEndAt?: string;
   /** When the agent opened the new-leasing case. */
   listedAt?: string;
   features: string[];
