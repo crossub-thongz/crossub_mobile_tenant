@@ -3,7 +3,7 @@ import type { ListingProperty } from '@/lib/types';
 
 export function ApplicationRentalFacts({ property }: { property: ListingProperty }) {
   const rent =
-    property.rentWeekly > 0
+    property.rentWeekly != null && property.rentWeekly > 0
       ? `${formatCurrency(property.rentWeekly)}/week`
       : 'On application';
 

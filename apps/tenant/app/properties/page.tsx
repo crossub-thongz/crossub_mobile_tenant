@@ -8,7 +8,7 @@ import { TenantShell } from '@/components/layout/tenant-shell';
 import { PropertyFiltersBar } from '@/components/tenant/property-filters';
 import { StatusBadge } from '@/components/tenant/status-badge';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
-import { DEFAULT_PROPERTY_FILTERS, filterListings } from '@/lib/filter-listings';
+import { DEFAULT_PROPERTY_FILTERS, filterAndSortListings } from '@/lib/filter-listings';
 import { propertyApply, propertyDetail } from '@/constants/routes';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 
@@ -28,12 +28,12 @@ export default function PropertiesPage() {
     [availableListings],
   );
   const filtered = useMemo(
-    () => filterListings(availableListings, filters),
+    () => filterAndSortListings(availableListings, filters),
     [availableListings, filters],
   );
 
   return (
-    <TenantShell title="Available properties">
+    <TenantShell title="New leasing properties">
       {/* <p className="text-muted-foreground mb-4 text-sm">
         Same property registry as crossub_web Properties — loaded from staging via{' '}
         <code className="text-xs">{PUBLIC_LISTINGS_ENDPOINT}</code>.
@@ -60,7 +60,7 @@ export default function PropertiesPage() {
           <p className="text-muted-foreground rounded-xl border border-dashed p-6 text-center text-sm">
             {availableListings.length === 0
               ? listings.length === 0
-                ? 'No properties are available right now. Check that the API is running and that properties have an active leasing cycle with open inspection or vacant/showing status.'
+                ? 'No new leasing properties are available right now. Your property manager will list properties here when they open a new leasing case.'
                 : 'No properties are accepting applications right now.'
               : 'No properties match your filters.'}
           </p>
@@ -83,7 +83,7 @@ export default function PropertiesPage() {
                 <StatusBadge label={p.propertyType} />
               </div>
               <p className="text-primary mt-2 text-sm font-medium">
-                {p.rentWeekly > 0
+                {p.rentWeekly != null && p.rentWeekly > 0
                   ? `${formatCurrency(p.rentWeekly)}/week`
                   : 'Rent on application'}
               </p>
@@ -107,6 +107,7 @@ export default function PropertiesPage() {
               <p className="text-muted-foreground text-xs">
                 {p.status ? `${p.status.replace('_', ' ')} · ` : ''}
                 {p.bedrooms} bed · {p.bathrooms} bath
+                {p.parking != null && p.parking > 0 ? ` · ${p.parking} parking` : ''}
                 {p.availableFrom !== 'TBC' ? ` · Available ${p.availableFrom}` : ''}
               </p>
               {p.openInspectionAt && (

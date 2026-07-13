@@ -66,7 +66,7 @@ export default function PropertyDetailPage() {
     <TenantShell title={property.address} backHref={ROUTES.PROPERTIES}>
       <div className="space-y-4">
         <div className="rounded-xl border bg-card p-4">
-          {property.rentWeekly > 0 ? (
+          {property.rentWeekly != null && property.rentWeekly > 0 ? (
             <p className="text-primary text-lg font-semibold">
               {formatCurrency(property.rentWeekly)}/week
             </p>

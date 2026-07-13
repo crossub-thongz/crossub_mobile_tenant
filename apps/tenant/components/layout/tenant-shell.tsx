@@ -28,7 +28,7 @@ const PRIMARY_NAV = [
 ] as const;
 
 const MORE_NAV = [
-  { href: ROUTES.PROPERTIES, label: 'Browse listings' },
+  { href: ROUTES.PROPERTIES, label: 'New leasing' },
   { href: ROUTES.APPLICATIONS, label: 'Applications' },
   { href: ROUTES.ONBOARDING, label: 'Onboarding' },
   { href: ROUTES.RENEWAL, label: 'Lease renewal' },

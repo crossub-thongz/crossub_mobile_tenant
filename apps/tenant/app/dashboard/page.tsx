@@ -80,7 +80,7 @@ export default function DashboardPage() {
       title: 'Property details',
       summary: lease
         ? `${lease.propertyAddress} · ${formatCurrency(lease.rentWeekly)}/week`
-        : 'No property linked — browse listings to apply',
+        : 'No property linked — browse new leasing properties to apply',
       href: ROUTES.PROPERTY,
       icon: Building2,
     },

@@ -25,7 +25,7 @@ export default function PropertyPage() {
           description="Browse available listings and submit an application to start your tenancy."
           action={
             <Button asChild>
-              <Link href={ROUTES.PROPERTIES}>Browse listings</Link>
+              <Link href={ROUTES.PROPERTIES}>New leasing properties</Link>
             </Button>
           }
         />

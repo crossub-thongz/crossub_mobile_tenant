@@ -119,12 +119,14 @@ export interface ListingProperty {
   id: string;
   address: string;
   suburb: string;
-  rentWeekly: number;
+  /** Null when the agent has not set weekly rent on the listing cycle. */
+  rentWeekly: number | null;
   bondAmount?: number;
   depositAmount?: number;
   propertyType: string;
   bedrooms: number;
   bathrooms: number;
+  parking?: number;
   availableFrom: string;
   leaseTerm?: string;
   openInspectionAt?: string;
@@ -387,12 +389,25 @@ export interface FinalStatement {
   pdfAvailable?: boolean;
 }
 
+export type ListingSortBy =
+  | 'address_asc'
+  | 'rent_asc'
+  | 'rent_desc'
+  | 'available_asc'
+  | 'inspection_asc';
+
 export interface PropertyFilters {
   suburb: string;
-  minRent: number;
-  maxRent: number;
+  minRent: number | null;
+  maxRent: number | null;
   propertyType: string;
+  minBedrooms: number | null;
+  minBathrooms: number | null;
+  hasParking: boolean;
   hasOpenInspection: boolean;
+  knownRentOnly: boolean;
+  availableFrom: string;
+  sortBy: ListingSortBy;
 }
 
 export interface ArrearsNotice {
