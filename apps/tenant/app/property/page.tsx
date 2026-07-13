@@ -12,12 +12,19 @@ import { StatusBadge } from '@/components/tenant/status-badge';
 import { Button } from '@/components/ui/button';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
 import { ROUTES } from '@/constants/routes';
+import { findActiveNewLeasingCase } from '@/lib/new-leasing';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
 export default function PropertyPage() {
-  const { lease, leasingOnboarding, loading } = useTenantData();
+  const { lease, leasingOnboarding, newLeasingCases, loading, apiConnected } =
+    useTenantData();
 
-  if (!lease && !leasingOnboarding) {
+  const activeNewLeasing =
+    findActiveNewLeasingCase(newLeasingCases) ?? newLeasingCases[0];
+
+  const hasPropertyContext = Boolean(lease || leasingOnboarding || activeNewLeasing);
+
+  if (!hasPropertyContext) {
     if (loading) {
       return (
         <TenantShell title="Property">
@@ -30,10 +37,14 @@ export default function PropertyPage() {
         <EmptyState
           icon={Building2}
           title="No property linked"
-          description="Browse available listings and submit an application, or sign in with the credentials your agent sent after approval."
+          description={
+            apiConnected
+              ? 'Your login is active, but no approved application or lease was found for this account. Ask your agent to send tenant login from New Leasing → Onboarding after approving your application.'
+              : 'Could not reach the CROSSUB API. Make sure crossub_web is running and you are signed in with the email your agent provisioned.'
+          }
           action={
             <Button asChild>
-              <Link href={ROUTES.PROPERTIES}>New leasing properties</Link>
+              <Link href={ROUTES.PROPERTIES}>Browse new leasing properties</Link>
             </Button>
           }
         />
@@ -41,8 +52,11 @@ export default function PropertyPage() {
     );
   }
 
-  const address = lease?.propertyAddress ?? leasingOnboarding!.propertyAddress;
-  const approvedOnboarding = Boolean(leasingOnboarding);
+  const address =
+    lease?.propertyAddress ??
+    leasingOnboarding?.propertyAddress ??
+    activeNewLeasing!.propertyAddress;
+  const inOnboarding = Boolean(leasingOnboarding || activeNewLeasing?.onboardingActive);
 
   return (
     <TenantShell title="Property details">
@@ -67,9 +81,9 @@ export default function PropertyPage() {
                 <StatusBadge label={lease.status} variant="success" />
                 {lease.periodic && <StatusBadge label="Periodic" />}
               </>
-            ) : (
+            ) : inOnboarding ? (
               <StatusBadge label="Onboarding" variant="action" />
-            )}
+            ) : null}
           </div>
         </InfoCard>
 
@@ -105,7 +119,7 @@ export default function PropertyPage() {
               </Link>
             </Button>
           </>
-        ) : approvedOnboarding ? (
+        ) : inOnboarding ? (
           <Button asChild className="w-full">
             <Link href={ROUTES.ONBOARDING}>Complete move-in checklist</Link>
           </Button>
