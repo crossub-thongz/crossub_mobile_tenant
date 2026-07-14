@@ -750,11 +750,6 @@ export default function OnboardingStepPage() {
         </form>
       )}
 
-      {step.id === 'ingoing_report' && (
-        <Button asChild className="w-full">
-          <a href={step.href}>Open ingoing report confirmation</a>
-        </Button>
-      )}
     </TenantShell>
   );
 }

@@ -25,7 +25,7 @@ const STEPS = [
   },
   {
     title: 'Move-in inspection',
-    body: 'Review and confirm the ingoing condition report before your tenancy is finalised.',
+    body: 'When your agent schedules an ingoing inspection, confirm it from the Inspections tab on your dashboard.',
   },
   {
     title: 'Day-to-day tenancy',

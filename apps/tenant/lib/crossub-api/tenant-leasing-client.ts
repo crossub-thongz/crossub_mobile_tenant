@@ -1,5 +1,5 @@
 import type { OnboardingStep } from '@/lib/types';
-import { ingoingReport, onboardingStep } from '@/constants/routes';
+import { onboardingStep } from '@/constants/routes';
 import {
   fileToBase64WithProgress,
   mapNetworkUploadProgress,
@@ -378,17 +378,16 @@ function mapStepStatus(
 export function mapLeasingOnboardingToSteps(
   dto: TenantLeasingOnboardingDto,
 ): OnboardingStep[] {
-  return dto.steps.map((s) => ({
-    id: s.id as OnboardingStep['id'],
-    title: s.title,
-    description: s.description,
-    status: mapStepStatus(s.status),
-    amount: s.amount ?? undefined,
-    href:
-      s.id === 'ingoing_report' && dto.ingoingInspectionId
-        ? ingoingReport(dto.ingoingInspectionId)
-        : onboardingStep(s.id),
-  }));
+  return dto.steps
+    .filter((s) => s.id !== 'ingoing_report')
+    .map((s) => ({
+      id: s.id as OnboardingStep['id'],
+      title: s.title,
+      description: s.description,
+      status: mapStepStatus(s.status),
+      amount: s.amount ?? undefined,
+      href: onboardingStep(s.id),
+    }));
 }
 
 /** Live leasing onboarding for the signed-in tenant (`GET /tenant/leasing/onboarding`). */
