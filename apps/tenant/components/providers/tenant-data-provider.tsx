@@ -1231,6 +1231,14 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
           patchTenantStore({ rentReviews: next });
           return next;
         });
+        if (decision === 'accept') {
+          try {
+            const tenancies = await fetchTenancies();
+            setLease(toLeaseSummary(tenancies));
+          } catch {
+            /* best-effort — property page also reads nextRentReviewOpensOn from the review */
+          }
+        }
       } catch {
         applyLocal();
       }

@@ -186,6 +186,8 @@ export interface LeaseSummary {
   status: 'active' | 'periodic' | 'expiring' | 'vacating';
   documents: { id: string; name: string; uploadedAt: string }[];
   renewalDueInDays?: number;
+  /** When the managing agent can next open a rent review (after an accepted increase). */
+  nextRentReviewAt?: string;
 }
 
 export interface ReportSection {
@@ -363,6 +365,7 @@ export interface RentReviewCase {
   moveOutDate?: string;
   noticeDispatchedAt?: string;
   noticeTerms?: RentReviewNoticeTerms | null;
+  nextRentReviewOpensOn?: string | null;
   emails: RentReviewEmail[];
 }
 

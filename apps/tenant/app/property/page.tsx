@@ -13,10 +13,14 @@ import { Button } from '@/components/ui/button';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
 import { ROUTES } from '@/constants/routes';
 import { findActiveNewLeasingCase } from '@/lib/new-leasing';
+import {
+  resolveNextRentReviewDate,
+  shouldShowNextRentReviewDate,
+} from '@/lib/rent-review';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
 export default function PropertyPage() {
-  const { lease, leasingOnboarding, newLeasingCases, loading, apiConnected } =
+  const { lease, leasingOnboarding, newLeasingCases, rentReviews, loading, apiConnected } =
     useTenantData();
 
   const activeNewLeasing =
@@ -57,6 +61,8 @@ export default function PropertyPage() {
     leasingOnboarding?.propertyAddress ??
     activeNewLeasing!.propertyAddress;
   const inOnboarding = Boolean(leasingOnboarding || activeNewLeasing?.onboardingActive);
+  const nextRentReviewDate = resolveNextRentReviewDate(lease, rentReviews);
+  const showNextRentReview = shouldShowNextRentReviewDate(lease, rentReviews);
 
   return (
     <TenantShell title="Property details">
@@ -97,6 +103,20 @@ export default function PropertyPage() {
                 <p className="font-medium">{formatDate(lease.leaseEnd)}</p>
               </InfoCard>
             </div>
+
+            {showNextRentReview && nextRentReviewDate ? (
+              <div className="rounded-2xl border border-primary/25 bg-primary/5 p-4">
+                <p className="text-sm font-medium">Next rent review</p>
+                <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+                  You accepted the recent rent increase. Your property manager can begin the
+                  next rent review from{' '}
+                  <span className="text-foreground font-medium">
+                    {formatDate(nextRentReviewDate)}
+                  </span>
+                  .
+                </p>
+              </div>
+            ) : null}
 
             {lease.renewalDueInDays != null && lease.renewalDueInDays <= 90 && (
               <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4">

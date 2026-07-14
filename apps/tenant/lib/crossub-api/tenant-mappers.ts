@@ -131,6 +131,9 @@ export function toLeaseSummary(tenancies: TenantTenancy[]): LeaseSummary | null 
     status: toLeaseViewStatus(lease.status),
     documents: [],
     renewalDueInDays: daysUntil(endDate),
+    nextRentReviewAt: asString(
+      (lease as { nextRentReviewAt?: string | null }).nextRentReviewAt,
+    ) ?? undefined,
   };
 }
 
@@ -655,6 +658,9 @@ export function toTenantRentReviews(
         (r as { noticeDispatchedAt?: string | null }).noticeDispatchedAt,
       ),
       noticeTerms,
+      nextRentReviewOpensOn: asString(
+        (r as { nextRentReviewOpensOn?: string | null }).nextRentReviewOpensOn,
+      ),
       emails: rawEmails.map((email) => ({
         subject: asString(email.subject) ?? '',
         body: asString(email.body) ?? '',
