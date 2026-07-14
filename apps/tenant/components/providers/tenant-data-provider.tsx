@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 
@@ -296,6 +297,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
   const [listings, setListings] = useState<ListingProperty[]>([]);
   const [listingsLoading, setListingsLoading] = useState(true);
   const [listingsError, setListingsError] = useState<string | null>(null);
+  const hasLoadedOnceRef = useRef(false);
 
   const setters = useMemo(
     () => ({
@@ -375,15 +377,40 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     await loadLeasingOnboarding();
   }, [loadLeasingOnboarding]);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    const loaded = loadInitialState();
-    applyLoadedState(loaded, setters);
+  /** Lightweight poll for dispatched rent-review notices and unread alerts. */
+  const syncLiveAttention = useCallback(async () => {
+    if (status !== 'authed') return;
+    const [notifs, rentReviewsRes] = await Promise.allSettled([
+      fetchTenantNotifications(),
+      fetchTenantRentReviews(),
+    ]);
+    if (notifs.status === 'fulfilled') {
+      setNotifications(toTenantNotifications(notifs.value));
+    }
+    if (rentReviewsRes.status === 'fulfilled') {
+      setRentReviews(toTenantRentReviews(rentReviewsRes.value));
+    }
+  }, [status]);
+
+  const refresh = useCallback(async (options?: { force?: boolean }) => {
+    const isInitialLoad = !hasLoadedOnceRef.current;
+    const force = options?.force === true;
+    const showBlockingLoad = isInitialLoad || force;
 
     if (status !== 'authed') {
-      setApiConnected(false);
-      setLoading(false);
+      hasLoadedOnceRef.current = false;
+      if (showBlockingLoad) {
+        setApiConnected(false);
+        setLoading(false);
+      }
       return;
+    }
+
+    let loaded: LoadedTenantState | undefined;
+    if (showBlockingLoad) {
+      setLoading(true);
+      loaded = loadInitialState();
+      applyLoadedState(loaded, setters);
     }
 
     // Pull every facade-backed screen (lease, ledger, repairs, messages, notifications) in
@@ -442,7 +469,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       connected = true;
       const fromApi = toTenantMaintenanceRequests(
         requests.value,
-        loaded.lease?.propertyAddress,
+        loaded?.lease?.propertyAddress,
       );
       // Keep the tenant's own locally-created (optimistic) repairs, drop demo seeds.
       const apiIds = new Set(fromApi.map((r) => r.id));
@@ -553,21 +580,26 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     }
 
     setApiConnected(connected);
-    setLoading(false);
+    hasLoadedOnceRef.current = true;
+    if (showBlockingLoad) {
+      setLoading(false);
+    }
   }, [status, setters, loadLeasingOnboarding]);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
 
-  // Background sync — same 5s cadence as the agent portal so dispatched notices appear promptly.
+  // Background sync for rent-review notices — do not call full refresh (it used to wipe
+  // lease state from localStorage and flash the property page every 5s).
   useEffect(() => {
     if (status !== 'authed' || !apiConnected) return;
+    void syncLiveAttention();
     const id = window.setInterval(() => {
-      void refresh();
+      void syncLiveAttention();
     }, LIVE_POLL_MS);
     return () => window.clearInterval(id);
-  }, [status, apiConnected, refresh]);
+  }, [status, apiConnected, syncLiveAttention]);
 
   const onboardingPendingAgent = useMemo(
     () => onboardingSteps.some((s) => s.status === 'uploaded'),
@@ -591,17 +623,17 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     loadLeasingOnboarding,
   ]);
 
-  // Refresh immediately when the tenant returns to this tab.
+  // Refresh attention items when the tenant returns to this tab (not a full state reset).
   useEffect(() => {
     if (status !== 'authed' || !apiConnected) return;
     const onVisible = () => {
       if (document.visibilityState === 'visible') {
-        void refresh();
+        void syncLiveAttention();
       }
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
-  }, [status, apiConnected, refresh]);
+  }, [status, apiConnected, syncLiveAttention]);
 
   const propertyAddress = lease?.propertyAddress ?? 'Your property';
   const leaseId = lease?.id;
