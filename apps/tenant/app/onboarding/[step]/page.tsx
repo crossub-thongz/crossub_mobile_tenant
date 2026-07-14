@@ -353,7 +353,7 @@ export default function OnboardingStepPage() {
                 </a>
               ) : null}
             </div>
-          )}
+          ) : null}
 
           {!paymentProofLocked ? (
             <>
