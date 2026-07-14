@@ -119,7 +119,12 @@ export default function OnboardingStepPage() {
       : step.id === 'bond'
         ? leasingOnboarding?.bondProof
         : null;
-  const proofSubmitted = Boolean(existingProof?.proofUrl);
+  const depositStep = onboardingSteps.find((s) => s.id === 'deposit');
+  const bondStep = onboardingSteps.find((s) => s.id === 'bond');
+  const currentPaymentStep =
+    step.id === 'deposit' ? depositStep : step.id === 'bond' ? bondStep : null;
+  const proofPendingConfirmation = currentPaymentStep?.status === 'uploaded';
+  const proofSubmitted = proofPendingConfirmation;
   const paymentProofLocked = proofSubmitted;
 
   const handlePaymentProofSubmit = async () => {
@@ -269,21 +274,23 @@ export default function OnboardingStepPage() {
             designated statutory process).
           </p>
 
-          {proofSubmitted && existingProof?.proofUrl && (
+          {proofSubmitted && (existingProof?.proofUrl || existingProof?.fileName) && (
             <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
               <p className="font-medium text-amber-950 dark:text-amber-100">Pending confirmation</p>
               <p className="text-muted-foreground mt-1 text-xs">
-                {existingProof.fileName ?? 'Payment proof'} has been submitted. Your agent will
+                {existingProof?.fileName ?? 'Payment proof'} has been submitted. Your agent will
                 confirm once reviewed.
               </p>
-              <a
-                href={existingProof.proofUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary mt-2 inline-block text-xs font-medium underline"
-              >
-                View uploaded document
-              </a>
+              {existingProof?.proofUrl ? (
+                <a
+                  href={existingProof.proofUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary mt-2 inline-block text-xs font-medium underline"
+                >
+                  View uploaded document
+                </a>
+              ) : null}
             </div>
           )}
 
