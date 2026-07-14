@@ -16,17 +16,21 @@ export function StatusBadge({
 }: {
   label: string;
   priority?: Priority;
-  variant?: 'default' | 'action' | 'success';
+  variant?: 'default' | 'action' | 'success' | 'danger' | 'warning';
   className?: string;
 }) {
   const styles =
     variant === 'action'
       ? 'bg-primary/15 text-primary border-primary/30'
       : variant === 'success'
-        ? 'bg-primary/10 text-primary border-primary/20'
-        : priority
-          ? PRIORITY[priority].className
-          : 'bg-secondary text-muted-foreground border-border';
+        ? 'bg-emerald-500/15 text-emerald-700 border-emerald-500/30 dark:text-emerald-300'
+        : variant === 'danger'
+          ? 'bg-destructive/15 text-destructive border-destructive/30'
+          : variant === 'warning'
+            ? 'bg-amber-500/15 text-amber-800 border-amber-500/30 dark:text-amber-200'
+            : priority
+            ? PRIORITY[priority].className
+            : 'bg-secondary text-muted-foreground border-border';
 
   return (
     <span

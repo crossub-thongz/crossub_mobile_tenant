@@ -1,5 +1,4 @@
 import type { OnboardingStep } from '@/lib/types';
-import { fileToBase64 } from '@/lib/utils';
 import { ingoingReport, onboardingStep } from '@/constants/routes';
 
 const API_BASE = `${process.env.NEXT_PUBLIC_API_URL ?? '/api'}/v1`;
@@ -60,6 +59,15 @@ export interface SetKeyCollectionInput {
   time: string;
   location: string;
   photoUrls: string[];
+}
+
+async function readApiError(res: Response, fallback: string): Promise<string> {
+  const err = (await res.json().catch(() => null)) as {
+    message?: string | string[];
+  } | null;
+  const raw = err?.message;
+  const message = Array.isArray(raw) ? raw[0] : raw;
+  return message ?? fallback;
 }
 
 function mapStepStatus(
@@ -135,7 +143,7 @@ export async function uploadDepositProofPhoto(
     },
   );
   if (!res.ok) {
-    throw new Error('Failed to upload deposit proof');
+    throw new Error(await readApiError(res, 'Failed to upload deposit proof'));
   }
   const data = (await res.json()) as { url: string };
   return data.url;
@@ -175,7 +183,7 @@ export async function uploadBondProofPhoto(
     },
   );
   if (!res.ok) {
-    throw new Error('Failed to upload bond proof');
+    throw new Error(await readApiError(res, 'Failed to upload bond proof'));
   }
   const data = (await res.json()) as { url: string };
   return data.url;
@@ -197,6 +205,19 @@ export async function submitBondProof(body: {
     const raw = err?.message;
     const message = Array.isArray(raw) ? raw[0] : raw;
     throw new Error(message ?? 'Failed to submit bond proof');
+  }
+  return res.json() as Promise<TenantLeasingOnboardingDto>;
+}
+
+/** Tenant acknowledges they signed the lease agreement (`PATCH /tenant/leasing/onboarding/agreement/signed`). */
+export async function acknowledgeAgreementSigned(): Promise<TenantLeasingOnboardingDto> {
+  const res = await fetch(`${API_BASE}/tenant/leasing/onboarding/agreement/signed`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    throw new Error(await readApiError(res, 'Failed to submit agreement signing'));
   }
   return res.json() as Promise<TenantLeasingOnboardingDto>;
 }

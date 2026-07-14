@@ -90,11 +90,6 @@ export function formatCurrency(amount: number): string {
   return `$${amount.toLocaleString('en-AU')}`;
 }
 
-/**
- * Read a browser File into raw base64 (no `data:<mime>;base64,` prefix) for the
- * base64-through-API photo upload. The API's UploadTenantPhotoDto expects raw base64, so
- * the data-URI prefix the FileReader produces is stripped here.
- */
 export function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -110,4 +105,24 @@ export function fileToBase64(file: File): Promise<string> {
     reader.onerror = () => reject(reader.error ?? new Error('Failed to read file'));
     reader.readAsDataURL(file);
   });
+}
+
+/** MIME for deposit/bond proof uploads — PDFs and images only. */
+export function resolvePaymentProofMimeType(file: File): string {
+  if (file.type.startsWith('image/')) return file.type;
+  if (file.type === 'application/pdf') return file.type;
+
+  const lower = file.name.toLowerCase();
+  if (lower.endsWith('.pdf')) return 'application/pdf';
+  if (/\.(jpe?g)$/.test(lower)) return 'image/jpeg';
+  if (lower.endsWith('.png')) return 'image/png';
+  if (lower.endsWith('.gif')) return 'image/gif';
+  if (lower.endsWith('.webp')) return 'image/webp';
+  if (lower.endsWith('.heic')) return 'image/heic';
+
+  return file.type;
+}
+
+export function isAllowedPaymentProofMimeType(mimeType: string): boolean {
+  return mimeType.startsWith('image/') || mimeType === 'application/pdf';
 }

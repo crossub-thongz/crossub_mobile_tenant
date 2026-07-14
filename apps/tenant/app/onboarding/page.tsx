@@ -6,12 +6,23 @@ import { TenantShell } from '@/components/layout/tenant-shell';
 import { StatusBadge } from '@/components/tenant/status-badge';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
 import { ROUTES } from '@/constants/routes';
+import type { OnboardingStepStatus } from '@/lib/types';
 
-const STATUS_LABEL: Record<string, string> = {
+const STATUS_LABEL: Record<OnboardingStepStatus, string> = {
   pending: 'Not started',
-  uploaded: 'In progress',
+  uploaded: 'Pending confirmation',
   approved: 'Approved',
   completed: 'Done',
+};
+
+const STATUS_VARIANT: Record<
+  OnboardingStepStatus,
+  'danger' | 'action' | 'success' | 'default' | 'warning'
+> = {
+  pending: 'danger',
+  uploaded: 'warning',
+  approved: 'success',
+  completed: 'success',
 };
 
 export default function OnboardingPage() {
@@ -64,7 +75,10 @@ export default function OnboardingPage() {
               <p className="font-medium">{step.title}</p>
               <p className="text-muted-foreground mt-0.5 line-clamp-2 text-xs">{step.description}</p>
             </div>
-            <StatusBadge label={STATUS_LABEL[step.status] ?? step.status} />
+            <StatusBadge
+              label={STATUS_LABEL[step.status]}
+              variant={STATUS_VARIANT[step.status]}
+            />
           </Link>
         ))}
       </div>

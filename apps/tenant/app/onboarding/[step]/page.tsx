@@ -1,8 +1,8 @@
 'use client';
 
-import { Calendar, Download, MapPin } from 'lucide-react';
+import { Download } from 'lucide-react';
 import { useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { TenantShell } from '@/components/layout/tenant-shell';
@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
 import { ROUTES } from '@/constants/routes';
 import {
+  acknowledgeAgreementSigned,
   submitBondProof,
   submitDepositProof,
   submitKeyCollection,
@@ -21,7 +22,7 @@ import {
   uploadDepositProofPhoto,
   uploadKeyCollectionPhotos,
 } from '@/lib/crossub-api/tenant-leasing-client';
-import { fileToBase64 } from '@/lib/utils';
+import { fileToBase64, isAllowedPaymentProofMimeType, resolvePaymentProofMimeType } from '@/lib/utils';
 import { PAYMENT_STEP_COPY } from '@/lib/onboarding-payment-copy';
 import { formatCurrency, formatDate, formatDateTime, formatOpenInspectionWindow } from '@/lib/utils';
 
@@ -42,10 +43,21 @@ export default function OnboardingStepPage() {
   const scheduledLocation = keyCollection?.location?.trim() ?? '';
   const agentScheduled = Boolean(scheduledTime || scheduledLocation);
   const tenantProofSubmitted = (keyCollection?.photos?.length ?? 0) > 0;
+  const keyCollectionLocked = tenantProofSubmitted;
+  const scheduleFingerprint = useMemo(
+    () => [scheduledTime, scheduledTimeEnd, scheduledLocation].join('\u0001'),
+    [scheduledTime, scheduledTimeEnd, scheduledLocation],
+  );
+  const [agentScheduleUpdated, setAgentScheduleUpdated] = useState(false);
   const scheduleWindow = scheduledTime
     ? formatOpenInspectionWindow(scheduledTime, scheduledTimeEnd ?? undefined) ??
       formatDateTime(scheduledTime)
     : null;
+
+  useEffect(() => {
+    if (!isKeyPickup) return;
+    void refreshLeasingOnboarding();
+  }, [isKeyPickup, refreshLeasingOnboarding]);
 
   useEffect(() => {
     if (!isKeyPickup || !leasingOnboarding) return;
@@ -63,6 +75,21 @@ export default function OnboardingStepPage() {
     }
   }, [isKeyPickup, leasingOnboarding]);
 
+  useEffect(() => {
+    if (!isKeyPickup || !agentScheduled || !leasingOnboarding?.cycleId) {
+      setAgentScheduleUpdated(false);
+      return;
+    }
+    const storageKey = `tenant-key-schedule:${leasingOnboarding.cycleId}`;
+    const seen = sessionStorage.getItem(storageKey);
+    if (seen != null && seen !== scheduleFingerprint) {
+      setAgentScheduleUpdated(true);
+    } else {
+      setAgentScheduleUpdated(false);
+    }
+    sessionStorage.setItem(storageKey, scheduleFingerprint);
+  }, [isKeyPickup, agentScheduled, leasingOnboarding?.cycleId, scheduleFingerprint]);
+
   if (!step) {
     return (
       <TenantShell title="Onboarding" backHref={ROUTES.ONBOARDING}>
@@ -75,7 +102,9 @@ export default function OnboardingStepPage() {
   const isLease = step.id === 'lease_signing';
   const agreement = leasingOnboarding?.agreement;
   const agreementAvailable = Boolean(agreement?.available);
-  const agreementSigned = agreement?.signingStatus === 'signed';
+  const agreementConfirmed = agreement?.signingStatus === 'signed';
+  const agreementPendingConfirmation = agreement?.status === 'waiting';
+  const agreementAckLocked = agreementConfirmed || agreementPendingConfirmation;
   const paymentCopy =
     step.id === 'deposit' || step.id === 'bond'
       ? PAYMENT_STEP_COPY[step.id]
@@ -87,18 +116,25 @@ export default function OnboardingStepPage() {
         ? leasingOnboarding?.bondProof
         : null;
   const proofSubmitted = Boolean(existingProof?.proofUrl);
+  const paymentProofLocked = proofSubmitted;
 
   const handlePaymentProofSubmit = async () => {
     if (!file) {
       toast.error('Choose a file to upload');
       return;
     }
+    const mimeType = resolvePaymentProofMimeType(file);
+    if (!isAllowedPaymentProofMimeType(mimeType)) {
+      toast.error('Upload a PDF or image file (screenshot or receipt)');
+      return;
+    }
+
     setSubmitting(true);
     try {
       const contentBase64 = await fileToBase64(file);
       const upload = {
         fileName: file.name,
-        mimeType: file.type || 'application/octet-stream',
+        mimeType,
         sizeBytes: file.size,
         contentBase64,
       };
@@ -113,11 +149,24 @@ export default function OnboardingStepPage() {
       }
       await refreshLeasingOnboarding();
       setFile(null);
-      toast.success('Proof uploaded — pending CROSSUB approval', {
+      toast.success('Proof submitted — pending agent confirmation', {
         description: file.name,
       });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not upload proof');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleAgreementSigned = async () => {
+    setSubmitting(true);
+    try {
+      await acknowledgeAgreementSigned();
+      await refreshLeasingOnboarding();
+      toast.success('Agreement marked as signed — pending agent confirmation');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not submit agreement signing');
     } finally {
       setSubmitting(false);
     }
@@ -129,8 +178,13 @@ export default function OnboardingStepPage() {
     const pickupTime = scheduledTime ?? (keyTime ? new Date(keyTime).toISOString() : '');
     const pickupLocation = scheduledLocation || keyLocation.trim();
 
-    if (!pickupTime || !pickupLocation) {
+    if (!agentScheduled && (!pickupTime || !pickupLocation)) {
       toast.error('Enter both pickup time and location');
+      return;
+    }
+
+    if (agentScheduled && (!pickupTime || !pickupLocation)) {
+      toast.error('Key collection details are not ready yet — check back once your agent has sent them');
       return;
     }
 
@@ -210,10 +264,11 @@ export default function OnboardingStepPage() {
           </p>
 
           {proofSubmitted && existingProof?.proofUrl && (
-            <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm">
-              <p className="font-medium">Proof submitted</p>
+            <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+              <p className="font-medium text-amber-950 dark:text-amber-100">Pending confirmation</p>
               <p className="text-muted-foreground mt-1 text-xs">
-                {existingProof.fileName ?? 'Payment proof'} — awaiting CROSSUB approval.
+                {existingProof.fileName ?? 'Payment proof'} has been submitted. Your agent will
+                confirm once reviewed.
               </p>
               <a
                 href={existingProof.proofUrl}
@@ -226,15 +281,19 @@ export default function OnboardingStepPage() {
             </div>
           )}
 
-          <FileUploadField accept="image/*,.pdf" onFileSelect={setFile} />
+          {!paymentProofLocked ? (
+            <>
+              <FileUploadField accept="image/*,.pdf" onFileSelect={setFile} />
 
-          <Button
-            className="w-full"
-            disabled={!file || submitting}
-            onClick={() => void handlePaymentProofSubmit()}
-          >
-            {submitting ? 'Uploading…' : proofSubmitted ? 'Replace proof' : 'Submit proof'}
-          </Button>
+              <Button
+                className="w-full"
+                disabled={!file || submitting}
+                onClick={() => void handlePaymentProofSubmit()}
+              >
+                {submitting ? 'Uploading…' : 'Submit proof'}
+              </Button>
+            </>
+          ) : null}
         </div>
       )}
 
@@ -304,18 +363,27 @@ export default function OnboardingStepPage() {
                 </Button>
               </div>
 
+              {agreementPendingConfirmation && (
+                <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+                  <p className="font-medium text-amber-950 dark:text-amber-100">
+                    Pending confirmation
+                  </p>
+                  <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+                    You marked the agreement as signed. Your agent will confirm once reviewed.
+                  </p>
+                </div>
+              )}
+
               <Button
                 className="w-full"
-                disabled={agreementSigned}
-                onClick={() =>
-                  toast.success(
-                    agreementSigned
-                      ? 'Agreement already marked as signed'
-                      : 'Lease marked as signed — your agent will confirm on their side',
-                  )
-                }
+                disabled={agreementAckLocked || submitting}
+                onClick={() => void handleAgreementSigned()}
               >
-                {agreementSigned ? 'Agreement signed' : 'I have signed the agreement'}
+                {agreementConfirmed
+                  ? 'Agreement confirmed'
+                  : agreementPendingConfirmation
+                    ? 'Pending agent confirmation'
+                    : 'I have signed the agreement'}
               </Button>
             </>
           ) : (
@@ -332,44 +400,74 @@ export default function OnboardingStepPage() {
 
       {isKeyPickup && (
         <form className="space-y-4" onSubmit={handleKeySubmit}>
-          {agentScheduled && (
-            <div className="rounded-xl border bg-card p-4 text-sm">
-              <p className="font-medium">Key collection arranged by your agent</p>
-              <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-                Collect your keys at the date, time, and location below. Upload a photo when you
-                have the keys.
-              </p>
-              <div className="mt-4 space-y-3">
-                {scheduleWindow && (
-                  <div className="flex items-start gap-3">
-                    <Calendar className="text-primary mt-0.5 size-4 shrink-0" />
-                    <div>
-                      <p className="text-muted-foreground text-xs font-medium uppercase">Date & time</p>
-                      <p className="mt-0.5 font-medium">{scheduleWindow}</p>
-                    </div>
-                  </div>
-                )}
-                {scheduledLocation && (
-                  <div className="flex items-start gap-3">
-                    <MapPin className="text-primary mt-0.5 size-4 shrink-0" />
-                    <div>
-                      <p className="text-muted-foreground text-xs font-medium uppercase">Location</p>
-                      <p className="mt-0.5 font-medium">{scheduledLocation}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {!agentScheduled && (
+          {keyCollectionLocked ? (
+            <p className="text-muted-foreground text-sm">
+              Your key collection report has been submitted. Contact your agent if you need to
+              change anything.
+            </p>
+          ) : agentScheduled ? (
+            <p className="text-muted-foreground text-sm">
+              Your agent has arranged key collection. Confirm the details below and upload a photo
+              when you have the keys.
+            </p>
+          ) : (
             <p className="text-muted-foreground text-sm">
               Your agent has not sent key collection details yet. Enter when and where you will pick
               up the keys, or check back once they have scheduled it.
             </p>
           )}
 
-          {tenantProofSubmitted && scheduledTime && (
+          {agentScheduleUpdated && agentScheduled ? (
+            <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
+              <p className="font-medium text-amber-950 dark:text-amber-100">
+                Key collection details updated
+              </p>
+              <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+                Your agent changed the pickup date, time, or location. Review the details below.
+              </p>
+            </div>
+          ) : null}
+
+          <div className="space-y-2">
+            <Label htmlFor="keyLocation">Pickup location</Label>
+            <Input
+              id="keyLocation"
+              disabled={agentScheduled}
+              readOnly={agentScheduled}
+              required={!agentScheduled}
+              className={agentScheduled ? 'bg-muted/40 disabled:opacity-100' : undefined}
+              placeholder={
+                agentScheduled
+                  ? undefined
+                  : leasingOnboarding?.keyCustody === 'crossub'
+                    ? 'CROSSUB office address'
+                    : 'Agent office or property address'
+              }
+              value={agentScheduled ? scheduledLocation : keyLocation}
+              onChange={(e) => setKeyLocation(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="keyTime">Pickup date & time</Label>
+            <Input
+              id="keyTime"
+              type={agentScheduled ? 'text' : 'datetime-local'}
+              disabled={agentScheduled}
+              readOnly={agentScheduled}
+              required={!agentScheduled}
+              className={agentScheduled ? 'bg-muted/40 disabled:opacity-100' : undefined}
+              placeholder={agentScheduled ? 'Not set' : undefined}
+              value={
+                agentScheduled
+                  ? scheduleWindow ?? (scheduledTime ? formatDateTime(scheduledTime) : '')
+                  : keyTime
+              }
+              onChange={(e) => setKeyTime(e.target.value)}
+            />
+          </div>
+
+          {tenantProofSubmitted && (
             <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm">
               <p className="font-medium">Key collection report submitted</p>
               <p className="text-muted-foreground mt-1">
@@ -380,86 +478,61 @@ export default function OnboardingStepPage() {
           )}
 
           {keyCollection?.photos && keyCollection.photos.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Key collection proof</p>
-                <div className="flex flex-wrap gap-2">
-                  {keyCollection.photos.map((url) => (
-                    <a
-                      key={url}
-                      href={url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block overflow-hidden rounded-lg border"
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={url}
-                        alt="Key collection proof"
-                        className="size-20 object-cover"
-                      />
-                    </a>
-                  ))}
-                </div>
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Key collection proof</p>
+              <div className="flex flex-wrap gap-2">
+                {keyCollection.photos.map((url) => (
+                  <a
+                    key={url}
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block overflow-hidden rounded-lg border"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={url}
+                      alt="Key collection proof"
+                      className="size-20 object-cover"
+                    />
+                  </a>
+                ))}
               </div>
-            )}
-
-          <div className="space-y-2">
-            <Label>Key collection photo</Label>
-            <p className="text-muted-foreground text-xs">
-              {agentScheduled
-                ? 'Snap or upload a photo of the keys as proof that you collected them.'
-                : 'Snap or upload a photo of the keys as proof for your key collection report.'}
-            </p>
-            <FileUploadField
-              accept="image/*"
-              capture="environment"
-              label="Snap or upload key photo"
-              hint="Use your camera or choose from your gallery"
-              footer="Image · max 10 MB recommended"
-              onFileSelect={setKeyPhoto}
-            />
-          </div>
-
-          {!agentScheduled && (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="keyLocation">Pickup location</Label>
-                <Input
-                  id="keyLocation"
-                  required
-                  placeholder={
-                    leasingOnboarding?.keyCustody === 'crossub'
-                      ? 'CROSSUB office address'
-                      : 'Agent office or property address'
-                  }
-                  value={keyLocation}
-                  onChange={(e) => setKeyLocation(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="keyTime">Pickup date & time</Label>
-                <Input
-                  id="keyTime"
-                  type="datetime-local"
-                  required
-                  value={keyTime}
-                  onChange={(e) => setKeyTime(e.target.value)}
-                />
-              </div>
-            </>
+            </div>
           )}
 
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={submitting || (!agentScheduled && (!keyTime || !keyLocation.trim()))}
-          >
-            {submitting
-              ? 'Saving…'
-              : tenantProofSubmitted
-                ? 'Update key collection report'
-                : 'Submit key collection report'}
-          </Button>
+          {!keyCollectionLocked ? (
+            <div className="space-y-2">
+              <Label>Key collection photo</Label>
+              <p className="text-muted-foreground text-xs">
+                {agentScheduled
+                  ? 'Snap or upload a photo of the keys as proof that you collected them.'
+                  : 'Snap or upload a photo of the keys as proof for your key collection report.'}
+              </p>
+              <FileUploadField
+                accept="image/*"
+                capture="environment"
+                label="Snap or upload key photo"
+                hint="Use your camera or choose from your gallery"
+                footer="Image · max 10 MB recommended"
+                onFileSelect={setKeyPhoto}
+              />
+            </div>
+          ) : null}
+
+          {!keyCollectionLocked ? (
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={
+                submitting ||
+                (!agentScheduled && (!keyTime || !keyLocation.trim())) ||
+                (agentScheduled && !scheduledTime && !scheduledLocation)
+              }
+            >
+              {submitting ? 'Saving…' : 'Submit key collection report'}
+            </Button>
+          ) : null}
         </form>
       )}
 
