@@ -176,10 +176,10 @@ export function PropertyHubActions() {
                 : ROUTES.RENT_REVIEW
             }
             icon={TrendingUp}
-            title="Rent review"
+            title="Rent review notice"
             subtitle={
               pendingRentReview
-                ? `Proposed ${formatCurrency(pendingRentReview.proposedRentWeekly)}/week`
+                ? `Proposed ${formatCurrency(pendingRentReview.proposedRentWeekly)}/week — respond required`
                 : `${rentReviews.length} past review(s)`
             }
             badge={pendingRentReview ? 'Action' : undefined}

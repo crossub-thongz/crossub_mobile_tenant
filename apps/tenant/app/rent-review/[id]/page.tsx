@@ -2,14 +2,14 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { ArrowRight, TrendingUp, XCircle } from 'lucide-react';
+import { ArrowRight, Clock, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { TenantShell } from '@/components/layout/tenant-shell';
 import { InfoCard } from '@/components/tenant/info-card';
+import { RentReviewEmailsSection } from '@/components/tenant/rent-review-emails-section';
+import { RentReviewResponsePanel } from '@/components/tenant/rent-review-response-panel';
 import { StatusBadge } from '@/components/tenant/status-badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
 import { ROUTES } from '@/constants/routes';
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
@@ -19,30 +19,31 @@ export default function RentReviewDetailPage() {
   const router = useRouter();
   const { rentReviews, respondRentReview } = useTenantData();
   const review = rentReviews.find((r) => r.id === id);
-  const [counter, setCounter] = useState('');
-  const [moveOut, setMoveOut] = useState('');
-  const [rejectReason, setRejectReason] = useState('');
   const [busy, setBusy] = useState(false);
 
   if (!review) {
     return (
-      <TenantShell title="Rent review" backHref={ROUTES.RENT_REVIEW}>
+      <TenantShell title="Rent review notice" backHref={ROUTES.RENT_REVIEW}>
         <p className="text-sm text-muted-foreground">Not found.</p>
       </TenantShell>
     );
   }
 
   const increase = review.proposedRentWeekly - review.currentRentWeekly;
-  const canCounter = review.rentNegotiable === true;
 
   return (
-    <TenantShell title="Rent review notice" backHref={ROUTES.RENT_REVIEW}>
+    <TenantShell title="Notice of rent review" backHref={ROUTES.RENT_REVIEW}>
       <div className="space-y-5">
-        <InfoCard icon={TrendingUp} label="Proposed rent change" accent="primary">
+        <InfoCard icon={TrendingUp} label="Notice of rent review" accent="primary">
           <p className="text-sm">{review.propertyAddress}</p>
+          {review.noticeDispatchedAt ? (
+            <p className="text-muted-foreground mt-1 text-xs">
+              Notice sent {formatDateTime(review.noticeDispatchedAt)}
+            </p>
+          ) : null}
           <div className="mt-4 flex items-end gap-3">
             <div>
-              <p className="text-muted-foreground text-xs">Current</p>
+              <p className="text-muted-foreground text-xs">Current rent</p>
               <p className="text-lg font-semibold">
                 {formatCurrency(review.currentRentWeekly)}
                 <span className="text-muted-foreground text-sm font-normal">/wk</span>
@@ -50,7 +51,7 @@ export default function RentReviewDetailPage() {
             </div>
             <ArrowRight className="text-muted-foreground mb-1 size-4" />
             <div>
-              <p className="text-muted-foreground text-xs">Proposed</p>
+              <p className="text-muted-foreground text-xs">Proposed rent</p>
               <p className="text-primary text-xl font-bold">
                 {formatCurrency(review.proposedRentWeekly)}
                 <span className="text-base font-normal">/wk</span>
@@ -63,145 +64,90 @@ export default function RentReviewDetailPage() {
             </p>
           )}
           <p className="text-muted-foreground mt-3 text-xs">
-            Effective {formatDate(review.effectiveDate)}
+            Rent increase on {formatDate(review.effectiveDate)}
           </p>
-          {review.explanation && (
-            <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
-              {review.explanation}
-            </p>
-          )}
+          {review.explanation ? (
+            <p className="text-muted-foreground mt-3 text-sm leading-relaxed">{review.explanation}</p>
+          ) : null}
           <StatusBadge label={review.status} className="mt-3" variant="action" />
         </InfoCard>
 
-        {review.counterHistory.length > 0 && (
+        <RentReviewEmailsSection review={review} />
+
+        {review.status === 'countered' ? (
+          <div className="flex items-start gap-3 rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4">
+            <Clock className="mt-0.5 size-5 shrink-0 text-sky-700 dark:text-sky-300" />
+            <div>
+              <p className="text-sm font-semibold text-sky-950 dark:text-sky-50">
+                Counter-offer submitted
+              </p>
+              <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+                Your property manager is reviewing your offer
+                {review.counterHistory[0]
+                  ? ` of ${formatCurrency(review.counterHistory[0].amount)}/week`
+                  : ''}
+                . You will receive an updated notice if terms change.
+              </p>
+            </div>
+          </div>
+        ) : null}
+
+        {review.counterHistory.length > 0 && review.status !== 'pending' ? (
           <section className="rounded-2xl border bg-card p-4">
-            <h2 className="text-sm font-semibold">Counter offer history</h2>
+            <h2 className="text-sm font-semibold">Negotiation history</h2>
             <ul className="mt-3 space-y-2">
               {review.counterHistory.map((h, i) => (
                 <li key={i} className="text-muted-foreground text-sm">
                   <span className="text-foreground font-medium capitalize">{h.by}</span>{' '}
-                  {formatCurrency(h.amount)} · {formatDateTime(h.at)}
+                  {formatCurrency(h.amount)}/wk · {formatDateTime(h.at)}
                 </li>
               ))}
             </ul>
           </section>
-        )}
+        ) : null}
 
-        {review.status === 'pending' && (
-          <div className="space-y-4">
-            <Button
-              className="h-12 w-full text-base"
-              disabled={busy}
-              onClick={async () => {
-                setBusy(true);
-                try {
-                  await respondRentReview(review.id, 'accept');
-                  toast.success('Acceptance recorded — sent to your property manager');
-                } catch {
-                  toast.error('Could not record acceptance');
-                } finally {
-                  setBusy(false);
-                }
-              }}
-            >
-              Approve new rent
-            </Button>
-
-            {canCounter ? (
-              <div className="rounded-2xl border bg-card p-4">
-                <p className="font-semibold">Submit counter offer</p>
-                <p className="text-muted-foreground mt-1 text-xs">
-                  Propose a different weekly rent amount.
-                </p>
-                <Input
-                  type="number"
-                  className="mt-3"
-                  placeholder="Your proposed $/week"
-                  value={counter}
-                  onChange={(e) => setCounter(e.target.value)}
-                />
-                <Button
-                  variant="outline"
-                  className="mt-3 w-full"
-                  disabled={busy}
-                  onClick={async () => {
-                    const amount = Number(counter);
-                    if (!amount) return toast.error('Enter an amount');
-                    setBusy(true);
-                    try {
-                      await respondRentReview(review.id, 'counter', { amount });
-                      toast.success('Counter offer submitted');
-                    } catch {
-                      toast.error('Could not submit counter offer');
-                    } finally {
-                      setBusy(false);
-                    }
-                  }}
-                >
-                  Submit counter offer
-                </Button>
-              </div>
-            ) : (
-              <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
-                <p className="text-sm font-semibold text-amber-950 dark:text-amber-50">
-                  Non-negotiable increase
-                </p>
-                <p className="text-muted-foreground mt-1 text-xs">
-                  This rent review is not open to counter-offers. You can approve the new rent or
-                  decline and vacate.
-                </p>
-              </div>
-            )}
-
-            <div className="rounded-2xl border border-destructive/25 bg-destructive/5 p-4">
-              <div className="flex items-center gap-2">
-                <XCircle className="text-destructive size-4" />
-                <p className="font-semibold">Decline & vacate</p>
-              </div>
-              <p className="text-muted-foreground mt-1 text-xs">
-                If you do not accept the new rent, provide a reason and move-out date.
-              </p>
-              <textarea
-                className="border-input bg-background mt-3 w-full rounded-xl border px-3 py-2 text-sm"
-                placeholder="Reason for declining (required)"
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-              />
-              <Input
-                type="date"
-                className="mt-2"
-                value={moveOut}
-                onChange={(e) => setMoveOut(e.target.value)}
-              />
-              <Button
-                variant="destructive"
-                className="mt-3 w-full"
-                disabled={busy}
-                onClick={async () => {
-                  if (!rejectReason.trim()) return toast.error('Provide a reason');
-                  if (!moveOut) return toast.error('Select intended move-out date');
-                  setBusy(true);
-                  try {
-                    await respondRentReview(review.id, 'reject', {
-                      moveOutDate: moveOut,
-                      reason: rejectReason,
-                    });
-                  toast.success('Rejection recorded', {
-                    description: 'Your property manager will open an end-leasing case',
-                  });
-                  router.push(ROUTES.VACATING);
-                  } catch {
-                    toast.error('Could not record rejection');
-                  } finally {
-                    setBusy(false);
-                  }
-                }}
-              >
-                Decline rent & indicate move-out
-              </Button>
-            </div>
-          </div>
-        )}
+        {review.status === 'pending' ? (
+          <RentReviewResponsePanel
+            review={review}
+            busy={busy}
+            onAccept={async () => {
+              setBusy(true);
+              try {
+                await respondRentReview(review.id, 'accept');
+                toast.success('Acceptance recorded — sent to your property manager');
+              } catch {
+                toast.error('Could not record acceptance');
+              } finally {
+                setBusy(false);
+              }
+            }}
+            onReject={async (moveOutDate) => {
+              setBusy(true);
+              try {
+                await respondRentReview(review.id, 'reject', { moveOutDate });
+                toast.success('Rejection recorded', {
+                  description: 'Your property manager will open an end-leasing case',
+                });
+                router.push(ROUTES.VACATING);
+              } catch {
+                toast.error('Could not record rejection');
+              } finally {
+                setBusy(false);
+              }
+            }}
+            onCounter={async (amount) => {
+              setBusy(true);
+              try {
+                await respondRentReview(review.id, 'counter', { amount });
+                toast.success('Counter offer submitted');
+              } catch {
+                toast.error('Could not submit counter offer');
+              } finally {
+                setBusy(false);
+              }
+            }}
+          />
+        ) : null}
       </div>
     </TenantShell>
   );

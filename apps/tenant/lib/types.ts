@@ -329,6 +329,15 @@ export interface RentReceipt {
   pdfAvailable: boolean;
 }
 
+export interface RentReviewEmail {
+  subject: string;
+  body: string;
+  from: string;
+  to: string;
+  sentAt: string;
+  kind: 'notice' | 'reminder';
+}
+
 export interface RentReviewCase {
   id: string;
   propertyAddress: string;
@@ -342,6 +351,8 @@ export interface RentReviewCase {
   rentNegotiable?: boolean | null;
   counterHistory: { at: string; amount: number; by: 'tenant' | 'agent' }[];
   moveOutDate?: string;
+  noticeDispatchedAt?: string;
+  emails: RentReviewEmail[];
 }
 
 export interface RenewalDecision {

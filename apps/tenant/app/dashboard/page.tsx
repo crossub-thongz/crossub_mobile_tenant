@@ -157,11 +157,11 @@ export default function DashboardPage() {
         variant: 'urgent' as const,
       },
     pendingRentReview && {
-      title: 'Rent review',
+      title: 'Rent review notice',
       summary: `Proposed ${formatCurrency(pendingRentReview.proposedRentWeekly)}/week — ${
         pendingRentReview.rentNegotiable === true
-          ? 'approve, decline, or counter'
-          : 'approve or decline (non-negotiable)'
+          ? 'accept, decline, or counter'
+          : 'accept or decline (non-negotiable)'
       }`,
       href: rentReviewDetail(pendingRentReview.id),
       badge: 'Required',

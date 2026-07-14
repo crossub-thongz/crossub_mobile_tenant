@@ -612,6 +612,7 @@ export function toTenantRentReviews(
     const counter = asNumber(r.tenantCounterWeekly);
     const moveOut = asString(r.tenantMoveOutDate);
     const createdAt = asString(r.createdAt) ?? effectiveDate;
+    const rawEmails = (r as { emails?: Array<Record<string, unknown>> }).emails ?? [];
     return {
       id: r.id,
       propertyAddress: asString(r.propertyAddress) ?? '—',
@@ -626,6 +627,17 @@ export function toTenantRentReviews(
           ? [{ at: createdAt, amount: counter, by: 'tenant' as const }]
           : [],
       moveOutDate: moveOut?.slice(0, 10),
+      noticeDispatchedAt: asString(
+        (r as { noticeDispatchedAt?: string | null }).noticeDispatchedAt,
+      ),
+      emails: rawEmails.map((email) => ({
+        subject: asString(email.subject) ?? '',
+        body: asString(email.body) ?? '',
+        from: asString(email.from) ?? 'Managing Agent',
+        to: asString(email.to) ?? 'Tenant',
+        sentAt: asString(email.sentAt) ?? createdAt,
+        kind: email.kind === 'reminder' ? ('reminder' as const) : ('notice' as const),
+      })),
     };
   });
 }
