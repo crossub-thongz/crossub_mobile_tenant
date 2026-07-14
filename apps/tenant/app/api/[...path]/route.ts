@@ -15,28 +15,62 @@ const buildUpstreamUrl = (req: NextRequest, path: string[]): string => {
   return `${apiBase()}/api/${suffix}${req.nextUrl.search}`;
 };
 
-const rewriteSetCookie = (cookie: string): string =>
-  cookie
-    .split(';')
-    .filter((part) => !part.trim().toLowerCase().startsWith('domain='))
+const rewriteSetCookie = (cookie: string, hostname: string): string => {
+  const isLocalhost =
+    hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.localhost');
+  let strippedSecure = false;
+  const parts = cookie.split(';').filter((part) => {
+    const trimmed = part.trim().toLowerCase();
+    if (trimmed.startsWith('domain=')) return false;
+    if (isLocalhost && trimmed === 'secure') {
+      strippedSecure = true;
+      return false;
+    }
+    return true;
+  });
+
+  if (!isLocalhost || !strippedSecure) {
+    return parts.join(';');
+  }
+
+  return parts
+    .map((part) => {
+      const trimmed = part.trim().toLowerCase();
+      if (trimmed === 'samesite=none') return 'SameSite=Lax';
+      return part;
+    })
     .join(';');
+};
 
 const proxy = async (
   req: NextRequest,
   context: { params: Promise<{ path: string[] }> },
 ): Promise<NextResponse> => {
   const { path } = await context.params;
-  const upstream = await fetch(buildUpstreamUrl(req, path), {
-    method: req.method,
-    headers: forwardHeaders(req),
-    body:
-      req.method === 'GET' || req.method === 'HEAD'
-        ? undefined
-        : await req.arrayBuffer(),
-    redirect: 'manual',
-  });
+  const isBodyMethod = req.method !== 'GET' && req.method !== 'HEAD';
+  let upstream: Response;
+  try {
+    upstream = await fetch(buildUpstreamUrl(req, path), {
+      method: req.method,
+      headers: forwardHeaders(req),
+      body: isBodyMethod ? req.body : undefined,
+      ...(isBodyMethod ? { duplex: 'half' as const } : {}),
+      redirect: 'manual',
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Upstream request failed';
+    return NextResponse.json(
+      { message: `API unavailable: ${message}` },
+      { status: 502 },
+    );
+  }
 
-  const response = new NextResponse(upstream.body, {
+  const responseBody =
+    upstream.status === 204 || req.method === 'HEAD'
+      ? null
+      : await upstream.arrayBuffer();
+
+  const response = new NextResponse(responseBody, {
     status: upstream.status,
     statusText: upstream.statusText,
   });
@@ -45,7 +79,6 @@ const proxy = async (
     const lower = key.toLowerCase();
     if (lower === 'set-cookie') return;
     if (lower === 'transfer-encoding') return;
-    // fetch() decompresses gzip/br bodies; forwarding content-encoding breaks browsers.
     if (lower === 'content-encoding') return;
     if (lower === 'content-length') return;
     response.headers.set(key, value);
@@ -53,7 +86,7 @@ const proxy = async (
 
   const cookies = upstream.headers.getSetCookie?.() ?? [];
   for (const cookie of cookies) {
-    response.headers.append('set-cookie', rewriteSetCookie(cookie));
+    response.headers.append('set-cookie', rewriteSetCookie(cookie, req.nextUrl.hostname));
   }
 
   return response;
@@ -65,3 +98,6 @@ export const PATCH = proxy;
 export const PUT = proxy;
 export const DELETE = proxy;
 export const OPTIONS = proxy;
+
+/** Large payment-proof uploads can take several minutes on staging. */
+export const maxDuration = 300;

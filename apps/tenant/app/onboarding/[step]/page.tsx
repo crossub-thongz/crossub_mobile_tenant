@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { TenantShell } from '@/components/layout/tenant-shell';
+import { DocumentUploadProgress } from '@/components/tenant/document-upload-progress';
 import { FileUploadField } from '@/components/tenant/file-upload-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,11 +19,12 @@ import {
   submitDepositProof,
   submitKeyCollection,
   TENANT_LEASING_AGREEMENT_PDF_URL,
-  uploadBondProofPhoto,
-  uploadDepositProofPhoto,
+  uploadBondProofPhotoWithProgress,
+  uploadDepositProofPhotoWithProgress,
   uploadKeyCollectionPhotos,
 } from '@/lib/crossub-api/tenant-leasing-client';
-import { fileToBase64, isAllowedPaymentProofMimeType, resolvePaymentProofMimeType } from '@/lib/utils';
+import { fileToBase64WithProgress } from '@/lib/file-upload';
+import { isAllowedPaymentProofMimeType, resolvePaymentProofMimeType } from '@/lib/utils';
 import { PAYMENT_STEP_COPY } from '@/lib/onboarding-payment-copy';
 import { formatCurrency, formatDate, formatDateTime, formatOpenInspectionWindow } from '@/lib/utils';
 
@@ -35,6 +37,10 @@ export default function OnboardingStepPage() {
   const [keyTime, setKeyTime] = useState('');
   const [keyLocation, setKeyLocation] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [uploadPhase, setUploadPhase] = useState<'preparing' | 'uploading' | 'submitting' | null>(
+    null,
+  );
 
   const isKeyPickup = stepId === 'key_pickup';
   const keyCollection = leasingOnboarding?.keyCollection;
@@ -130,23 +136,29 @@ export default function OnboardingStepPage() {
     }
 
     setSubmitting(true);
+    setUploadProgress(0);
+    setUploadPhase('preparing');
     try {
-      const contentBase64 = await fileToBase64(file);
+      const contentBase64 = await fileToBase64WithProgress(file, setUploadProgress);
       const upload = {
         fileName: file.name,
         mimeType,
         sizeBytes: file.size,
         contentBase64,
       };
+      setUploadPhase('uploading');
       const proofUrl =
         step.id === 'deposit'
-          ? await uploadDepositProofPhoto(upload)
-          : await uploadBondProofPhoto(upload);
+          ? await uploadDepositProofPhotoWithProgress(upload, setUploadProgress)
+          : await uploadBondProofPhotoWithProgress(upload, setUploadProgress);
+      setUploadPhase('submitting');
+      setUploadProgress(95);
       if (step.id === 'deposit') {
         await submitDepositProof({ proofUrl, fileName: file.name });
       } else {
         await submitBondProof({ proofUrl, fileName: file.name });
       }
+      setUploadProgress(100);
       await refreshLeasingOnboarding();
       setFile(null);
       toast.success('Proof submitted — pending agent confirmation', {
@@ -156,6 +168,8 @@ export default function OnboardingStepPage() {
       toast.error(err instanceof Error ? err.message : 'Could not upload proof');
     } finally {
       setSubmitting(false);
+      setUploadProgress(null);
+      setUploadPhase(null);
     }
   };
 
@@ -284,6 +298,24 @@ export default function OnboardingStepPage() {
           {!paymentProofLocked ? (
             <>
               <FileUploadField accept="image/*,.pdf" onFileSelect={setFile} />
+
+              {submitting && uploadProgress != null ? (
+                <div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-3">
+                  <DocumentUploadProgress
+                    percent={uploadProgress}
+                    label={
+                      uploadPhase === 'preparing'
+                        ? 'Preparing file'
+                        : uploadPhase === 'submitting'
+                          ? 'Submitting proof'
+                          : 'Uploading proof'
+                    }
+                  />
+                  <p className="text-muted-foreground mt-2 text-xs">
+                    Large files can take a minute — keep this tab open until the upload finishes.
+                  </p>
+                </div>
+              ) : null}
 
               <Button
                 className="w-full"

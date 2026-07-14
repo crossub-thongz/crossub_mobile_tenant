@@ -1,5 +1,6 @@
 import type { OnboardingStep } from '@/lib/types';
 import { ingoingReport, onboardingStep } from '@/constants/routes';
+import { mapNetworkUploadProgress } from '@/lib/file-upload';
 
 const API_BASE = `${process.env.NEXT_PUBLIC_API_URL ?? '/api'}/v1`;
 
@@ -70,6 +71,57 @@ async function readApiError(res: Response, fallback: string): Promise<string> {
   return message ?? fallback;
 }
 
+function parseXhrError(xhr: XMLHttpRequest, fallback: string): string {
+  try {
+    const body = JSON.parse(xhr.responseText) as { message?: string | string[] };
+    const raw = body.message;
+    if (typeof raw === 'string') return raw;
+    if (Array.isArray(raw) && raw[0]) return raw[0];
+  } catch {
+    // ignore
+  }
+  return fallback;
+}
+
+/** POST JSON through the BFF with XMLHttpRequest so uploads stay POST and report progress. */
+function postJsonWithUploadProgress<T>(
+  path: string,
+  body: unknown,
+  fallback: string,
+  onNetworkProgress?: (networkPercent: number) => void,
+): Promise<T> {
+  const url = `${API_BASE}${path}`;
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url);
+    xhr.withCredentials = true;
+    xhr.setRequestHeader('Content-Type', 'application/json');
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable && onNetworkProgress) {
+        onNetworkProgress(Math.round((event.loaded / event.total) * 100));
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        onNetworkProgress?.(100);
+        try {
+          resolve(JSON.parse(xhr.responseText) as T);
+        } catch {
+          reject(new Error(fallback));
+        }
+        return;
+      }
+      reject(new Error(parseXhrError(xhr, fallback)));
+    };
+
+    xhr.onerror = () => reject(new Error(fallback));
+    xhr.send(JSON.stringify(body));
+  });
+}
+
 function mapStepStatus(
   status: string,
 ): OnboardingStep['status'] {
@@ -113,19 +165,11 @@ export async function fetchLeasingOnboarding(): Promise<TenantLeasingOnboardingD
 export async function uploadKeyCollectionPhoto(
   body: UploadTenantPhotoInput,
 ): Promise<string> {
-  const res = await fetch(
-    `${API_BASE}/tenant/leasing/onboarding/key-collection/photos/upload`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(body),
-    },
+  const data = await postJsonWithUploadProgress<{ url: string }>(
+    '/tenant/leasing/onboarding/key-collection/photos/upload',
+    body,
+    'Failed to upload key collection photo',
   );
-  if (!res.ok) {
-    throw new Error('Failed to upload key collection photo');
-  }
-  const data = (await res.json()) as { url: string };
   return data.url;
 }
 
@@ -133,19 +177,22 @@ export async function uploadKeyCollectionPhoto(
 export async function uploadDepositProofPhoto(
   body: UploadTenantPhotoInput,
 ): Promise<string> {
-  const res = await fetch(
-    `${API_BASE}/tenant/leasing/onboarding/deposit/proof/upload`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(body),
-    },
+  return uploadDepositProofPhotoWithProgress(body);
+}
+
+/** Stage a deposit proof file with upload progress (40–100% of caller scale). */
+export async function uploadDepositProofPhotoWithProgress(
+  body: UploadTenantPhotoInput,
+  onProgress?: (percent: number) => void,
+): Promise<string> {
+  const data = await postJsonWithUploadProgress<{ url: string }>(
+    '/tenant/leasing/onboarding/deposit/proof/upload',
+    body,
+    'Failed to upload deposit proof',
+    onProgress
+      ? (networkPct) => onProgress(mapNetworkUploadProgress(networkPct))
+      : undefined,
   );
-  if (!res.ok) {
-    throw new Error(await readApiError(res, 'Failed to upload deposit proof'));
-  }
-  const data = (await res.json()) as { url: string };
   return data.url;
 }
 
@@ -173,19 +220,22 @@ export async function submitDepositProof(body: {
 export async function uploadBondProofPhoto(
   body: UploadTenantPhotoInput,
 ): Promise<string> {
-  const res = await fetch(
-    `${API_BASE}/tenant/leasing/onboarding/bond/proof/upload`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(body),
-    },
+  return uploadBondProofPhotoWithProgress(body);
+}
+
+/** Stage a bond proof file with upload progress (40–100% of caller scale). */
+export async function uploadBondProofPhotoWithProgress(
+  body: UploadTenantPhotoInput,
+  onProgress?: (percent: number) => void,
+): Promise<string> {
+  const data = await postJsonWithUploadProgress<{ url: string }>(
+    '/tenant/leasing/onboarding/bond/proof/upload',
+    body,
+    'Failed to upload bond proof',
+    onProgress
+      ? (networkPct) => onProgress(mapNetworkUploadProgress(networkPct))
+      : undefined,
   );
-  if (!res.ok) {
-    throw new Error(await readApiError(res, 'Failed to upload bond proof'));
-  }
-  const data = (await res.json()) as { url: string };
   return data.url;
 }
 
