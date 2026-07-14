@@ -3,16 +3,22 @@ import { type NextRequest, NextResponse } from 'next/server';
 const apiBase = (): string =>
   process.env.API_INTERNAL_URL ?? 'http://localhost:3001';
 
-const forwardHeaders = (req: NextRequest): Headers => {
-  const headers = new Headers(req.headers);
-  headers.delete('host');
-  headers.delete('connection');
-  return headers;
-};
-
 const buildUpstreamUrl = (req: NextRequest, path: string[]): string => {
   const suffix = path.length > 0 ? path.join('/') : '';
   return `${apiBase()}/api/${suffix}${req.nextUrl.search}`;
+};
+
+const forwardHeaders = (req: NextRequest, body?: ArrayBuffer): Headers => {
+  const headers = new Headers(req.headers);
+  headers.delete('host');
+  headers.delete('connection');
+  headers.delete('transfer-encoding');
+  if (body) {
+    headers.set('content-length', String(body.byteLength));
+  } else {
+    headers.delete('content-length');
+  }
+  return headers;
 };
 
 const rewriteSetCookie = (cookie: string, hostname: string): string => {
@@ -48,13 +54,14 @@ const proxy = async (
 ): Promise<NextResponse> => {
   const { path } = await context.params;
   const isBodyMethod = req.method !== 'GET' && req.method !== 'HEAD';
+  const bodyBuffer = isBodyMethod ? await req.arrayBuffer() : undefined;
+
   let upstream: Response;
   try {
     upstream = await fetch(buildUpstreamUrl(req, path), {
       method: req.method,
-      headers: forwardHeaders(req),
-      body: isBodyMethod ? req.body : undefined,
-      ...(isBodyMethod ? { duplex: 'half' as const } : {}),
+      headers: forwardHeaders(req, bodyBuffer),
+      body: bodyBuffer,
       redirect: 'manual',
     });
   } catch (err) {

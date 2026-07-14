@@ -19,11 +19,9 @@ import {
   submitDepositProof,
   submitKeyCollection,
   TENANT_LEASING_AGREEMENT_PDF_URL,
-  uploadBondProofPhotoWithProgress,
-  uploadDepositProofPhotoWithProgress,
   uploadKeyCollectionPhotos,
+  uploadPaymentProofFileWithProgress,
 } from '@/lib/crossub-api/tenant-leasing-client';
-import { fileToBase64WithProgress } from '@/lib/file-upload';
 import { isAllowedPaymentProofMimeType, resolvePaymentProofMimeType } from '@/lib/utils';
 import { PAYMENT_STEP_COPY } from '@/lib/onboarding-payment-copy';
 import { formatCurrency, formatDate, formatDateTime, formatOpenInspectionWindow } from '@/lib/utils';
@@ -137,20 +135,14 @@ export default function OnboardingStepPage() {
 
     setSubmitting(true);
     setUploadProgress(0);
-    setUploadPhase('preparing');
+    setUploadPhase('uploading');
     try {
-      const contentBase64 = await fileToBase64WithProgress(file, setUploadProgress);
-      const upload = {
-        fileName: file.name,
+      const proofUrl = await uploadPaymentProofFileWithProgress(
+        step.id === 'deposit' ? 'deposit' : 'bond',
+        file,
         mimeType,
-        sizeBytes: file.size,
-        contentBase64,
-      };
-      setUploadPhase('uploading');
-      const proofUrl =
-        step.id === 'deposit'
-          ? await uploadDepositProofPhotoWithProgress(upload, setUploadProgress)
-          : await uploadBondProofPhotoWithProgress(upload, setUploadProgress);
+        setUploadProgress,
+      );
       setUploadPhase('submitting');
       setUploadProgress(95);
       if (step.id === 'deposit') {
@@ -304,11 +296,9 @@ export default function OnboardingStepPage() {
                   <DocumentUploadProgress
                     percent={uploadProgress}
                     label={
-                      uploadPhase === 'preparing'
-                        ? 'Preparing file'
-                        : uploadPhase === 'submitting'
-                          ? 'Submitting proof'
-                          : 'Uploading proof'
+                      uploadPhase === 'submitting'
+                        ? 'Submitting proof'
+                        : 'Uploading proof'
                     }
                   />
                   <p className="text-muted-foreground mt-2 text-xs">
