@@ -7,6 +7,7 @@ import {
   DoorOpen,
   KeyRound,
   MessageSquare,
+  TrendingUp,
   Wallet,
   Wrench,
 } from 'lucide-react';
@@ -117,6 +118,21 @@ export default function DashboardPage() {
       href: ROUTES.ACCOUNTING,
       icon: Wallet,
     },
+    ...(rentReviews.length > 0
+      ? [
+          {
+            title: 'Rent review notice',
+            summary: pendingRentReview
+              ? `Proposed ${formatCurrency(pendingRentReview.proposedRentWeekly)}/week — respond required`
+              : `${rentReviews.length} past review(s)`,
+            href: pendingRentReview
+              ? rentReviewDetail(pendingRentReview.id)
+              : ROUTES.RENT_REVIEW,
+            badge: pendingRentReview ? 'Required' : undefined,
+            icon: TrendingUp,
+          },
+        ]
+      : []),
     {
       title: 'Message',
       summary:

@@ -16,6 +16,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { useAuth } from '@/components/providers/auth-provider';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
+import { RentReviewNoticeAlert } from '@/components/tenant/rent-review-notice-alert';
 import { Button } from '@/components/ui/button';
 import { isApplicantRoute, ROUTES } from '@/constants/routes';
 import { cn, displayName } from '@/lib/utils';
@@ -68,6 +69,8 @@ export function TenantShell({
   const unreadMessages = messages.reduce((s, m) => s + m.unread, 0);
 
   const applicantMode = status === 'guest' && isApplicantRoute(pathname);
+  const showRentReviewAlert =
+    !applicantMode && status === 'authed' && !pathname.startsWith('/rent-review');
 
   useEffect(() => {
     setMoreOpen(false);
@@ -192,6 +195,7 @@ export function TenantShell({
           paddingBottom: mainPaddingBottom,
         }}
       >
+        {showRentReviewAlert ? <RentReviewNoticeAlert /> : null}
         {children}
       </main>
       {bottomBar && (

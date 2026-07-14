@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowRight, Clock, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -17,9 +17,17 @@ import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
 export default function RentReviewDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { rentReviews, respondRentReview } = useTenantData();
+  const { rentReviews, respondRentReview, notifications, markNotificationRead } =
+    useTenantData();
   const review = rentReviews.find((r) => r.id === id);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    const match = notifications.find(
+      (n) => !n.read && n.type === 'rent_review' && n.href.includes(id),
+    );
+    if (match) markNotificationRead(match.id);
+  }, [id, notifications, markNotificationRead]);
 
   if (!review) {
     return (

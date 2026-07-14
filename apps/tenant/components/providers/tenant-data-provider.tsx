@@ -560,6 +560,15 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     void refresh();
   }, [refresh]);
 
+  // Background sync — same 5s cadence as the agent portal so dispatched notices appear promptly.
+  useEffect(() => {
+    if (status !== 'authed' || !apiConnected) return;
+    const id = window.setInterval(() => {
+      void refresh();
+    }, LIVE_POLL_MS);
+    return () => window.clearInterval(id);
+  }, [status, apiConnected, refresh]);
+
   const onboardingPendingAgent = useMemo(
     () => onboardingSteps.some((s) => s.status === 'uploaded'),
     [onboardingSteps],
@@ -587,12 +596,12 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     if (status !== 'authed' || !apiConnected) return;
     const onVisible = () => {
       if (document.visibilityState === 'visible') {
-        void loadLeasingOnboarding();
+        void refresh();
       }
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
-  }, [status, apiConnected, loadLeasingOnboarding]);
+  }, [status, apiConnected, refresh]);
 
   const propertyAddress = lease?.propertyAddress ?? 'Your property';
   const leaseId = lease?.id;
