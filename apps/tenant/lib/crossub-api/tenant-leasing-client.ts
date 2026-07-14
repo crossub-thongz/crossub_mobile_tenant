@@ -10,6 +10,24 @@ const API_BASE = `${process.env.NEXT_PUBLIC_API_URL ?? '/api'}/v1`;
 
 export const TENANT_LEASING_AGREEMENT_PDF_URL = `${API_BASE}/tenant/leasing/onboarding/agreement.pdf`;
 
+type PaymentProofKind = 'deposit' | 'bond';
+
+type AgreementUploadMeta = {
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+};
+
+type AgreementUploadSession =
+  | { mode: 'inline' }
+  | { mode: 'direct'; uploadUrl: string; storageKey: string };
+
+const agreementSignedPaths = {
+  upload: '/tenant/leasing/onboarding/agreement/signed/upload',
+  session: '/tenant/leasing/onboarding/agreement/signed/upload-session',
+  complete: '/tenant/leasing/onboarding/agreement/signed/upload-complete',
+} as const;
+
 export interface UploadTenantPhotoInput {
   fileName: string;
   mimeType: string;
@@ -29,6 +47,7 @@ export interface TenantLeasingOnboardingDto {
     title: string;
     description: string;
     status: string;
+    amount?: number | null;
   }[];
   keyCollection: {
     status: string;
@@ -49,6 +68,8 @@ export interface TenantLeasingOnboardingDto {
     status: string;
     signingStatus: string;
     uploadedFileName: string | null;
+    signedProofUrl: string | null;
+    signedProofFileName: string | null;
     signedAt: string | null;
     available: boolean;
     contract: {
@@ -125,8 +146,6 @@ function postJsonWithUploadProgress<T>(
     xhr.send(JSON.stringify(body));
   });
 }
-
-type PaymentProofKind = 'deposit' | 'bond';
 
 type PaymentProofUploadMeta = {
   fileName: string;
@@ -256,6 +275,97 @@ export async function uploadPaymentProofFileWithProgress(
     : uploadBondProofPhotoWithProgress(uploadBody, onProgress);
 }
 
+async function beginAgreementSignedUploadSession(
+  meta: AgreementUploadMeta,
+): Promise<AgreementUploadSession> {
+  try {
+    return await postJson<AgreementUploadSession>(
+      agreementSignedPaths.session,
+      meta,
+      'Failed to start signed agreement upload',
+    );
+  } catch {
+    return { mode: 'inline' };
+  }
+}
+
+async function completeAgreementSignedUploadSession(
+  storageKey: string,
+  meta: AgreementUploadMeta,
+): Promise<string> {
+  const data = await postJson<{ url: string }>(
+    agreementSignedPaths.complete,
+    { storageKey, ...meta },
+    'Failed to finalize signed agreement upload',
+  );
+  return data.url;
+}
+
+export async function uploadAgreementSignedFileWithProgress(
+  file: File,
+  mimeType: string,
+  onProgress?: (percent: number) => void,
+): Promise<string> {
+  const meta: AgreementUploadMeta = {
+    fileName: file.name,
+    mimeType,
+    sizeBytes: file.size,
+  };
+
+  const session = await beginAgreementSignedUploadSession(meta);
+  if (session.mode === 'direct') {
+    onProgress?.(0);
+    await putFileToPresignedUrl(session.uploadUrl, file, mimeType, (pct) =>
+      onProgress?.(Math.min(90, Math.round(pct * 0.9))),
+    );
+    onProgress?.(95);
+    const url = await completeAgreementSignedUploadSession(session.storageKey, meta);
+    onProgress?.(100);
+    return url;
+  }
+
+  const contentBase64 = await fileToBase64WithProgress(file, (readPct) => onProgress?.(readPct));
+  const data = await postJsonWithUploadProgress<{ url: string }>(
+    agreementSignedPaths.upload,
+    { ...meta, contentBase64 },
+    'Failed to upload signed agreement',
+    onProgress
+      ? (networkPct) => onProgress(mapNetworkUploadProgress(networkPct))
+      : undefined,
+  );
+  return data.url;
+}
+
+/** Submit a signed lease agreement for agent confirmation. */
+export async function submitAgreementSigned(body: {
+  proofUrl: string;
+  fileName: string;
+}): Promise<TenantLeasingOnboardingDto> {
+  const res = await fetch(`${API_BASE}/tenant/leasing/onboarding/agreement/signed`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    throw new Error(await readApiError(res, 'Failed to submit signed agreement'));
+  }
+  return res.json() as Promise<TenantLeasingOnboardingDto>;
+}
+
+/** Record signing — server generates a PDF with the tenant name and submits for review. */
+export async function recordAgreementSigning(): Promise<TenantLeasingOnboardingDto> {
+  const res = await fetch(`${API_BASE}/tenant/leasing/onboarding/agreement/record-signing`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    throw new Error(await readApiError(res, 'Failed to record agreement signing'));
+  }
+  return res.json() as Promise<TenantLeasingOnboardingDto>;
+}
+
 function mapStepStatus(
   status: string,
 ): OnboardingStep['status'] {
@@ -273,6 +383,7 @@ export function mapLeasingOnboardingToSteps(
     title: s.title,
     description: s.description,
     status: mapStepStatus(s.status),
+    amount: s.amount ?? undefined,
     href:
       s.id === 'ingoing_report' && dto.ingoingInspectionId
         ? ingoingReport(dto.ingoingInspectionId)
@@ -389,19 +500,6 @@ export async function submitBondProof(body: {
     const raw = err?.message;
     const message = Array.isArray(raw) ? raw[0] : raw;
     throw new Error(message ?? 'Failed to submit bond proof');
-  }
-  return res.json() as Promise<TenantLeasingOnboardingDto>;
-}
-
-/** Tenant acknowledges they signed the lease agreement (`PATCH /tenant/leasing/onboarding/agreement/signed`). */
-export async function acknowledgeAgreementSigned(): Promise<TenantLeasingOnboardingDto> {
-  const res = await fetch(`${API_BASE}/tenant/leasing/onboarding/agreement/signed`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    throw new Error(await readApiError(res, 'Failed to submit agreement signing'));
   }
   return res.json() as Promise<TenantLeasingOnboardingDto>;
 }

@@ -72,6 +72,7 @@ import {
   mapLeasingOnboardingToSteps,
   type TenantLeasingOnboardingDto,
 } from '@/lib/crossub-api/tenant-leasing-client';
+import { LIVE_POLL_MS } from '@/lib/live-sync';
 import { categoryToMessageType } from '@/lib/message-categories';
 import { loadInitialState, type LoadedTenantState } from '@/lib/tenant-data-state';
 import {
@@ -558,6 +559,40 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  const onboardingPendingAgent = useMemo(
+    () => onboardingSteps.some((s) => s.status === 'uploaded'),
+    [onboardingSteps],
+  );
+
+  // Poll leasing onboarding while the tenant is waiting on agent approval (deposit/bond/agreement).
+  useEffect(() => {
+    if (status !== 'authed' || !apiConnected || !leasingOnboarding || !onboardingPendingAgent) {
+      return;
+    }
+    const id = window.setInterval(() => {
+      void loadLeasingOnboarding();
+    }, LIVE_POLL_MS);
+    return () => window.clearInterval(id);
+  }, [
+    status,
+    apiConnected,
+    leasingOnboarding,
+    onboardingPendingAgent,
+    loadLeasingOnboarding,
+  ]);
+
+  // Refresh immediately when the tenant returns to this tab.
+  useEffect(() => {
+    if (status !== 'authed' || !apiConnected) return;
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        void loadLeasingOnboarding();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [status, apiConnected, loadLeasingOnboarding]);
 
   const propertyAddress = lease?.propertyAddress ?? 'Your property';
   const leaseId = lease?.id;

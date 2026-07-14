@@ -1,6 +1,6 @@
 'use client';
 
-import { Download } from 'lucide-react';
+import { Download, Eye } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -14,11 +14,13 @@ import { Label } from '@/components/ui/label';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
 import { ROUTES } from '@/constants/routes';
 import {
-  acknowledgeAgreementSigned,
+  recordAgreementSigning,
+  submitAgreementSigned,
   submitBondProof,
   submitDepositProof,
   submitKeyCollection,
   TENANT_LEASING_AGREEMENT_PDF_URL,
+  uploadAgreementSignedFileWithProgress,
   uploadKeyCollectionPhotos,
   uploadPaymentProofFileWithProgress,
 } from '@/lib/crossub-api/tenant-leasing-client';
@@ -39,6 +41,8 @@ export default function OnboardingStepPage() {
   const [uploadPhase, setUploadPhase] = useState<'preparing' | 'uploading' | 'submitting' | null>(
     null,
   );
+  const [agreementPreviewOpen, setAgreementPreviewOpen] = useState(false);
+  const [signedPreviewOpen, setSignedPreviewOpen] = useState(false);
 
   const isKeyPickup = stepId === 'key_pickup';
   const keyCollection = leasingOnboarding?.keyCollection;
@@ -109,6 +113,8 @@ export default function OnboardingStepPage() {
   const agreementConfirmed = agreement?.signingStatus === 'signed';
   const agreementPendingConfirmation = agreement?.status === 'waiting';
   const agreementAckLocked = agreementConfirmed || agreementPendingConfirmation;
+  const signedProofUrl = agreement?.signedProofUrl ?? null;
+  const signedProofFileName = agreement?.signedProofFileName ?? null;
   const paymentCopy =
     step.id === 'deposit' || step.id === 'bond'
       ? PAYMENT_STEP_COPY[step.id]
@@ -124,8 +130,9 @@ export default function OnboardingStepPage() {
   const currentPaymentStep =
     step.id === 'deposit' ? depositStep : step.id === 'bond' ? bondStep : null;
   const proofPendingConfirmation = currentPaymentStep?.status === 'uploaded';
+  const proofConfirmed = currentPaymentStep?.status === 'completed';
   const proofSubmitted = proofPendingConfirmation;
-  const paymentProofLocked = proofSubmitted;
+  const paymentProofLocked = proofSubmitted || proofConfirmed;
 
   const handlePaymentProofSubmit = async () => {
     if (!file) {
@@ -170,14 +177,48 @@ export default function OnboardingStepPage() {
     }
   };
 
-  const handleAgreementSigned = async () => {
+  const handleAgreementUploadSubmit = async () => {
+    if (!file) {
+      toast.error('Choose your signed agreement to upload');
+      return;
+    }
+    const mimeType = resolvePaymentProofMimeType(file);
+    if (!isAllowedPaymentProofMimeType(mimeType)) {
+      toast.error('Upload a PDF or image of your signed agreement');
+      return;
+    }
+
+    setSubmitting(true);
+    setUploadProgress(0);
+    setUploadPhase('uploading');
+    try {
+      const proofUrl = await uploadAgreementSignedFileWithProgress(file, mimeType, setUploadProgress);
+      setUploadPhase('submitting');
+      setUploadProgress(95);
+      await submitAgreementSigned({ proofUrl, fileName: file.name });
+      setUploadProgress(100);
+      await refreshLeasingOnboarding();
+      setFile(null);
+      toast.success('Signed agreement submitted — pending agent confirmation', {
+        description: file.name,
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not upload signed agreement');
+    } finally {
+      setSubmitting(false);
+      setUploadProgress(null);
+      setUploadPhase(null);
+    }
+  };
+
+  const handleRecordAgreementSigning = async () => {
     setSubmitting(true);
     try {
-      await acknowledgeAgreementSigned();
+      await recordAgreementSigning();
       await refreshLeasingOnboarding();
-      toast.success('Agreement marked as signed — pending agent confirmation');
+      toast.success('Agreement signed — pending agent confirmation');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not submit agreement signing');
+      toast.error(err instanceof Error ? err.message : 'Could not record agreement signing');
     } finally {
       setSubmitting(false);
     }
@@ -274,7 +315,27 @@ export default function OnboardingStepPage() {
             designated statutory process).
           </p>
 
-          {proofSubmitted && (existingProof?.proofUrl || existingProof?.fileName) && (
+          {proofConfirmed ? (
+            <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4 text-sm">
+              <p className="font-medium text-emerald-950 dark:text-emerald-100">Confirmed</p>
+              <p className="text-muted-foreground mt-1 text-xs">
+                Your agent has confirmed this step. You can continue with the next onboarding
+                items.
+              </p>
+              {existingProof?.proofUrl ? (
+                <a
+                  href={existingProof.proofUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary mt-2 inline-block text-xs font-medium underline"
+                >
+                  View uploaded document
+                </a>
+              ) : null}
+            </div>
+          ) : null}
+
+          {proofSubmitted && (existingProof?.proofUrl || existingProof?.fileName) ? (
             <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
               <p className="font-medium text-amber-950 dark:text-amber-100">Pending confirmation</p>
               <p className="text-muted-foreground mt-1 text-xs">
@@ -357,19 +418,16 @@ export default function OnboardingStepPage() {
                 </div>
               </div>
 
-              <div className="overflow-hidden rounded-xl border bg-muted/30">
-                <iframe
-                  title="Lease agreement"
-                  src={TENANT_LEASING_AGREEMENT_PDF_URL}
-                  className="h-[min(70vh,560px)] w-full bg-white"
-                />
-              </div>
-
-              <p className="text-muted-foreground text-xs">
-                If the preview does not load on your device, use Download or Open in browser.
-              </p>
-
               <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setAgreementPreviewOpen((open) => !open)}
+                >
+                  <Eye className="size-4" />
+                  {agreementPreviewOpen ? 'Hide preview' : 'Preview'}
+                </Button>
                 <Button asChild className="flex-1">
                   <a
                     href={TENANT_LEASING_AGREEMENT_PDF_URL}
@@ -378,19 +436,73 @@ export default function OnboardingStepPage() {
                     rel="noopener noreferrer"
                   >
                     <Download className="size-4" />
-                    Download PDF
-                  </a>
-                </Button>
-                <Button variant="outline" asChild className="flex-1">
-                  <a
-                    href={TENANT_LEASING_AGREEMENT_PDF_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Open in browser
+                    Download
                   </a>
                 </Button>
               </div>
+
+              {agreementPreviewOpen ? (
+                <div className="overflow-hidden rounded-xl border bg-muted/30">
+                  <iframe
+                    title="Lease agreement preview"
+                    src={TENANT_LEASING_AGREEMENT_PDF_URL}
+                    className="h-[min(70vh,560px)] w-full bg-white"
+                  />
+                </div>
+              ) : null}
+
+              {!agreementAckLocked ? (
+                <>
+                  <div className="space-y-2">
+                    <FileUploadField
+                      accept="image/*,.pdf"
+                      label="Upload signed agreement"
+                      hint="Upload the signed lease agreement (PDF or photo)"
+                      footer="PDF or image · max 10 MB recommended"
+                      onFileSelect={setFile}
+                    />
+                    {uploadProgress != null ? (
+                      <div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-3">
+                        <DocumentUploadProgress
+                          percent={uploadProgress}
+                          label={
+                            uploadPhase === 'submitting'
+                              ? 'Submitting signed agreement'
+                              : 'Uploading signed agreement'
+                          }
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <Button
+                    className="w-full"
+                    disabled={!file || submitting}
+                    onClick={() => void handleAgreementUploadSubmit()}
+                  >
+                    {submitting ? 'Uploading…' : 'Submit signed agreement'}
+                  </Button>
+
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-background text-muted-foreground px-2">Or</span>
+                    </div>
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    disabled={submitting}
+                    onClick={() => void handleRecordAgreementSigning()}
+                  >
+                    {submitting ? 'Recording…' : 'Record signing (use my name on the agreement)'}
+                  </Button>
+                </>
+              ) : null}
 
               {agreementPendingConfirmation && (
                 <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
@@ -398,22 +510,56 @@ export default function OnboardingStepPage() {
                     Pending confirmation
                   </p>
                   <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-                    You marked the agreement as signed. Your agent will confirm once reviewed.
+                    Your signed agreement has been submitted. Your agent will confirm once reviewed.
                   </p>
                 </div>
               )}
 
-              <Button
-                className="w-full"
-                disabled={agreementAckLocked || submitting}
-                onClick={() => void handleAgreementSigned()}
-              >
-                {agreementConfirmed
-                  ? 'Agreement confirmed'
-                  : agreementPendingConfirmation
-                    ? 'Pending agent confirmation'
-                    : 'I have signed the agreement'}
-              </Button>
+              {signedProofUrl ? (
+                <>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => setSignedPreviewOpen((open) => !open)}
+                    >
+                      <Eye className="size-4" />
+                      {signedPreviewOpen ? 'Hide signed copy' : 'Preview signed copy'}
+                    </Button>
+                    <Button asChild className="flex-1">
+                      <a
+                        href={signedProofUrl}
+                        download={signedProofFileName ?? 'signed-agreement.pdf'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Download className="size-4" />
+                        Download signed
+                      </a>
+                    </Button>
+                  </div>
+                  {signedPreviewOpen ? (
+                    <div className="overflow-hidden rounded-xl border bg-muted/30">
+                      <iframe
+                        title="Signed lease agreement"
+                        src={signedProofUrl}
+                        className="h-[min(70vh,560px)] w-full bg-white"
+                      />
+                    </div>
+                  ) : null}
+                </>
+              ) : null}
+
+              {agreementConfirmed ? (
+                <Button className="w-full" disabled>
+                  Agreement confirmed
+                </Button>
+              ) : agreementPendingConfirmation ? (
+                <Button className="w-full" disabled>
+                  Pending agent confirmation
+                </Button>
+              ) : null}
             </>
           ) : (
             <div className="rounded-xl border border-dashed bg-card p-4 text-sm">
