@@ -339,6 +339,15 @@ export interface RentReviewEmail {
   kind: 'notice' | 'reminder';
 }
 
+export interface RentReviewNoticeTerms {
+  newRentWeekly: number;
+  leaseType: 'fixed' | 'periodic' | null;
+  leaseTerm: string;
+  rentIncreaseOn: string | null;
+  newLeaseStart: string | null;
+  noticePdfAvailable: boolean;
+}
+
 export interface RentReviewCase {
   id: string;
   propertyAddress: string;
@@ -353,6 +362,7 @@ export interface RentReviewCase {
   counterHistory: { at: string; amount: number; by: 'tenant' | 'agent' }[];
   moveOutDate?: string;
   noticeDispatchedAt?: string;
+  noticeTerms?: RentReviewNoticeTerms | null;
   emails: RentReviewEmail[];
 }
 

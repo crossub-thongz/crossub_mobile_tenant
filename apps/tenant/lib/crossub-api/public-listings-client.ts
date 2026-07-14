@@ -1,4 +1,5 @@
 import type { ListingProperty } from '@/lib/types';
+import { formatFullAddress } from '@/lib/format-address';
 import { parseApiErrorMessage } from '@/lib/api-error-message';
 
 /** Browser → tenant Next proxy → crossub API (see apps/tenant/.env API_INTERNAL_URL). */
@@ -66,10 +67,11 @@ function displaySuburb(address: string, suburb: string | null): string {
 }
 
 export function mapPublicListingToProperty(dto: PublicListingDto): ListingProperty {
-  const suburb = displaySuburb(dto.address, dto.suburb);
+  const address = formatFullAddress({ address: dto.address, suburb: dto.suburb });
+  const suburb = displaySuburb(address !== '—' ? address : dto.address, dto.suburb);
   return {
     id: dto.id,
-    address: dto.address,
+    address: address !== '—' ? address : dto.address,
     suburb,
     rentWeekly: dto.rentWeekly,
     bondAmount: dto.bondAmount ?? undefined,

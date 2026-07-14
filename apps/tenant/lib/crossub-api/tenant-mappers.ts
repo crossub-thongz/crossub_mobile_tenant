@@ -20,6 +20,7 @@ import {
   TENANT_NOTIFICATION_TYPE,
 } from '@/constants/api-enums';
 import { routineInspectionStatusLabel } from '@/lib/routine-inspection';
+import { resolvePropertyAddress } from '@/lib/format-address';
 import type {
   ApplicationStatus,
   IngoingReport,
@@ -79,6 +80,9 @@ const MS_PER_DAY = 86_400_000;
 function asString(value: unknown): string | null {
   return typeof value === 'string' && value.length > 0 ? value : null;
 }
+function mapPropertyAddress(propertyAddress: unknown): string {
+  return resolvePropertyAddress(asString(propertyAddress));
+}
 function asNumber(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
@@ -117,9 +121,9 @@ export function toLeaseSummary(tenancies: TenantTenancy[]): LeaseSummary | null 
     id: lease.id,
     propertyId: asString(lease.propertyId) ?? undefined,
     propertyAddress:
-      asString(lease.propertyAddress) ??
-      asString(lease.propertySuburb) ??
-      'Your property',
+      resolvePropertyAddress(asString(lease.propertyAddress), {
+        suburb: asString(lease.propertySuburb),
+      }) || 'Your property',
     rentWeekly: asNumber(lease.weeklyRent) ?? 0,
     leaseStart: asString(lease.startDate) ?? '',
     leaseEnd: endDate ?? '',
@@ -212,7 +216,10 @@ export function toTenantMaintenanceRequests(
   return summaries.map((s) => ({
     id: s.id,
     trackingNumber: asString(s.orderNumber) ?? s.id,
-    propertyAddress: asString(s.propertyAddress) ?? fallbackAddress ?? '—',
+    propertyAddress: (() => {
+      const mapped = mapPropertyAddress(s.propertyAddress);
+      return mapped !== '—' ? mapped : (fallbackAddress ?? '—');
+    })(),
     category: asString(s.categoryName) ?? 'General',
     description: asString(s.description) ?? '',
     area: '—',
@@ -348,7 +355,9 @@ export function toMessageThreads(threads: TenantMessageThread[]): {
       type: departmentToType(t.department),
       category: departmentToCategory(t.department),
       recipient: 'agent',
-      propertyAddress: asString(t.propertyAddress) ?? undefined,
+      propertyAddress: asString(t.propertyAddress)
+        ? mapPropertyAddress(t.propertyAddress)
+        : undefined,
       lastMessage: asString(t.lastMessage) ?? '',
       lastAt: asString(t.lastAt) ?? '',
       unread: asNumber(t.unread) ?? 0,
@@ -401,7 +410,7 @@ export function toTenantInspections(
     return {
       id: i.id,
       type: inspectionListType(i.type),
-      propertyAddress: asString(i.propertyAddress) ?? '—',
+      propertyAddress: mapPropertyAddress(i.propertyAddress),
       status: inspectionStatusLabel(i.status),
       scheduledAt,
       href: reportUrl ?? '/inspections',
@@ -416,7 +425,7 @@ export function toRoutineInspectionSummaries(
   return items.map((r) => ({
     id: r.id,
     type: 'routine' as const,
-    propertyAddress: asString(r.propertyAddress) ?? '—',
+    propertyAddress: mapPropertyAddress(r.propertyAddress),
     status: routineInspectionStatusLabel(r.status),
     scheduledAt: asString(r.scheduledAt) ?? undefined,
     href: routineInspection(r.id),
@@ -495,7 +504,7 @@ export function toIngoingReport(dto: TenantIngoingInspection): IngoingReport {
 
   return {
     id: dto.id,
-    propertyAddress: asString(dto.propertyAddress) ?? '—',
+    propertyAddress: mapPropertyAddress(dto.propertyAddress),
     status,
     dueBy: asString(dto.dueBy)?.slice(0, 10) ?? '',
     sections,
@@ -533,7 +542,7 @@ export function toOutgoingReport(dto: TenantOutgoingInspection): OutgoingReport 
 
   return {
     id: dto.id,
-    propertyAddress: asString(dto.propertyAddress) ?? '—',
+    propertyAddress: mapPropertyAddress(dto.propertyAddress),
     status,
     sections,
     confirmedCount,
@@ -555,7 +564,7 @@ export function toTenantApplications(
     id: a.id,
     referenceNumber: asString(a.reference) ?? a.id.slice(0, 8).toUpperCase(),
     propertyId: asString(a.propertyId) ?? '',
-    propertyAddress: asString(a.propertyAddress) ?? '—',
+    propertyAddress: mapPropertyAddress(a.propertyAddress),
     status: applicationStatus(a.status),
     submittedAt: asString(a.submittedAt) ?? '',
   }));
@@ -567,7 +576,7 @@ export function toTenantNewLeasingCases(cases: TenantNewLeasing[]): NewLeasingCa
     applicationId: c.applicationId,
     referenceNumber: asString(c.reference) ?? c.applicationId.slice(0, 8).toUpperCase(),
     propertyId: c.propertyId,
-    propertyAddress: asString(c.propertyAddress) ?? '—',
+    propertyAddress: mapPropertyAddress(c.propertyAddress),
     applicationStatus: applicationStatus(c.applicationStatus),
     cycleId: c.cycleId,
     lifecycleStep: c.lifecycleStep,
@@ -614,9 +623,23 @@ export function toTenantRentReviews(
     const moveOut = asString(r.tenantMoveOutDate);
     const createdAt = asString(r.createdAt) ?? effectiveDate;
     const rawEmails = (r as { emails?: Array<Record<string, unknown>> }).emails ?? [];
+    const rawNoticeTerms = (r as { noticeTerms?: Record<string, unknown> | null }).noticeTerms;
+    const noticeTerms = rawNoticeTerms
+      ? {
+          newRentWeekly: asNumber(rawNoticeTerms.newRentWeekly) ?? 0,
+          leaseType:
+            rawNoticeTerms.leaseType === 'fixed' || rawNoticeTerms.leaseType === 'periodic'
+              ? rawNoticeTerms.leaseType
+              : null,
+          leaseTerm: asString(rawNoticeTerms.leaseTerm) ?? '—',
+          rentIncreaseOn: asString(rawNoticeTerms.rentIncreaseOn),
+          newLeaseStart: asString(rawNoticeTerms.newLeaseStart),
+          noticePdfAvailable: rawNoticeTerms.noticePdfAvailable === true,
+        }
+      : null;
     return {
       id: r.id,
-      propertyAddress: asString(r.propertyAddress) ?? '—',
+      propertyAddress: mapPropertyAddress(r.propertyAddress),
       currentRentWeekly: asNumber(r.currentRentWeekly) ?? 0,
       proposedRentWeekly: asNumber(r.proposedRentWeekly) ?? 0,
       effectiveDate,
@@ -631,6 +654,7 @@ export function toTenantRentReviews(
       noticeDispatchedAt: asString(
         (r as { noticeDispatchedAt?: string | null }).noticeDispatchedAt,
       ),
+      noticeTerms,
       emails: rawEmails.map((email) => ({
         subject: asString(email.subject) ?? '',
         body: asString(email.body) ?? '',
@@ -682,7 +706,7 @@ export function toTenantVacatingCases(cases: TenantVacatingCase[]): VacatingCase
     return {
       id: c.id,
       propertyId: asString(c.propertyId) ?? undefined,
-      propertyAddress: asString(c.propertyAddress) ?? '—',
+      propertyAddress: mapPropertyAddress(c.propertyAddress),
       vacatingDate:
         asString(c.vacatingDate)?.slice(0, 10) ??
         asString(c.createdAt)?.slice(0, 10) ??

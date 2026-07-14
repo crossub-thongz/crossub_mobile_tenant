@@ -2,17 +2,18 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { ArrowRight, Clock, TrendingUp } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { TenantShell } from '@/components/layout/tenant-shell';
 import { InfoCard } from '@/components/tenant/info-card';
 import { RentReviewEmailsSection } from '@/components/tenant/rent-review-emails-section';
+import { RentReviewNoticeTermsSummary } from '@/components/tenant/rent-review-notice-terms-summary';
 import { RentReviewResponsePanel } from '@/components/tenant/rent-review-response-panel';
 import { StatusBadge } from '@/components/tenant/status-badge';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
 import { ROUTES } from '@/constants/routes';
-import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
+import { formatCurrency, formatDateTime } from '@/lib/utils';
 
 export default function RentReviewDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -37,48 +38,18 @@ export default function RentReviewDetailPage() {
     );
   }
 
-  const increase = review.proposedRentWeekly - review.currentRentWeekly;
-
   return (
     <TenantShell title="Notice of rent review" backHref={ROUTES.RENT_REVIEW}>
       <div className="space-y-5">
-        <InfoCard icon={TrendingUp} label="Notice of rent review" accent="primary">
+        <InfoCard label="Notice of rent review" accent="primary">
           <p className="text-sm">{review.propertyAddress}</p>
-          {review.noticeDispatchedAt ? (
-            <p className="text-muted-foreground mt-1 text-xs">
-              Notice sent {formatDateTime(review.noticeDispatchedAt)}
-            </p>
-          ) : null}
-          <div className="mt-4 flex items-end gap-3">
-            <div>
-              <p className="text-muted-foreground text-xs">Current rent</p>
-              <p className="text-lg font-semibold">
-                {formatCurrency(review.currentRentWeekly)}
-                <span className="text-muted-foreground text-sm font-normal">/wk</span>
-              </p>
-            </div>
-            <ArrowRight className="text-muted-foreground mb-1 size-4" />
-            <div>
-              <p className="text-muted-foreground text-xs">Proposed rent</p>
-              <p className="text-primary text-xl font-bold">
-                {formatCurrency(review.proposedRentWeekly)}
-                <span className="text-base font-normal">/wk</span>
-              </p>
-            </div>
-          </div>
-          {increase > 0 && (
-            <p className="text-muted-foreground mt-2 text-xs">
-              +{formatCurrency(increase)}/week increase
-            </p>
-          )}
-          <p className="text-muted-foreground mt-3 text-xs">
-            Rent increase on {formatDate(review.effectiveDate)}
-          </p>
+          <StatusBadge label={review.status} className="mt-3" variant="action" />
           {review.explanation ? (
             <p className="text-muted-foreground mt-3 text-sm leading-relaxed">{review.explanation}</p>
           ) : null}
-          <StatusBadge label={review.status} className="mt-3" variant="action" />
         </InfoCard>
+
+        <RentReviewNoticeTermsSummary review={review} />
 
         <RentReviewEmailsSection review={review} />
 

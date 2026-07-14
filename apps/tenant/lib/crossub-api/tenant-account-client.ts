@@ -4,6 +4,13 @@ import { fileToBase64 } from '@/lib/utils';
 
 import { crossub } from './client';
 
+const API_BASE = `${process.env.NEXT_PUBLIC_API_URL ?? '/api'}/v1`;
+
+/** Inline PDF preview for a dispatched rent-review notice (tenant session required). */
+export function tenantRentReviewNoticePdfUrl(reviewId: string): string {
+  return `${API_BASE}/tenant/rent-reviews/${reviewId}/notice-of-rent-increase.pdf`;
+}
+
 export type TenantTenancy = components['schemas']['TenantTenancyResponseDto'];
 export type TenantLedgerEntry = components['schemas']['TenantLedgerEntryResponseDto'];
 export type TenantProperty = components['schemas']['TenantPropertyResponseDto'];

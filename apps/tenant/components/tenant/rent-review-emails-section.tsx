@@ -3,8 +3,27 @@
 import { useState } from 'react';
 import { ChevronRight, Mail } from 'lucide-react';
 
+import {
+  EmailPreviewDialog,
+  type EmailPreviewContent,
+} from '@/components/tenant/email-preview-dialog';
 import type { RentReviewCase, RentReviewEmail } from '@/lib/types';
 import { formatDateTime } from '@/lib/utils';
+
+function emailKindLabel(kind: RentReviewEmail['kind']): string {
+  return kind === 'notice' ? 'Formal notice' : 'Automated reminder';
+}
+
+function toPreviewContent(email: RentReviewEmail): EmailPreviewContent {
+  return {
+    subject: email.subject,
+    body: email.body,
+    from: email.from,
+    to: email.to,
+    sentAt: email.sentAt,
+    kindLabel: emailKindLabel(email.kind),
+  };
+}
 
 function EmailRow({
   email,
@@ -25,40 +44,11 @@ function EmailRow({
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{email.subject}</p>
         <p className="text-muted-foreground mt-0.5 truncate text-xs">
-          {email.kind === 'notice' ? 'Formal notice' : 'Automated reminder'} · sent{' '}
-          {formatDateTime(email.sentAt)}
+          {emailKindLabel(email.kind)} · sent {formatDateTime(email.sentAt)}
         </p>
       </div>
       <ChevronRight className="text-muted-foreground mt-2 size-4 shrink-0" />
     </button>
-  );
-}
-
-function EmailPreview({ email }: { email: RentReviewEmail }) {
-  return (
-    <div className="space-y-3 text-sm">
-      <div>
-        <p className="font-medium leading-snug">{email.subject}</p>
-        <p className="text-muted-foreground mt-1 text-xs">
-          Sent {formatDateTime(email.sentAt)}
-        </p>
-      </div>
-      <dl className="grid gap-2 text-xs">
-        <div>
-          <dt className="text-muted-foreground">From</dt>
-          <dd className="font-medium">{email.from}</dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">To</dt>
-          <dd className="font-medium">{email.to}</dd>
-        </div>
-      </dl>
-      <div className="rounded-xl border bg-muted/20 p-3">
-        <pre className="text-foreground/90 whitespace-pre-wrap font-sans text-xs leading-relaxed">
-          {email.body}
-        </pre>
-      </div>
-    </div>
   );
 }
 
@@ -68,26 +58,15 @@ export function RentReviewEmailsSection({ review }: { review: RentReviewCase }) 
   if (review.emails.length === 0) return null;
 
   return (
-    <section className="overflow-hidden rounded-2xl border bg-card">
-      <div className="border-b px-4 py-3">
-        <p className="text-sm font-semibold">Emails from your property manager</p>
-        <p className="text-muted-foreground mt-0.5 text-xs">
-          Formal notice and automated reminders sent to you about this rent review.
-        </p>
-      </div>
-
-      {selected ? (
-        <div className="p-4">
-          <button
-            type="button"
-            className="text-primary mb-3 text-xs font-medium"
-            onClick={() => setSelected(null)}
-          >
-            ← All emails
-          </button>
-          <EmailPreview email={selected} />
+    <>
+      <section className="overflow-hidden rounded-2xl border bg-card">
+        <div className="border-b px-4 py-3">
+          <p className="text-sm font-semibold">Emails from your property manager</p>
+          <p className="text-muted-foreground mt-0.5 text-xs">
+            Formal notice and automated reminders sent to you about this rent review.
+          </p>
         </div>
-      ) : (
+
         <div className="divide-y">
           {review.emails.map((email, index) => (
             <EmailRow
@@ -97,7 +76,15 @@ export function RentReviewEmailsSection({ review }: { review: RentReviewCase }) 
             />
           ))}
         </div>
-      )}
-    </section>
+      </section>
+
+      <EmailPreviewDialog
+        email={selected ? toPreviewContent(selected) : null}
+        open={selected != null}
+        onOpenChange={(open) => {
+          if (!open) setSelected(null);
+        }}
+      />
+    </>
   );
 }

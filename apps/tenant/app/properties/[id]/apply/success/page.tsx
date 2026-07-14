@@ -24,9 +24,7 @@ export default function ApplySuccessPage() {
         </div>
         <h1 className="text-lg font-semibold">Thank you — application submitted</h1>
         {property && (
-          <p className="text-muted-foreground mt-2 text-sm">
-            {property.address}, {property.suburb}
-          </p>
+          <p className="text-muted-foreground mt-2 text-sm">{property.address}</p>
         )}
         {reference && (
           <p className="mt-4 rounded-lg bg-secondary px-4 py-2 text-sm font-medium">

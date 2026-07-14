@@ -126,8 +126,8 @@ export default function ApplyPage() {
         title={property.address}
         description={
           viewingSessionId
-            ? `${property.suburb} — open inspection application. Your details are linked to this viewing and sent to the managing agent.`
-            : `${property.suburb} — submitted to CROSSUB leasing. Your assigned agent sees it in Tenant selection after you apply.`
+            ? `${property.address} — open inspection application. Your details are linked to this viewing and sent to the managing agent.`
+            : `${property.address} — submitted to CROSSUB leasing. Your assigned agent sees it in Tenant selection after you apply.`
         }
       />
 
