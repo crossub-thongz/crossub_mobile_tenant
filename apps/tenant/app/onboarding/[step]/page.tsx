@@ -1,5 +1,6 @@
 'use client';
 
+import { Calendar, Download, MapPin } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -15,13 +16,14 @@ import {
   submitBondProof,
   submitDepositProof,
   submitKeyCollection,
+  TENANT_LEASING_AGREEMENT_PDF_URL,
   uploadBondProofPhoto,
   uploadDepositProofPhoto,
   uploadKeyCollectionPhotos,
 } from '@/lib/crossub-api/tenant-leasing-client';
 import { fileToBase64 } from '@/lib/utils';
 import { PAYMENT_STEP_COPY } from '@/lib/onboarding-payment-copy';
-import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
+import { formatCurrency, formatDate, formatDateTime, formatOpenInspectionWindow } from '@/lib/utils';
 
 export default function OnboardingStepPage() {
   const { step: stepId } = useParams<{ step: string }>();
@@ -34,7 +36,16 @@ export default function OnboardingStepPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const isKeyPickup = stepId === 'key_pickup';
-  const keyDone = leasingOnboarding?.keyCollection.status === 'done';
+  const keyCollection = leasingOnboarding?.keyCollection;
+  const scheduledTime = keyCollection?.time ?? null;
+  const scheduledTimeEnd = keyCollection?.timeEnd ?? null;
+  const scheduledLocation = keyCollection?.location?.trim() ?? '';
+  const agentScheduled = Boolean(scheduledTime || scheduledLocation);
+  const tenantProofSubmitted = (keyCollection?.photos?.length ?? 0) > 0;
+  const scheduleWindow = scheduledTime
+    ? formatOpenInspectionWindow(scheduledTime, scheduledTimeEnd ?? undefined) ??
+      formatDateTime(scheduledTime)
+    : null;
 
   useEffect(() => {
     if (!isKeyPickup || !leasingOnboarding) return;
@@ -62,6 +73,9 @@ export default function OnboardingStepPage() {
 
   const isUpload = step.id === 'deposit' || step.id === 'bond';
   const isLease = step.id === 'lease_signing';
+  const agreement = leasingOnboarding?.agreement;
+  const agreementAvailable = Boolean(agreement?.available);
+  const agreementSigned = agreement?.signingStatus === 'signed';
   const paymentCopy =
     step.id === 'deposit' || step.id === 'bond'
       ? PAYMENT_STEP_COPY[step.id]
@@ -111,12 +125,16 @@ export default function OnboardingStepPage() {
 
   const handleKeySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!keyTime || !keyLocation.trim()) {
+
+    const pickupTime = scheduledTime ?? (keyTime ? new Date(keyTime).toISOString() : '');
+    const pickupLocation = scheduledLocation || keyLocation.trim();
+
+    if (!pickupTime || !pickupLocation) {
       toast.error('Enter both pickup time and location');
       return;
     }
 
-    const existingPhotos = leasingOnboarding?.keyCollection.photos ?? [];
+    const existingPhotos = keyCollection?.photos ?? [];
     if (!keyPhoto && existingPhotos.length === 0) {
       toast.error('Add a photo of the keys as proof of collection');
       return;
@@ -131,8 +149,8 @@ export default function OnboardingStepPage() {
       }
 
       await submitKeyCollection({
-        time: new Date(keyTime).toISOString(),
-        location: keyLocation.trim(),
+        time: pickupTime,
+        location: pickupLocation,
         photoUrls,
       });
       await refreshLeasingOnboarding();
@@ -222,38 +240,150 @@ export default function OnboardingStepPage() {
 
       {isLease && (
         <div className="space-y-4">
-          <div className="rounded-xl border bg-card p-4 text-sm">
-            <p className="font-medium">Lease agreement (preview)</p>
-            <p className="text-muted-foreground mt-2 text-xs">
-              E-sign integration can be added later. MVP: acknowledge and download copy.
-            </p>
-          </div>
-          <Button className="w-full" onClick={() => toast.success('Lease marked as signed')}>
-            Sign agreement
-          </Button>
+          {agreementAvailable ? (
+            <>
+              <div className="rounded-xl border bg-card p-4 text-sm">
+                <p className="font-medium">Lease agreement</p>
+                {agreement?.contract.template && (
+                  <p className="text-muted-foreground mt-1 text-xs">{agreement.contract.template}</p>
+                )}
+                <div className="text-muted-foreground mt-3 grid gap-2 text-xs">
+                  {agreement?.contract.leaseTerm && (
+                    <p>
+                      <span className="text-foreground font-medium">Term:</span>{' '}
+                      {agreement.contract.leaseTerm}
+                    </p>
+                  )}
+                  {agreement?.contract.weeklyRent != null && (
+                    <p>
+                      <span className="text-foreground font-medium">Rent:</span>{' '}
+                      {formatCurrency(agreement.contract.weeklyRent)}/week
+                    </p>
+                  )}
+                  {agreement?.uploadedFileName && (
+                    <p>
+                      <span className="text-foreground font-medium">File:</span>{' '}
+                      {agreement.uploadedFileName}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="overflow-hidden rounded-xl border bg-muted/30">
+                <iframe
+                  title="Lease agreement"
+                  src={TENANT_LEASING_AGREEMENT_PDF_URL}
+                  className="h-[min(70vh,560px)] w-full bg-white"
+                />
+              </div>
+
+              <p className="text-muted-foreground text-xs">
+                If the preview does not load on your device, use Download or Open in browser.
+              </p>
+
+              <div className="flex flex-wrap gap-2">
+                <Button asChild className="flex-1">
+                  <a
+                    href={TENANT_LEASING_AGREEMENT_PDF_URL}
+                    download="tenancy-agreement.pdf"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Download className="size-4" />
+                    Download PDF
+                  </a>
+                </Button>
+                <Button variant="outline" asChild className="flex-1">
+                  <a
+                    href={TENANT_LEASING_AGREEMENT_PDF_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Open in browser
+                  </a>
+                </Button>
+              </div>
+
+              <Button
+                className="w-full"
+                disabled={agreementSigned}
+                onClick={() =>
+                  toast.success(
+                    agreementSigned
+                      ? 'Agreement already marked as signed'
+                      : 'Lease marked as signed — your agent will confirm on their side',
+                  )
+                }
+              >
+                {agreementSigned ? 'Agreement signed' : 'I have signed the agreement'}
+              </Button>
+            </>
+          ) : (
+            <div className="rounded-xl border border-dashed bg-card p-4 text-sm">
+              <p className="font-medium">Lease agreement not ready yet</p>
+              <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
+                CROSSUB will generate and send your agreement after earlier onboarding items are
+                complete. Check back here once your agent has sent it.
+              </p>
+            </div>
+          )}
         </div>
       )}
 
       {isKeyPickup && (
         <form className="space-y-4" onSubmit={handleKeySubmit}>
-          {keyDone && leasingOnboarding?.keyCollection.time && (
+          {agentScheduled && (
+            <div className="rounded-xl border bg-card p-4 text-sm">
+              <p className="font-medium">Key collection arranged by your agent</p>
+              <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+                Collect your keys at the date, time, and location below. Upload a photo when you
+                have the keys.
+              </p>
+              <div className="mt-4 space-y-3">
+                {scheduleWindow && (
+                  <div className="flex items-start gap-3">
+                    <Calendar className="text-primary mt-0.5 size-4 shrink-0" />
+                    <div>
+                      <p className="text-muted-foreground text-xs font-medium uppercase">Date & time</p>
+                      <p className="mt-0.5 font-medium">{scheduleWindow}</p>
+                    </div>
+                  </div>
+                )}
+                {scheduledLocation && (
+                  <div className="flex items-start gap-3">
+                    <MapPin className="text-primary mt-0.5 size-4 shrink-0" />
+                    <div>
+                      <p className="text-muted-foreground text-xs font-medium uppercase">Location</p>
+                      <p className="mt-0.5 font-medium">{scheduledLocation}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {!agentScheduled && (
+            <p className="text-muted-foreground text-sm">
+              Your agent has not sent key collection details yet. Enter when and where you will pick
+              up the keys, or check back once they have scheduled it.
+            </p>
+          )}
+
+          {tenantProofSubmitted && scheduledTime && (
             <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm">
-              <p className="font-medium">Key collection confirmed</p>
+              <p className="font-medium">Key collection report submitted</p>
               <p className="text-muted-foreground mt-1">
-                {formatDateTime(leasingOnboarding.keyCollection.time)}
-                {leasingOnboarding.keyCollection.location
-                  ? ` · ${leasingOnboarding.keyCollection.location}`
-                  : ''}
+                {scheduleWindow}
+                {scheduledLocation ? ` · ${scheduledLocation}` : ''}
               </p>
             </div>
           )}
 
-          {leasingOnboarding?.keyCollection.photos &&
-            leasingOnboarding.keyCollection.photos.length > 0 && (
+          {keyCollection?.photos && keyCollection.photos.length > 0 && (
               <div className="space-y-2">
                 <p className="text-sm font-medium">Key collection proof</p>
                 <div className="flex flex-wrap gap-2">
-                  {leasingOnboarding.keyCollection.photos.map((url) => (
+                  {keyCollection.photos.map((url) => (
                     <a
                       key={url}
                       href={url}
@@ -276,7 +406,9 @@ export default function OnboardingStepPage() {
           <div className="space-y-2">
             <Label>Key collection photo</Label>
             <p className="text-muted-foreground text-xs">
-              Snap or upload a photo of the keys as proof for your key collection report.
+              {agentScheduled
+                ? 'Snap or upload a photo of the keys as proof that you collected them.'
+                : 'Snap or upload a photo of the keys as proof for your key collection report.'}
             </p>
             <FileUploadField
               accept="image/*"
@@ -288,34 +420,43 @@ export default function OnboardingStepPage() {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="keyLocation">Pickup location</Label>
-            <Input
-              id="keyLocation"
-              required
-              placeholder={
-                leasingOnboarding?.keyCustody === 'crossub'
-                  ? 'CROSSUB office address'
-                  : 'Agent office or property address'
-              }
-              value={keyLocation}
-              onChange={(e) => setKeyLocation(e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="keyTime">Preferred pickup time</Label>
-            <Input
-              id="keyTime"
-              type="datetime-local"
-              required
-              value={keyTime}
-              onChange={(e) => setKeyTime(e.target.value)}
-            />
-          </div>
-          <Button type="submit" className="w-full" disabled={submitting}>
+          {!agentScheduled && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="keyLocation">Pickup location</Label>
+                <Input
+                  id="keyLocation"
+                  required
+                  placeholder={
+                    leasingOnboarding?.keyCustody === 'crossub'
+                      ? 'CROSSUB office address'
+                      : 'Agent office or property address'
+                  }
+                  value={keyLocation}
+                  onChange={(e) => setKeyLocation(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="keyTime">Pickup date & time</Label>
+                <Input
+                  id="keyTime"
+                  type="datetime-local"
+                  required
+                  value={keyTime}
+                  onChange={(e) => setKeyTime(e.target.value)}
+                />
+              </div>
+            </>
+          )}
+
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={submitting || (!agentScheduled && (!keyTime || !keyLocation.trim()))}
+          >
             {submitting
               ? 'Saving…'
-              : keyDone
+              : tenantProofSubmitted
                 ? 'Update key collection report'
                 : 'Submit key collection report'}
           </Button>

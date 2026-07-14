@@ -4,6 +4,8 @@ import { ingoingReport, onboardingStep } from '@/constants/routes';
 
 const API_BASE = `${process.env.NEXT_PUBLIC_API_URL ?? '/api'}/v1`;
 
+export const TENANT_LEASING_AGREEMENT_PDF_URL = `${API_BASE}/tenant/leasing/onboarding/agreement.pdf`;
+
 export interface UploadTenantPhotoInput {
   fileName: string;
   mimeType: string;
@@ -27,6 +29,7 @@ export interface TenantLeasingOnboardingDto {
   keyCollection: {
     status: string;
     time: string | null;
+    timeEnd: string | null;
     location: string | null;
     photos: string[];
   };
@@ -37,6 +40,18 @@ export interface TenantLeasingOnboardingDto {
   bondProof: {
     fileName: string | null;
     proofUrl: string | null;
+  };
+  agreement: {
+    status: string;
+    signingStatus: string;
+    uploadedFileName: string | null;
+    signedAt: string | null;
+    available: boolean;
+    contract: {
+      template: string | null;
+      leaseTerm: string | null;
+      weeklyRent: number | null;
+    };
   };
   ingoingInspectionId: string | null;
 }
