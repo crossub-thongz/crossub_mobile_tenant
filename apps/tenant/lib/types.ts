@@ -177,6 +177,7 @@ export interface OnboardingStep {
 
 export interface LeaseSummary {
   id: string;
+  propertyId?: string;
   propertyAddress: string;
   rentWeekly: number;
   leaseStart: string;

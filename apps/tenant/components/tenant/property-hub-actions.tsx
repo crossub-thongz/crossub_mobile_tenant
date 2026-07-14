@@ -93,13 +93,18 @@ export function PropertyHubActions() {
     outgoingReport,
     outgoingInspections,
     routineInspections,
+    lease,
   } = useTenantData();
 
   const openRepairs = maintenance.filter(
     (m) => m.status !== 'closed' && !m.tenantCompletionApproved,
   );
   const pendingRentReview = findPendingRentReview(rentReviews);
-  const urgentNewLeasing = findUrgentNewLeasingCase(newLeasingCases, onboardingSteps);
+  const urgentNewLeasing = findUrgentNewLeasingCase(
+    newLeasingCases,
+    onboardingSteps,
+    lease?.propertyId,
+  );
   const urgentIngoing = findUrgentIngoingInspection(ingoingInspections);
   const urgentOutgoing = findUrgentOutgoingInspection(outgoingInspections);
   const urgentRoutine = findUrgentRoutineInspection(routineInspections);
@@ -143,7 +148,7 @@ export function PropertyHubActions() {
           }
           badge={openRepairs.length ? String(openRepairs.length) : undefined}
         />
-        {newLeasingCases.length > 0 && urgentNewLeasing && (
+        {urgentNewLeasing && (
           <HubLink
             href={
               needsNewLeasingOnboardingAction(urgentNewLeasing, onboardingSteps)
@@ -162,10 +167,7 @@ export function PropertyHubActions() {
                 ? 'Required'
                 : 'Active'
             }
-            urgent={
-              needsNewLeasingOnboardingAction(urgentNewLeasing, onboardingSteps) ||
-              urgentNewLeasing.lifecycleStep !== 'onboarding'
-            }
+            urgent={needsNewLeasingOnboardingAction(urgentNewLeasing, onboardingSteps)}
           />
         )}
         {rentReviews.length > 0 && (

@@ -73,7 +73,11 @@ export default function DashboardPage() {
   const urgentOutgoing = findUrgentOutgoingInspection(outgoingInspections);
   const urgentRoutine = findUrgentRoutineInspection(routineInspections);
   const pendingRentReview = findPendingRentReview(rentReviews);
-  const urgentNewLeasing = findUrgentNewLeasingCase(newLeasingCases, onboardingSteps);
+  const urgentNewLeasing = findUrgentNewLeasingCase(
+    newLeasingCases,
+    onboardingSteps,
+    lease?.propertyId,
+  );
   const needsCompletion = openRepairs.some((r) => r.completionApprovalPending);
 
   const summaries = [
@@ -154,24 +158,22 @@ export default function DashboardPage() {
       icon: AlertTriangle,
       variant: 'urgent' as const,
     },
-    urgentNewLeasing &&
-      needsNewLeasingOnboardingAction(urgentNewLeasing, onboardingSteps) && {
-        title: 'New lease onboarding',
-        summary: `${urgentNewLeasing.propertyAddress} · complete move-in steps`,
-        href: ROUTES.ONBOARDING,
-        badge: 'Required',
-        icon: KeyRound,
-        variant: 'urgent' as const,
-      },
-    urgentNewLeasing &&
-      !needsNewLeasingOnboardingAction(urgentNewLeasing, onboardingSteps) && {
-        title: 'New leasing',
-        summary: `${NEW_LEASING_STEP_LABEL[urgentNewLeasing.lifecycleStep]} · ${urgentNewLeasing.propertyAddress}`,
-        href: ROUTES.APPLICATIONS,
-        badge: 'Active',
-        icon: KeyRound,
-        variant: 'urgent' as const,
-      },
+    urgentNewLeasing && {
+      title: needsNewLeasingOnboardingAction(urgentNewLeasing, onboardingSteps)
+        ? 'New lease onboarding'
+        : 'New leasing',
+      summary: needsNewLeasingOnboardingAction(urgentNewLeasing, onboardingSteps)
+        ? `${urgentNewLeasing.propertyAddress} · complete move-in steps`
+        : `${NEW_LEASING_STEP_LABEL[urgentNewLeasing.lifecycleStep]} · ${urgentNewLeasing.propertyAddress}`,
+      href: needsNewLeasingOnboardingAction(urgentNewLeasing, onboardingSteps)
+        ? ROUTES.ONBOARDING
+        : ROUTES.APPLICATIONS,
+      badge: needsNewLeasingOnboardingAction(urgentNewLeasing, onboardingSteps)
+        ? 'Required'
+        : 'Active',
+      icon: KeyRound,
+      variant: 'urgent' as const,
+    },
     pendingRentReview && {
       title: 'Rent review notice',
       summary: `Proposed ${formatCurrency(pendingRentReview.proposedRentWeekly)}/week — ${

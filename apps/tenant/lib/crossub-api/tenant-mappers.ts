@@ -115,6 +115,7 @@ export function toLeaseSummary(tenancies: TenantTenancy[]): LeaseSummary | null 
   const endDate = asString(lease.endDate);
   return {
     id: lease.id,
+    propertyId: asString(lease.propertyId) ?? undefined,
     propertyAddress:
       asString(lease.propertyAddress) ??
       asString(lease.propertySuburb) ??
