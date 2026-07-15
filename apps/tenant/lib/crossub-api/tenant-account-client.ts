@@ -34,6 +34,27 @@ export type TenantInspection =
 export type TenantDocument = components['schemas']['TenantDocumentResponseDto'];
 export type TenantApplication =
   components['schemas']['TenantApplicationResponseDto'];
+
+/** Full application detail including submitted NSW form data. */
+export type TenantApplicationDetail = {
+  id: string;
+  reference: string;
+  status: TenantApplication['status'];
+  propertyId: string | null;
+  propertyAddress: string | null;
+  isRenewal: boolean;
+  submittedAt: string;
+  formData: Record<string, unknown> | null;
+  documents: {
+    category: string;
+    documentType: string;
+    label: string;
+    points?: number;
+    fileName: string;
+    url: string;
+    uploadedAt: string;
+  }[];
+};
 export type TenantRentReview =
   components['schemas']['TenantRentReviewResponseDto'];
 export type TenantRentReviewRespond =
@@ -95,6 +116,17 @@ export async function fetchTenantApplications(): Promise<TenantApplication[]> {
   const { data, error } = await crossub.GET('/tenant/applications');
   if (error || !data) throw new Error('Failed to load applications');
   return data.items;
+}
+
+/** Full rental application detail (`GET /api/v1/tenant/applications/:applicationId`). */
+export async function fetchTenantApplicationDetail(
+  applicationId: string,
+): Promise<TenantApplicationDetail> {
+  const res = await fetch(`${API_BASE}/tenant/applications/${applicationId}`, {
+    credentials: 'include',
+  });
+  if (!res.ok) throw new Error('Failed to load application');
+  return (await res.json()) as TenantApplicationDetail;
 }
 
 /** Agent-scheduled ingoing inspections (`GET /api/v1/tenant/ingoing-inspections`). */

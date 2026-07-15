@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -16,19 +16,19 @@ import {
 } from '@/lib/crossub-api/public-listings-client';
 import { submitOpenViewingCheckIn } from '@/lib/crossub-api/open-viewings-client';
 import type { ListingProperty } from '@/lib/types';
-import { propertyDetail, ROUTES } from '@/constants/routes';
+import { propertyApply, propertyDetail, ROUTES } from '@/constants/routes';
 import { apiErrorMessage } from '@/lib/api-error-message';
 
 export default function CheckInPage() {
   const { id } = useParams<{ id: string }>();
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('sessionId') ?? '';
-  const router = useRouter();
   const { listings } = useTenantData();
   const cachedProperty = listings.find((p) => p.id === id);
   const [property, setProperty] = useState<ListingProperty | null>(cachedProperty ?? null);
   const [loadingListing, setLoadingListing] = useState(!cachedProperty);
   const [submitting, setSubmitting] = useState(false);
+  const [checkedIn, setCheckedIn] = useState(false);
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -75,7 +75,7 @@ export default function CheckInPage() {
         notes: form.notes.trim() || undefined,
       });
       toast.success('Check-in recorded — thank you for visiting.');
-      router.push(propertyDetail(property.id));
+      setCheckedIn(true);
     } catch (err) {
       toast.error(apiErrorMessage(err, 'Failed to submit check-in'));
     } finally {
@@ -109,8 +109,34 @@ export default function CheckInPage() {
     );
   }
 
+  if (checkedIn) {
+    return (
+      <TenantShell title="Check-in complete" backHref={ROUTES.PROPERTIES}>
+        <PageIntro
+          title={property.address}
+          description="Your attendance has been recorded. The agent will see your details on the open inspection report."
+        />
+        <div className="space-y-3 rounded-xl border bg-card p-4">
+          <p className="text-sm">
+            Thank you for checking in, <span className="font-medium">{form.name.trim()}</span>.
+          </p>
+          <p className="text-muted-foreground text-sm">
+            Ready to apply? Submit your rental application for this property — your check-in will
+            stay linked to your application.
+          </p>
+          <Button asChild className="w-full">
+            <Link href={propertyApply(property.id, sessionId)}>Apply for this property</Link>
+          </Button>
+          <Button asChild variant="outline" className="w-full">
+            <Link href={propertyDetail(property.id, sessionId)}>View property details</Link>
+          </Button>
+        </div>
+      </TenantShell>
+    );
+  }
+
   return (
-    <TenantShell title="Open inspection check-in" backHref={propertyDetail(property.id)}>
+    <TenantShell title="Open inspection check-in" backHref={propertyDetail(property.id, sessionId)}>
       <PageIntro
         title={property.address}
         description="Register your attendance at this open inspection. Your agent will see your details on the inspection report."
@@ -167,7 +193,7 @@ export default function CheckInPage() {
 
         <p className="text-muted-foreground text-center text-xs">
           Want to apply for this property?{' '}
-          <Link href={`/properties/${property.id}/apply?sessionId=${encodeURIComponent(sessionId)}`} className="text-primary underline">
+          <Link href={propertyApply(property.id, sessionId)} className="text-primary underline">
             Submit a rental application
           </Link>
         </p>

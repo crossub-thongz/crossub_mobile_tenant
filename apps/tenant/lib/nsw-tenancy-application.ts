@@ -282,3 +282,162 @@ export function validateNswApplicationForm(
 
   return null;
 }
+
+/** Wizard step identifiers — applicant summary is step 0; NSW sections A–I follow. */
+export type ApplicationFormStepId =
+  | 'rentalProperty'
+  | 'personal'
+  | 'contactOccupancy'
+  | 'currentAddress'
+  | 'previousAddress'
+  | 'employment'
+  | 'emergencyReferences'
+  | 'documents'
+  | 'declaration';
+
+export type ApplicantSummaryInput = {
+  fullName: string;
+  email: string;
+  phone: string;
+  annualIncome: number;
+  employmentStatus: string;
+  moveInDate: string;
+};
+
+export const APPLICATION_FORM_STEPS: { id: ApplicationFormStepId; title: string; letter: string }[] =
+  [
+    { id: 'rentalProperty', title: 'Rental property details', letter: 'A' },
+    { id: 'personal', title: 'Personal details', letter: 'B' },
+    { id: 'contactOccupancy', title: 'Contact & occupancy', letter: 'C' },
+    { id: 'currentAddress', title: 'Current address', letter: 'D' },
+    { id: 'previousAddress', title: 'Previous address', letter: 'E' },
+    { id: 'employment', title: 'Employment', letter: 'F' },
+    { id: 'emergencyReferences', title: 'Emergency contact & references', letter: 'G' },
+    { id: 'documents', title: '100-point check — documents', letter: 'H' },
+    { id: 'declaration', title: 'Declaration', letter: 'I' },
+  ];
+
+export const APPLICANT_SUMMARY_STEP = {
+  id: 'applicant' as const,
+  title: 'Applicant summary',
+  letter: '0',
+};
+
+function isBlank(value: string | undefined): boolean {
+  return !value?.trim();
+}
+
+export function validateApplicantSummary(input: ApplicantSummaryInput): string | null {
+  if (!input.fullName.trim()) return 'Enter your full name.';
+  if (!input.email.trim()) return 'Enter your email address.';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email.trim())) {
+    return 'Enter a valid email address.';
+  }
+  if (!input.phone.trim()) return 'Enter your phone number.';
+  if (!input.moveInDate) return 'Select your preferred move-in date.';
+  if (!input.annualIncome || input.annualIncome <= 0) return 'Enter your annual income.';
+  return null;
+}
+
+export function validateApplicationFormStep(
+  stepId: ApplicationFormStepId,
+  form: NswTenancyApplicationFormData,
+  uploadedDocumentTypes: Set<string>,
+): string | null {
+  switch (stepId) {
+    case 'rentalProperty':
+      if (isBlank(form.rentalProperty.leaseTermMonths)) {
+        return 'Enter the lease term (months).';
+      }
+      if (isBlank(form.rentalProperty.propertySource)) {
+        return 'Tell us how you found this property.';
+      }
+      return null;
+
+    case 'personal':
+      if (isBlank(form.personal.givenNames)) return 'Enter your given name(s).';
+      if (isBlank(form.personal.surname)) return 'Enter your surname.';
+      if (isBlank(form.personal.dateOfBirth)) return 'Enter your date of birth.';
+      return null;
+
+    case 'contactOccupancy':
+      if (isBlank(form.contact.homePhone) && isBlank(form.contact.workPhone)) {
+        return 'Provide at least one contact phone number.';
+      }
+      if (isBlank(form.occupancy.adults)) return 'Enter the number of adults.';
+      return null;
+
+    case 'currentAddress':
+      if (isBlank(form.currentAddress.address)) return 'Enter your current address.';
+      if (isBlank(form.currentAddress.years) && isBlank(form.currentAddress.months)) {
+        return 'Enter how long you have lived at your current address.';
+      }
+      if (isBlank(form.currentAddress.landlordName)) {
+        return 'Enter your current landlord or agent name.';
+      }
+      return null;
+
+    case 'previousAddress':
+      // Optional section — no required fields
+      return null;
+
+    case 'employment':
+      if (isBlank(form.employment.occupation)) return 'Enter your occupation.';
+      if (isBlank(form.employment.employerName)) return 'Enter your employer name.';
+      if (isBlank(form.employment.netWeeklyIncome)) return 'Enter your net weekly income.';
+      return null;
+
+    case 'emergencyReferences':
+      if (isBlank(form.emergencyContact.givenNames) || isBlank(form.emergencyContact.surname)) {
+        return 'Enter your emergency contact name.';
+      }
+      if (isBlank(form.emergencyContact.mobilePhone) && isBlank(form.emergencyContact.homePhone)) {
+        return 'Enter an emergency contact phone number.';
+      }
+      if (isBlank(form.references.reference1GivenNames)) {
+        return 'Enter at least one personal reference.';
+      }
+      if (isBlank(form.references.reference1Phone)) {
+        return 'Enter a phone number for your first reference.';
+      }
+      return null;
+
+    case 'documents': {
+      const hasIdentity = NSW_APPLICATION_DOCUMENT_SLOTS.some(
+        (slot) => slot.category === 'identity' && uploadedDocumentTypes.has(slot.documentType),
+      );
+      if (!hasIdentity) {
+        return 'Upload at least one proof of identity document (section H — category A).';
+      }
+      const hasIncome = NSW_APPLICATION_DOCUMENT_SLOTS.some(
+        (slot) => slot.category === 'income' && uploadedDocumentTypes.has(slot.documentType),
+      );
+      if (!hasIncome) {
+        return 'Upload at least one proof of income document (section H — category B).';
+      }
+      const supportingPoints = NSW_APPLICATION_DOCUMENT_SLOTS.filter(
+        (slot) =>
+          slot.category === 'supporting' && uploadedDocumentTypes.has(slot.documentType),
+      ).reduce((sum, slot) => sum + slot.points, 0);
+      if (supportingPoints < 40) {
+        return 'Upload supporting documents totalling at least 40 points (section H — category C).';
+      }
+      return null;
+    }
+
+    case 'declaration':
+      if (!form.declaration.termsAccepted) {
+        return 'Accept the terms and conditions to continue.';
+      }
+      if (isBlank(form.declaration.signatureName)) {
+        return 'Enter your printed name on the declaration.';
+      }
+      if (isBlank(form.declaration.signatureDate)) {
+        return 'Enter the declaration date.';
+      }
+      return null;
+
+    default:
+      return null;
+  }
+}

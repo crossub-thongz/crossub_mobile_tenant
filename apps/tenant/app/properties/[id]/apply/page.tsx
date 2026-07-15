@@ -5,19 +5,14 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
+import { ApplicationFormWizard } from '@/components/tenant/application-form-wizard';
 import { ApplicationRentalFacts } from '@/components/tenant/application-rental-facts';
-import { NswTenancyApplicationForm } from '@/components/tenant/nsw-tenancy-application-form';
 import { TenantShell } from '@/components/layout/tenant-shell';
 import { PageIntro } from '@/components/tenant/page-intro';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
 import {
-  EMPLOYMENT_OPTIONS,
   fetchPublicListing,
   submitGuestApplication,
-  type EmploymentStatus,
   type SubmitGuestApplicationDocument,
   type SubmitGuestApplicationInput,
 } from '@/lib/crossub-api/public-listings-client';
@@ -28,7 +23,7 @@ import { fileToBase64 } from '@/lib/utils';
 import {
   defaultNswApplicationForm,
   NSW_APPLICATION_DOCUMENT_SLOTS,
-  validateNswApplicationForm,
+  type ApplicantSummaryInput,
   type NswTenancyApplicationFormData,
 } from '@/lib/nsw-tenancy-application';
 
@@ -42,7 +37,7 @@ export default function ApplyPage() {
   const [property, setProperty] = useState<ListingProperty | null>(cachedProperty ?? null);
   const [loadingListing, setLoadingListing] = useState(!cachedProperty);
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState<SubmitGuestApplicationInput>({
+  const [applicant, setApplicant] = useState<ApplicantSummaryInput>({
     fullName: '',
     email: '',
     phone: '',
@@ -73,16 +68,14 @@ export default function ApplyPage() {
 
   useEffect(() => {
     if (!property || nswForm) return;
-    setNswForm(
-      defaultNswApplicationForm('', '', '', '', property.address),
-    );
+    setNswForm(defaultNswApplicationForm('', '', '', '', property.address));
   }, [property, nswForm]);
 
   useEffect(() => {
     if (!nswForm) return;
-    const parts = form.fullName.trim().split(/\s+/);
+    const parts = applicant.fullName.trim().split(/\s+/);
     const surname = parts.length > 1 ? parts[parts.length - 1] : '';
-    const givenNames = parts.length > 1 ? parts.slice(0, -1).join(' ') : form.fullName;
+    const givenNames = parts.length > 1 ? parts.slice(0, -1).join(' ') : applicant.fullName;
     setNswForm((current) =>
       current
         ? {
@@ -90,14 +83,14 @@ export default function ApplyPage() {
             personal: { ...current.personal, givenNames, surname },
             declaration: {
               ...current.declaration,
-              signatureName: form.fullName || current.declaration.signatureName,
-              signatureDate: form.moveInDate || current.declaration.signatureDate,
+              signatureName: applicant.fullName || current.declaration.signatureName,
+              signatureDate: applicant.moveInDate || current.declaration.signatureDate,
             },
-            contact: { ...current.contact, homePhone: form.phone || current.contact.homePhone },
+            contact: { ...current.contact, homePhone: applicant.phone || current.contact.homePhone },
           }
         : current,
     );
-  }, [form.fullName, form.moveInDate, form.phone]);
+  }, [applicant.fullName, applicant.moveInDate, applicant.phone]);
 
   const uploadedDocumentTypes = useMemo(
     () =>
@@ -109,24 +102,8 @@ export default function ApplyPage() {
     [documentFiles],
   );
 
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async () => {
     if (!property || !nswForm) return;
-
-    if (!form.moveInDate) {
-      toast.error('Select your preferred move-in date');
-      return;
-    }
-    if (!form.annualIncome || form.annualIncome <= 0) {
-      toast.error('Enter your annual income');
-      return;
-    }
-
-    const validationError = validateNswApplicationForm(nswForm, uploadedDocumentTypes);
-    if (validationError) {
-      toast.error(validationError);
-      return;
-    }
 
     setSubmitting(true);
     try {
@@ -146,13 +123,19 @@ export default function ApplyPage() {
         });
       }
 
-      const result = await submitGuestApplication(property.id, {
-        ...form,
-        annualIncome: Number(form.annualIncome),
+      const payload: SubmitGuestApplicationInput = {
+        fullName: applicant.fullName,
+        email: applicant.email,
+        phone: applicant.phone,
+        annualIncome: Number(applicant.annualIncome),
+        employmentStatus: applicant.employmentStatus as SubmitGuestApplicationInput['employmentStatus'],
+        moveInDate: applicant.moveInDate,
         formData: nswForm as unknown as Record<string, unknown>,
         documents,
         ...(viewingSessionId ? { viewingSessionId } : {}),
-      });
+      };
+
+      const result = await submitGuestApplication(property.id, payload);
 
       toast.success('Application submitted', {
         description: `Reference ${result.reference} — documents are filed under new-leasing onboarding.`,
@@ -199,113 +182,29 @@ export default function ApplyPage() {
         title={property.address}
         description={
           viewingSessionId
-            ? `${property.address} — open inspection application. Complete the NSW tenancy form and upload your 100-point check documents.`
-            : `${property.address} — complete the NSW tenancy application form and upload supporting documents.`
+            ? `${property.address} — open inspection application. Complete each step of the NSW tenancy form and upload your 100-point check documents.`
+            : `${property.address} — complete each step of the NSW tenancy application form and upload supporting documents.`
         }
       />
 
       <ApplicationRentalFacts property={property} />
 
-      <form onSubmit={onSubmit} className="space-y-6">
-        <section className="space-y-4 rounded-xl border bg-card p-4">
-          <h2 className="text-sm font-semibold">Applicant summary</h2>
-          <div className="space-y-2">
-            <Label htmlFor="fullName">Full name</Label>
-            <Input
-              id="fullName"
-              required
-              placeholder="Michael Lee"
-              value={form.fullName}
-              onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              required
-              value={form.email}
-              onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="phone">Phone</Label>
-            <Input
-              id="phone"
-              type="tel"
-              required
-              value={form.phone}
-              onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="annualIncome">Annual income (AUD)</Label>
-            <Input
-              id="annualIncome"
-              type="number"
-              min={0}
-              step={1000}
-              required
-              value={form.annualIncome || ''}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, annualIncome: Number(e.target.value) || 0 }))
-              }
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="employmentStatus">Employment</Label>
-            <select
-              id="employmentStatus"
-              className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm"
-              value={form.employmentStatus}
-              onChange={(e) =>
-                setForm((f) => ({
-                  ...f,
-                  employmentStatus: e.target.value as EmploymentStatus,
-                }))
-              }
-            >
-              {EMPLOYMENT_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="moveInDate">Lease commencement / move-in date</Label>
-            <Input
-              id="moveInDate"
-              type="date"
-              required
-              value={form.moveInDate}
-              onChange={(e) => setForm((f) => ({ ...f, moveInDate: e.target.value }))}
-            />
-          </div>
-        </section>
-
-        {nswForm && (
-          <NswTenancyApplicationForm
-            propertyAddress={property.address}
-            form={nswForm}
-            onChange={setNswForm}
-            documentFiles={documentFiles}
-            onDocumentSelect={(documentType, file) =>
-              setDocumentFiles((prev) => ({ ...prev, [documentType]: file }))
-            }
-          />
-        )}
-
-        <Button type="submit" disabled={submitting || !nswForm} className="w-full">
-          {submitting ? 'Submitting…' : 'Submit application'}
-        </Button>
-      </form>
+      {nswForm && (
+        <ApplicationFormWizard
+          propertyAddress={property.address}
+          applicant={applicant}
+          onApplicantChange={setApplicant}
+          form={nswForm}
+          onFormChange={setNswForm}
+          documentFiles={documentFiles}
+          onDocumentSelect={(documentType, file) =>
+            setDocumentFiles((prev) => ({ ...prev, [documentType]: file }))
+          }
+          uploadedDocumentTypes={uploadedDocumentTypes}
+          submitting={submitting}
+          onSubmit={onSubmit}
+        />
+      )}
 
       <p className="text-muted-foreground mt-4 text-center text-xs">
         Already a tenant?{' '}

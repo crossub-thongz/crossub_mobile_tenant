@@ -3,12 +3,12 @@
 import Link from 'next/link';
 
 import { FileUploadField } from '@/components/tenant/file-upload-field';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   NSW_APPLICATION_DOCUMENT_SLOTS,
   NSW_APPLICATION_PDF_URL,
+  type ApplicationFormStepId,
   type NswTenancyApplicationFormData,
 } from '@/lib/nsw-tenancy-application';
 
@@ -32,6 +32,9 @@ type Props = {
   onChange: (next: NswTenancyApplicationFormData) => void;
   documentFiles: Record<string, File | null>;
   onDocumentSelect: (documentType: string, file: File | null) => void;
+  /** When set, only the matching NSW section (A–I) is rendered. */
+  activeStep?: ApplicationFormStepId;
+  readOnly?: boolean;
 };
 
 export function NswTenancyApplicationForm({
@@ -40,28 +43,37 @@ export function NswTenancyApplicationForm({
   onChange,
   documentFiles,
   onDocumentSelect,
+  activeStep,
+  readOnly = false,
 }: Props) {
-  const patch = <K extends keyof NswTenancyApplicationFormData>(
+  const patch = <K extends keyof NswTenancyApplicationFormData,>(
     section: K,
     value: Partial<NswTenancyApplicationFormData[K]>,
   ) => {
+    if (readOnly) return;
     onChange({
       ...form,
       [section]: { ...form[section], ...value },
     });
   };
 
+  const show = (step: ApplicationFormStepId) => !activeStep || activeStep === step;
+  const fieldProps = readOnly ? { readOnly: true, disabled: true } : {};
+
   return (
     <div className="space-y-4">
-      <p className="text-muted-foreground text-sm">
-        Complete all sections from the{' '}
-        <a href={NSW_APPLICATION_PDF_URL} target="_blank" rel="noreferrer" className="text-primary underline">
-          NSW tenancy application form
-        </a>
-        . Upload the documents listed in section H (100-point check).
-      </p>
+      {!activeStep && (
+        <p className="text-muted-foreground text-sm">
+          Complete all sections from the{' '}
+          <a href={NSW_APPLICATION_PDF_URL} target="_blank" rel="noreferrer" className="text-primary underline">
+            NSW tenancy application form
+          </a>
+          . Upload the documents listed in section H (100-point check).
+        </p>
+      )}
 
-      <FormSection title="A. Rental property details">
+      {show('rentalProperty') ? (
+        <FormSection title="A. Rental property details">
         <div className="space-y-2">
           <Label>Property address</Label>
           <Input value={propertyAddress} readOnly />
@@ -72,6 +84,7 @@ export function NswTenancyApplicationForm({
             id="secondPreference"
             value={form.rentalProperty.secondPreferenceAddress ?? ''}
             onChange={(e) => patch('rentalProperty', { secondPreferenceAddress: e.target.value })}
+            {...fieldProps}
           />
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -81,6 +94,7 @@ export function NswTenancyApplicationForm({
               id="leaseTerm"
               value={form.rentalProperty.leaseTermMonths ?? ''}
               onChange={(e) => patch('rentalProperty', { leaseTermMonths: e.target.value })}
+              {...fieldProps}
             />
           </div>
           <div className="space-y-2">
@@ -89,12 +103,15 @@ export function NswTenancyApplicationForm({
               id="propertySource"
               value={form.rentalProperty.propertySource ?? ''}
               onChange={(e) => patch('rentalProperty', { propertySource: e.target.value })}
+              {...fieldProps}
             />
           </div>
         </div>
-      </FormSection>
+        </FormSection>
+      ) : null}
 
-      <FormSection title="B. Personal details">
+      {show('personal') ? (
+        <FormSection title="B. Personal details">
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
             <Label htmlFor="title">Title</Label>
@@ -169,9 +186,11 @@ export function NswTenancyApplicationForm({
             />
           </div>
         </div>
-      </FormSection>
+        </FormSection>
+      ) : null}
 
-      <FormSection title="C. Contact & occupancy">
+      {show('contactOccupancy') ? (
+        <FormSection title="C. Contact & occupancy">
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
             <Label htmlFor="homePhone">Home phone</Label>
@@ -224,9 +243,11 @@ export function NswTenancyApplicationForm({
             onChange={(e) => patch('occupancy', { petDetails: e.target.value })}
           />
         </div>
-      </FormSection>
+        </FormSection>
+      ) : null}
 
-      <FormSection title="D. Applicant history — current address">
+      {show('currentAddress') ? (
+        <FormSection title="D. Applicant history — current address">
         <div className="space-y-2">
           <Label htmlFor="currentAddress">Current address</Label>
           <textarea
@@ -289,9 +310,11 @@ export function NswTenancyApplicationForm({
             />
           </div>
         </div>
-      </FormSection>
+        </FormSection>
+      ) : null}
 
-      <FormSection title="E. Previous address">
+      {show('previousAddress') ? (
+        <FormSection title="E. Previous address">
         <div className="space-y-2">
           <Label htmlFor="previousAddress">Previous residential address</Label>
           <textarea
@@ -328,9 +351,11 @@ export function NswTenancyApplicationForm({
             />
           </div>
         </div>
-      </FormSection>
+        </FormSection>
+      ) : null}
 
-      <FormSection title="F. Employment">
+      {show('employment') ? (
+        <FormSection title="F. Employment">
         <div className="space-y-2">
           <Label htmlFor="occupation">Occupation</Label>
           <Input
@@ -366,9 +391,11 @@ export function NswTenancyApplicationForm({
             />
           </div>
         </div>
-      </FormSection>
+        </FormSection>
+      ) : null}
 
-      <FormSection title="G. Emergency contact & references">
+      {show('emergencyReferences') ? (
+        <FormSection title="G. Emergency contact & references">
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
             <Label htmlFor="emergencyGiven">Emergency contact — given name(s)</Label>
@@ -423,9 +450,11 @@ export function NswTenancyApplicationForm({
             />
           </div>
         </div>
-      </FormSection>
+        </FormSection>
+      ) : null}
 
-      <FormSection title="H. 100-point check — upload documents">
+      {show('documents') && !readOnly ? (
+        <FormSection title="H. 100-point check — upload documents">
         <p className="text-muted-foreground text-xs">
           Minimum 100 points required across identity (A), income (B), and supporting (C) categories.
         </p>
@@ -463,14 +492,17 @@ export function NswTenancyApplicationForm({
             )}
           </div>
         ))}
-      </FormSection>
+        </FormSection>
+      ) : null}
 
-      <FormSection title="I. Declaration">
+      {show('declaration') ? (
+        <FormSection title="I. Declaration">
         <label className="flex items-start gap-2 text-sm">
           <input
             type="checkbox"
             className="mt-1"
             checked={Boolean(form.declaration.termsAccepted)}
+            disabled={readOnly}
             onChange={(e) => patch('declaration', { termsAccepted: e.target.checked })}
           />
           <span>
@@ -502,7 +534,8 @@ export function NswTenancyApplicationForm({
             view PDF
           </Link>
         </p>
-      </FormSection>
+        </FormSection>
+      ) : null}
     </div>
   );
 }

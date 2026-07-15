@@ -43,12 +43,18 @@ export const isApplicantRoute = (pathname: string): boolean =>
 export const isPublicRoute = (pathname: string): boolean =>
   PUBLIC_ROUTE_PATTERNS.some((rx) => rx.test(pathname));
 
-export const propertyDetail = (id: string) => `/properties/${id}`;
+export const propertyDetail = (id: string, sessionId?: string) =>
+  sessionId
+    ? `/properties/${id}?sessionId=${encodeURIComponent(sessionId)}`
+    : `/properties/${id}`;
+export const propertyApply = (id: string, sessionId?: string) =>
+  sessionId
+    ? `/properties/${id}/apply?sessionId=${encodeURIComponent(sessionId)}`
+    : `/properties/${id}/apply`;
 export const propertyCheckIn = (id: string, sessionId?: string) =>
   sessionId
     ? `/properties/${id}/check-in?sessionId=${encodeURIComponent(sessionId)}`
     : `/properties/${id}/check-in`;
-export const propertyApply = (id: string) => `/properties/${id}/apply`;
 export const propertyApplySuccess = (id: string) => `/properties/${id}/apply/success`;
 export const applicationDetail = (id: string) => `/applications/${id}`;
 export const onboardingStep = (step: string) => `/onboarding/${step}`;

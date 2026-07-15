@@ -1,19 +1,22 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { useAuth } from '@/components/providers/auth-provider';
+import { useTenantData } from '@/components/providers/tenant-data-provider';
 import { TenantShell } from '@/components/layout/tenant-shell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ROUTES } from '@/constants/routes';
-import Link from 'next/link';
-import { displayName } from '@/lib/utils';
+import { applicationDetail, ROUTES } from '@/constants/routes';
+import { APPLICATION_STATUS_LABEL } from '@/lib/tenant-labels';
+import { displayName, formatDateTime } from '@/lib/utils';
 
 export default function ProfilePage() {
   const { user, status } = useAuth();
+  const { applications } = useTenantData();
   const [emergencyName, setEmergencyName] = useState('');
   const [emergencyPhone, setEmergencyPhone] = useState('');
 
@@ -50,6 +53,39 @@ export default function ProfilePage() {
             >
               Save contact
             </Button>
+          </section>
+
+          <section className="space-y-3 rounded-xl border bg-card p-4">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="font-semibold">Rental applications</h2>
+              <Link href={ROUTES.APPLICATIONS} className="text-primary text-xs font-medium">
+                View all
+              </Link>
+            </div>
+            {applications.length === 0 ? (
+              <p className="text-muted-foreground text-xs">
+                Applications you submit will appear here with the full NSW form on file.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {applications.slice(0, 3).map((app) => (
+                  <li key={app.id}>
+                    <Link
+                      href={applicationDetail(app.id)}
+                      className="hover:bg-muted/50 block rounded-lg border p-3"
+                    >
+                      <p className="font-medium">{app.propertyAddress}</p>
+                      <p className="text-muted-foreground text-xs">
+                        Ref {app.referenceNumber} · {formatDateTime(app.submittedAt)}
+                      </p>
+                      <p className="text-muted-foreground mt-1 text-xs">
+                        {APPLICATION_STATUS_LABEL[app.status]}
+                      </p>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
 
           <section>

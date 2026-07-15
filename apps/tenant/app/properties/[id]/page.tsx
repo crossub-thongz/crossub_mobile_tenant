@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import { TenantShell } from '@/components/layout/tenant-shell';
@@ -17,6 +17,8 @@ import { formatCurrency } from '@/lib/utils';
 
 export default function PropertyDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
+  const viewingSessionId = searchParams.get('sessionId') ?? undefined;
   const { listings } = useTenantData();
   const fromList = listings.find((p) => p.id === id);
   const [property, setProperty] = useState<ListingProperty | null>(fromList ?? null);
@@ -30,7 +32,7 @@ export default function PropertyDetailPage() {
     }
     let cancelled = false;
     setLoading(true);
-    void fetchPublicListing(id)
+    void fetchPublicListing(id, viewingSessionId)
       .then((row) => {
         if (!cancelled) setProperty(row);
       })
@@ -43,7 +45,7 @@ export default function PropertyDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [fromList, id]);
+  }, [fromList, id, viewingSessionId]);
 
   if (loading) {
     return (
@@ -110,7 +112,7 @@ export default function PropertyDetailPage() {
         </div>
         {canApply ? (
           <Button asChild className="w-full">
-            <Link href={propertyApply(property.id)}>Apply for this property</Link>
+            <Link href={propertyApply(property.id, viewingSessionId)}>Apply for this property</Link>
           </Button>
         ) : (
           <p className="text-muted-foreground rounded-xl border border-dashed p-4 text-center text-sm">
