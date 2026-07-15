@@ -44,6 +44,19 @@ export interface SubmitGuestApplicationInput {
   employmentStatus: EmploymentStatus;
   moveInDate: string;
   viewingSessionId?: string;
+  formData?: Record<string, unknown>;
+  documents?: SubmitGuestApplicationDocument[];
+}
+
+export interface SubmitGuestApplicationDocument {
+  category: 'identity' | 'income' | 'supporting';
+  documentType: string;
+  label: string;
+  points?: number;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  contentBase64: string;
 }
 
 export interface GuestApplicationResult {

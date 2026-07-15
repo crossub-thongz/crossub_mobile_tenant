@@ -79,6 +79,15 @@ export interface TenantLeasingOnboardingDto {
     };
   };
   ingoingInspectionId: string | null;
+  applicationDocuments: {
+    category: string;
+    documentType: string;
+    label: string;
+    points?: number;
+    fileName: string;
+    url: string;
+    uploadedAt: string;
+  }[];
 }
 
 export interface SetKeyCollectionInput {
@@ -402,7 +411,11 @@ export async function fetchLeasingOnboarding(): Promise<TenantLeasingOnboardingD
     }
     throw new Error('Failed to load leasing onboarding');
   }
-  return res.json() as Promise<TenantLeasingOnboardingDto>;
+  const dto = (await res.json()) as TenantLeasingOnboardingDto;
+  return {
+    ...dto,
+    applicationDocuments: dto.applicationDocuments ?? [],
+  };
 }
 
 /** Stage a key-collection proof photo (`POST /tenant/leasing/onboarding/key-collection/photos/upload`). */

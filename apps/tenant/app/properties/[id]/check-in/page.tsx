@@ -1,0 +1,177 @@
+'use client';
+
+import Link from 'next/link';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
+
+import { TenantShell } from '@/components/layout/tenant-shell';
+import { PageIntro } from '@/components/tenant/page-intro';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useTenantData } from '@/components/providers/tenant-data-provider';
+import {
+  fetchPublicListing,
+} from '@/lib/crossub-api/public-listings-client';
+import { submitOpenViewingCheckIn } from '@/lib/crossub-api/open-viewings-client';
+import type { ListingProperty } from '@/lib/types';
+import { propertyDetail, ROUTES } from '@/constants/routes';
+import { apiErrorMessage } from '@/lib/api-error-message';
+
+export default function CheckInPage() {
+  const { id } = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
+  const sessionId = searchParams.get('sessionId') ?? '';
+  const router = useRouter();
+  const { listings } = useTenantData();
+  const cachedProperty = listings.find((p) => p.id === id);
+  const [property, setProperty] = useState<ListingProperty | null>(cachedProperty ?? null);
+  const [loadingListing, setLoadingListing] = useState(!cachedProperty);
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    notes: '',
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingListing(true);
+    void fetchPublicListing(id, sessionId || undefined)
+      .then((listing) => {
+        if (!cancelled) setProperty(listing);
+      })
+      .catch(() => {
+        if (!cancelled && cachedProperty) setProperty(cachedProperty);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingListing(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [cachedProperty, id, sessionId]);
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!property) return;
+    if (!sessionId) {
+      toast.error('This check-in link is missing the inspection session.');
+      return;
+    }
+    if (!form.name.trim() || !form.email.trim() || !form.phone.trim()) {
+      toast.error('Enter your name, email, and phone number.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await submitOpenViewingCheckIn(sessionId, {
+        name: form.name.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim(),
+        notes: form.notes.trim() || undefined,
+      });
+      toast.success('Check-in recorded — thank you for visiting.');
+      router.push(propertyDetail(property.id));
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Failed to submit check-in'));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (!sessionId) {
+    return (
+      <TenantShell title="Check in" backHref={propertyDetail(id)}>
+        <p className="text-muted-foreground text-sm">
+          Invalid check-in link. Scan the QR code at the property or ask your agent for a new link.
+        </p>
+      </TenantShell>
+    );
+  }
+
+  if (loadingListing) {
+    return (
+      <TenantShell title="Check in" backHref={ROUTES.PROPERTIES}>
+        <p className="text-muted-foreground text-sm">Loading property…</p>
+      </TenantShell>
+    );
+  }
+
+  if (!property) {
+    return (
+      <TenantShell title="Check in" backHref={ROUTES.PROPERTIES}>
+        <p className="text-muted-foreground text-sm">Property not found.</p>
+      </TenantShell>
+    );
+  }
+
+  return (
+    <TenantShell title="Open inspection check-in" backHref={propertyDetail(property.id)}>
+      <PageIntro
+        title={property.address}
+        description="Register your attendance at this open inspection. Your agent will see your details on the inspection report."
+      />
+
+      <form onSubmit={onSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="name">Full name</Label>
+          <Input
+            id="name"
+            value={form.name}
+            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+            autoComplete="name"
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            type="email"
+            value={form.email}
+            onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+            autoComplete="email"
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="phone">Mobile phone</Label>
+          <Input
+            id="phone"
+            type="tel"
+            value={form.phone}
+            onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+            autoComplete="tel"
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="notes">Notes (optional)</Label>
+          <textarea
+            id="notes"
+            value={form.notes}
+            onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+            placeholder="e.g. security lock PIN, arrival time, questions for the agent"
+            rows={4}
+            className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex min-h-[80px] w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+          />
+        </div>
+
+        <Button type="submit" className="w-full" disabled={submitting}>
+          {submitting ? 'Submitting…' : 'Check in'}
+        </Button>
+
+        <p className="text-muted-foreground text-center text-xs">
+          Want to apply for this property?{' '}
+          <Link href={`/properties/${property.id}/apply?sessionId=${encodeURIComponent(sessionId)}`} className="text-primary underline">
+            Submit a rental application
+          </Link>
+        </p>
+      </form>
+    </TenantShell>
+  );
+}

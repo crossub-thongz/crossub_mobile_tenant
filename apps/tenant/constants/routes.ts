@@ -44,6 +44,10 @@ export const isPublicRoute = (pathname: string): boolean =>
   PUBLIC_ROUTE_PATTERNS.some((rx) => rx.test(pathname));
 
 export const propertyDetail = (id: string) => `/properties/${id}`;
+export const propertyCheckIn = (id: string, sessionId?: string) =>
+  sessionId
+    ? `/properties/${id}/check-in?sessionId=${encodeURIComponent(sessionId)}`
+    : `/properties/${id}/check-in`;
 export const propertyApply = (id: string) => `/properties/${id}/apply`;
 export const propertyApplySuccess = (id: string) => `/properties/${id}/apply/success`;
 export const applicationDetail = (id: string) => `/applications/${id}`;

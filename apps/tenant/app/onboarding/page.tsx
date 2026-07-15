@@ -46,6 +46,35 @@ export default function OnboardingPage() {
         </div>
       )}
 
+      {leasingOnboarding && leasingOnboarding.applicationDocuments.length > 0 && (
+        <div className="mb-4 space-y-2 rounded-xl border bg-card p-4">
+          <p className="text-sm font-semibold">Application documents</p>
+          <p className="text-muted-foreground text-xs">
+            Files you uploaded with your NSW tenancy application — stored under new-leasing
+            onboarding.
+          </p>
+          <ul className="space-y-2">
+            {leasingOnboarding.applicationDocuments.map((doc) => (
+              <li key={`${doc.documentType}-${doc.url}`} className="rounded-lg border p-3 text-sm">
+                <p className="font-medium">{doc.label}</p>
+                <p className="text-muted-foreground text-xs">
+                  {doc.category}
+                  {doc.points != null ? ` · ${doc.points} pts` : ''} · {doc.fileName}
+                </p>
+                <a
+                  href={doc.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-primary mt-1 inline-block text-xs underline"
+                >
+                  View uploaded file
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="mb-4">
         <div className="mb-2 flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Progress</span>
