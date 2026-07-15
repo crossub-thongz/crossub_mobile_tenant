@@ -1,6 +1,6 @@
 import { parseApiErrorMessage } from '@/lib/api-error-message';
 
-const PUBLIC_API_V1 = '/api/v1';
+const PUBLIC_OPEN_VIEWINGS_API = '/api/open-viewings';
 
 export interface OpenViewingCheckInInput {
   name: string;
@@ -15,13 +15,13 @@ export interface OpenViewingCheckInResult {
   viewingRequestId: string;
 }
 
-/** Public open-inspection check-in (`POST /api/v1/open-viewings/public/sessions/:id/register`). */
+/** Public open-inspection check-in (`POST /api/open-viewings/public/sessions/:id/register`). */
 export async function submitOpenViewingCheckIn(
   sessionId: string,
   body: OpenViewingCheckInInput,
 ): Promise<OpenViewingCheckInResult> {
   const res = await fetch(
-    `${PUBLIC_API_V1}/open-viewings/public/sessions/${encodeURIComponent(sessionId)}/register`,
+    `${PUBLIC_OPEN_VIEWINGS_API}/public/sessions/${encodeURIComponent(sessionId)}/register`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
