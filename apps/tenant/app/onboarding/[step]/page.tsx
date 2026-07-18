@@ -281,7 +281,10 @@ export default function OnboardingStepPage() {
       {leasingOnboarding && (
         <p className="text-muted-foreground mb-4 text-xs">
           {leasingOnboarding.propertyAddress} · Leasing status:{' '}
-          {leasingOnboarding.lifecycleStep.replace(/_/g, ' ')}
+          {onboardingSteps.length > 0 &&
+          onboardingSteps.every((s) => s.status === 'completed')
+            ? 'Completed'
+            : leasingOnboarding.lifecycleStep.replace(/_/g, ' ')}
         </p>
       )}
 
