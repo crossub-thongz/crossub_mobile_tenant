@@ -148,11 +148,38 @@ export async function fetchPublicListing(
   return mapPublicListingToProperty(dto);
 }
 
+/** Soft client cap — keeps the JSON+base64 POST under common proxy limits. */
+export const MAX_APPLICATION_DOCUMENT_BYTES = 8 * 1024 * 1024;
+export const MAX_APPLICATION_TOTAL_DOCUMENT_BYTES = 40 * 1024 * 1024;
+
 /** Guest application submit (`POST /api/v1/public/listings/:id/applications`). */
 export async function submitGuestApplication(
   propertyId: string,
   body: SubmitGuestApplicationInput,
 ): Promise<GuestApplicationResult> {
+  for (const doc of body.documents ?? []) {
+    if (doc.sizeBytes > MAX_APPLICATION_DOCUMENT_BYTES) {
+      throw new Error(
+        `${doc.fileName} is too large. Please upload files under 8 MB each.`,
+      );
+    }
+  }
+  const totalBytes = (body.documents ?? []).reduce((sum, doc) => sum + doc.sizeBytes, 0);
+  if (totalBytes > MAX_APPLICATION_TOTAL_DOCUMENT_BYTES) {
+    throw new Error(
+      'Total document size is too large. Please upload fewer or smaller files (under 40 MB combined).',
+    );
+  }
+
+  let payloadJson: string;
+  try {
+    payloadJson = JSON.stringify(body);
+  } catch {
+    throw new Error(
+      'Could not prepare the application payload. Try smaller document files and submit again.',
+    );
+  }
+
   let res: Response;
   try {
     res = await fetch(`${PUBLIC_API_V1}/public/listings/${propertyId}/applications`, {
@@ -160,10 +187,20 @@ export async function submitGuestApplication(
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       credentials: 'omit',
       redirect: 'manual',
-      body: JSON.stringify(body),
+      body: payloadJson,
     });
-  } catch {
-    throw new Error('Could not reach the application server. Try again in a moment.');
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : '';
+    if (/failed to fetch|networkerror|load failed/i.test(detail)) {
+      throw new Error(
+        'Could not reach the application server. Check your connection, use smaller document files, and try again.',
+      );
+    }
+    throw new Error(
+      detail
+        ? `Could not reach the application server (${detail}). Try again in a moment.`
+        : 'Could not reach the application server. Try again in a moment.',
+    );
   }
 
   if (res.type === 'opaqueredirect' || (res.status >= 300 && res.status < 400)) {

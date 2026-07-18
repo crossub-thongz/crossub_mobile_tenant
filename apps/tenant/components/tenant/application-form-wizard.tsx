@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { toast } from 'sonner';
+import { useEffect, useState } from 'react';
 
 import { NswTenancyApplicationForm } from '@/components/tenant/nsw-tenancy-application-form';
 import { Button } from '@/components/ui/button';
@@ -14,11 +13,13 @@ import {
 import {
   APPLICANT_SUMMARY_STEP,
   APPLICATION_FORM_STEPS,
+  findFirstInvalidWizardStep,
   validateApplicantSummary,
   validateApplicationFormStep,
   type ApplicantSummaryInput,
   type ApplicationFormStepId,
   type NswTenancyApplicationFormData,
+  type WizardStepId,
 } from '@/lib/nsw-tenancy-application';
 
 type WizardStep = typeof APPLICANT_SUMMARY_STEP | (typeof APPLICATION_FORM_STEPS)[number];
@@ -51,47 +52,70 @@ export function ApplicationFormWizard({
   onSubmit,
 }: Props) {
   const [stepIndex, setStepIndex] = useState(0);
+  const [stepError, setStepError] = useState<string | null>(null);
   const currentStep = WIZARD_STEPS[stepIndex];
   const isFirst = stepIndex === 0;
   const isLast = stepIndex === WIZARD_STEPS.length - 1;
 
-  const validateCurrentStep = (): boolean => {
-    if (currentStep.id === 'applicant') {
-      const error = validateApplicantSummary(applicant);
-      if (error) {
-        toast.error(error);
-        return false;
-      }
-      return true;
-    }
+  // Clear the banner when the user edits form data (not when we jump steps to show an error).
+  useEffect(() => {
+    setStepError(null);
+  }, [applicant, form, uploadedDocumentTypes]);
 
-    const error = validateApplicationFormStep(
-      currentStep.id as ApplicationFormStepId,
+  const validateStepAt = (index: number): string | null => {
+    const step = WIZARD_STEPS[index];
+    if (step.id === 'applicant') {
+      return validateApplicantSummary(applicant);
+    }
+    return validateApplicationFormStep(
+      step.id as ApplicationFormStepId,
       form,
       uploadedDocumentTypes,
     );
-    if (error) {
-      toast.error(error);
-      return false;
-    }
-    return true;
+  };
+
+  const goToStepId = (stepId: WizardStepId) => {
+    const index = WIZARD_STEPS.findIndex((step) => step.id === stepId);
+    if (index >= 0) setStepIndex(index);
   };
 
   const goNext = () => {
-    if (!validateCurrentStep()) return;
+    const error = validateStepAt(stepIndex);
+    if (error) {
+      setStepError(error);
+      return;
+    }
+    setStepError(null);
     setStepIndex((i) => Math.min(i + 1, WIZARD_STEPS.length - 1));
   };
 
-  const goBack = () => setStepIndex((i) => Math.max(i - 1, 0));
+  const goBack = () => {
+    setStepError(null);
+    setStepIndex((i) => Math.max(i - 1, 0));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateCurrentStep()) return;
+
+    // Always re-check the whole wizard on final submit so skipped/back-edited
+    // steps cannot bypass per-step Continue gates.
+    const firstInvalid = findFirstInvalidWizardStep(
+      applicant,
+      form,
+      uploadedDocumentTypes,
+    );
+    if (firstInvalid) {
+      goToStepId(firstInvalid.stepId);
+      setStepError(firstInvalid.error);
+      return;
+    }
+
+    setStepError(null);
     onSubmit();
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-5" noValidate>
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>
@@ -114,7 +138,10 @@ export function ApplicationFormWizard({
               key={step.id}
               type="button"
               onClick={() => {
-                if (index < stepIndex) setStepIndex(index);
+                if (index < stepIndex) {
+                  setStepError(null);
+                  setStepIndex(index);
+                }
               }}
               className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
                 index === stepIndex
@@ -132,6 +159,15 @@ export function ApplicationFormWizard({
         </div>
       </div>
 
+      {stepError ? (
+        <div
+          role="alert"
+          className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+        >
+          {stepError}
+        </div>
+      ) : null}
+
       {currentStep.id === 'applicant' ? (
         <section className="space-y-4 rounded-xl border bg-card p-4">
           <h2 className="text-sm font-semibold">{APPLICANT_SUMMARY_STEP.title}</h2>
@@ -139,7 +175,6 @@ export function ApplicationFormWizard({
             <Label htmlFor="fullName">Full name</Label>
             <Input
               id="fullName"
-              required
               placeholder="Michael Lee"
               value={applicant.fullName}
               onChange={(e) => onApplicantChange({ ...applicant, fullName: e.target.value })}
@@ -150,7 +185,6 @@ export function ApplicationFormWizard({
             <Input
               id="email"
               type="email"
-              required
               value={applicant.email}
               onChange={(e) => onApplicantChange({ ...applicant, email: e.target.value })}
             />
@@ -160,7 +194,6 @@ export function ApplicationFormWizard({
             <Input
               id="phone"
               type="tel"
-              required
               value={applicant.phone}
               onChange={(e) => onApplicantChange({ ...applicant, phone: e.target.value })}
             />
@@ -172,7 +205,6 @@ export function ApplicationFormWizard({
               type="number"
               min={0}
               step={1000}
-              required
               value={applicant.annualIncome || ''}
               onChange={(e) =>
                 onApplicantChange({
@@ -207,7 +239,6 @@ export function ApplicationFormWizard({
             <Input
               id="moveInDate"
               type="date"
-              required
               value={applicant.moveInDate}
               onChange={(e) => onApplicantChange({ ...applicant, moveInDate: e.target.value })}
             />

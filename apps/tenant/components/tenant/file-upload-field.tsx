@@ -2,9 +2,12 @@
 
 import { FileImage, FileText, Upload, X } from 'lucide-react';
 import { useId, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+
+const DEFAULT_MAX_BYTES = 8 * 1024 * 1024;
 
 function fileLabel(file: File): string {
   if (file.size < 1024 * 1024) {
@@ -18,7 +21,8 @@ export function FileUploadField({
   capture,
   label = 'Upload payment proof',
   hint = 'Tap to choose a file, or drag and drop here',
-  footer = 'PDF or image · max 10 MB recommended',
+  footer = 'PDF or image · max 8 MB',
+  maxBytes = DEFAULT_MAX_BYTES,
   onFileSelect,
   className,
 }: {
@@ -27,6 +31,7 @@ export function FileUploadField({
   label?: string;
   hint?: string;
   footer?: string;
+  maxBytes?: number;
   onFileSelect?: (file: File | null) => void;
   className?: string;
 }) {
@@ -36,6 +41,12 @@ export function FileUploadField({
   const [dragOver, setDragOver] = useState(false);
 
   const setSelected = (next: File | null) => {
+    if (next && next.size > maxBytes) {
+      const maxMb = Math.round(maxBytes / (1024 * 1024));
+      toast.error(`${next.name} is too large. Please choose a file under ${maxMb} MB.`);
+      if (inputRef.current) inputRef.current.value = '';
+      return;
+    }
     setFile(next);
     onFileSelect?.(next);
   };

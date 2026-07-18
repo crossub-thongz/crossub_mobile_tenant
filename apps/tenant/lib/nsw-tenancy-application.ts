@@ -441,3 +441,26 @@ export function validateApplicationFormStep(
       return null;
   }
 }
+
+export type WizardStepId = 'applicant' | ApplicationFormStepId;
+
+/** First wizard step that fails validation — used to jump back from Submit. */
+export function findFirstInvalidWizardStep(
+  applicant: ApplicantSummaryInput,
+  form: NswTenancyApplicationFormData,
+  uploadedDocumentTypes: Set<string>,
+): { stepId: WizardStepId; error: string } | null {
+  const applicantError = validateApplicantSummary(applicant);
+  if (applicantError) {
+    return { stepId: 'applicant', error: applicantError };
+  }
+
+  for (const step of APPLICATION_FORM_STEPS) {
+    const error = validateApplicationFormStep(step.id, form, uploadedDocumentTypes);
+    if (error) {
+      return { stepId: step.id, error };
+    }
+  }
+
+  return null;
+}
