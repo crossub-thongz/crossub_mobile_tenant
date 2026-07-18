@@ -146,6 +146,11 @@ export interface RecordRentPaymentInput {
 interface TenantDataContextValue {
   loading: boolean;
   apiConnected: boolean;
+  /**
+   * True when the API responded but the TENANT user has no Person/application
+   * anchor yet (typical 403 from tenant facades). Distinct from a network outage.
+   */
+  profileUnlinked: boolean;
   phase: TenantLifecyclePhase;
   refresh: () => Promise<void>;
   pendingActions: PendingAction[];
@@ -254,11 +259,24 @@ function applyLoadedState(
   setters.setVacatingDisplay(loaded.vacating);
 }
 
+function isForbiddenRejection(reason: unknown): boolean {
+  if (!reason || typeof reason !== 'object') return false;
+  const record = reason as {
+    status?: number;
+    response?: { status?: number };
+    message?: string;
+  };
+  if (record.status === 403 || record.response?.status === 403) return true;
+  const message = typeof record.message === 'string' ? record.message : '';
+  return /not linked to a tenant profile|403|forbidden/i.test(message);
+}
+
 export function TenantDataProvider({ children }: { children: React.ReactNode }) {
   const { status } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [apiConnected, setApiConnected] = useState(false);
+  const [profileUnlinked, setProfileUnlinked] = useState(false);
   const [notifications, setNotifications] = useState<TenantNotification[]>([]);
   const [maintenance, setMaintenance] = useState<MaintenanceRequest[]>([]);
   const [applications, setApplications] = useState<RentalApplication[]>([]);
@@ -401,6 +419,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       hasLoadedOnceRef.current = false;
       if (showBlockingLoad) {
         setApiConnected(false);
+        setProfileUnlinked(false);
         setLoading(false);
       }
       return;
@@ -449,11 +468,19 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     ]);
 
     let connected = false;
+    let sawForbidden = false;
+    const noteRejection = (result: PromiseSettledResult<unknown>) => {
+      if (result.status === 'rejected' && isForbiddenRejection(result.reason)) {
+        sawForbidden = true;
+      }
+    };
 
     if (tenancies.status === 'fulfilled') {
       connected = true;
       // Powers both the Lease and Property screens (both read `lease`).
       setLease(toLeaseSummary(tenancies.value));
+    } else {
+      noteRejection(tenancies);
     }
 
     if (ledger.status === 'fulfilled') {
@@ -463,6 +490,8 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       // rather than show demo arrears alongside real payments.
       setArrears(null);
       setOutstandingBalance(null);
+    } else {
+      noteRejection(ledger);
     }
 
     if (requests.status === 'fulfilled') {
@@ -477,6 +506,8 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
         (m) => !apiIds.has(m.id),
       );
       setMaintenance([...localOnly, ...fromApi]);
+    } else {
+      noteRejection(requests);
     }
 
     if (threads.status === 'fulfilled') {
@@ -486,12 +517,16 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       const { threads: mapped, messagesById } = toMessageThreads(threads.value);
       setMessages(mapped);
       setThreadMessagesById(messagesById);
+    } else {
+      noteRejection(threads);
     }
 
     if (notifs.status === 'fulfilled') {
       connected = true;
       // Real notifications REPLACE the demo list.
       setNotifications(toTenantNotifications(notifs.value));
+    } else {
+      noteRejection(notifs);
     }
 
     if (inspectionsRes.status === 'fulfilled') {
@@ -500,23 +535,31 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
         (i) => i.type !== 'routine',
       );
       setInspections(fromApi);
+    } else {
+      noteRejection(inspectionsRes);
     }
 
     if (documentsRes.status === 'fulfilled') {
       connected = true;
       // Real documents REPLACE the derived (mock) storedDocuments list.
       setApiDocuments(toTenantDocuments(documentsRes.value));
+    } else {
+      noteRejection(documentsRes);
     }
 
     if (applicationsRes.status === 'fulfilled') {
       connected = true;
       // Real applications REPLACE the demo list (agent-opened new-leasing only).
       setApplications(toTenantApplications(applicationsRes.value));
+    } else {
+      noteRejection(applicationsRes);
     }
 
     if (newLeasingRes.status === 'fulfilled') {
       connected = true;
       setNewLeasingCases(toTenantNewLeasingCases(newLeasingRes.value));
+    } else {
+      noteRejection(newLeasingRes);
     }
 
     if (ingoingInspectionsRes.status === 'fulfilled') {
@@ -534,6 +577,8 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       } else {
         setIngoing(null);
       }
+    } else {
+      noteRejection(ingoingInspectionsRes);
     }
 
     if (outgoingInspectionsRes.status === 'fulfilled') {
@@ -553,17 +598,23 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       } else {
         setOutgoing(null);
       }
+    } else {
+      noteRejection(outgoingInspectionsRes);
     }
 
     if (routineInspectionsRes.status === 'fulfilled') {
       connected = true;
       setRoutineInspections(routineInspectionsRes.value);
+    } else {
+      noteRejection(routineInspectionsRes);
     }
 
     if (rentReviewsRes.status === 'fulfilled') {
       connected = true;
       // Real rent reviews REPLACE the demo list (only agent-dispatched notices).
       setRentReviews(toTenantRentReviews(rentReviewsRes.value));
+    } else {
+      noteRejection(rentReviewsRes);
     }
 
     if (vacatingCasesRes.status === 'fulfilled') {
@@ -573,6 +624,8 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       setVacatingState(pickActiveVacatingCase(mapped));
       setVacatingDisplay(primary);
       patchTenantStore({ vacating: pickActiveVacatingCase(mapped) });
+    } else {
+      noteRejection(vacatingCasesRes);
     }
 
     if (await loadLeasingOnboarding()) {
@@ -580,6 +633,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     }
 
     setApiConnected(connected);
+    setProfileUnlinked(!connected && sawForbidden);
     hasLoadedOnceRef.current = true;
     if (showBlockingLoad) {
       setLoading(false);
@@ -1300,6 +1354,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     () => ({
       loading,
       apiConnected,
+      profileUnlinked,
       phase,
       refresh,
       pendingActions,
@@ -1353,6 +1408,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     [
       loading,
       apiConnected,
+      profileUnlinked,
       phase,
       refresh,
       pendingActions,

@@ -13,7 +13,8 @@ export default function DocumentsPage() {
   return (
     <TenantShell title="My documents">
       <p className="text-muted-foreground mb-4 text-sm">
-        Lease agreements, receipts, and inspection reports linked to your tenancy.
+        Application uploads, lease agreements, receipts, and inspection reports linked to
+        your account.
       </p>
       <div className="space-y-3">
         {storedDocuments.map((d) => (

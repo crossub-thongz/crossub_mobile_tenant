@@ -436,7 +436,7 @@ export function toRoutineInspectionSummaries(
 }
 
 /** Friendly label for the aggregated document category (the screen shows it verbatim). */
-function documentCategoryLabel(category: TenantDocument['category']): string {
+function documentCategoryLabel(category: TenantDocument['category'] | string): string {
   switch (category) {
     case 'inspection':
       return 'Inspection report';
@@ -447,6 +447,8 @@ function documentCategoryLabel(category: TenantDocument['category']): string {
       return 'Maintenance';
     case 'statement':
       return 'Statement';
+    case 'application':
+      return 'Application';
     default:
       return 'Document';
   }
