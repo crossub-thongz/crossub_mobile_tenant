@@ -39,7 +39,8 @@ import {
   markTenantNotificationRead,
   replyToTenantMessageThread,
   approveTenantIngoingInspection,
-  disputeTenantIngoingSection,
+  rejectTenantIngoingInspection,
+  submitTenantIngoingSectionFeedback,
   approveTenantOutgoingInspection,
   disputeTenantOutgoingSection,
 } from '@/lib/crossub-api/tenant-account-client';
@@ -199,7 +200,12 @@ interface TenantDataContextValue {
   acceptVacatingSettlement: (caseId: string) => Promise<void>;
   declineVacatingSettlement: (caseId: string, reason: string) => Promise<void>;
   markNotificationRead: (id: string) => void;
-  confirmIngoingSection: (sectionId: string, dispute?: string) => Promise<void>;
+  confirmIngoingSection: (
+    sectionId: string,
+    options?: { dispute?: string; feedback?: string; inspectionId?: string },
+  ) => Promise<void>;
+  approveIngoingReport: (inspectionId?: string) => Promise<void>;
+  rejectIngoingReport: (reason: string, inspectionId?: string) => Promise<void>;
   confirmOutgoingSection: (sectionId: string, dispute?: string) => Promise<void>;
   respondRentReview: (
     id: string,
@@ -899,90 +905,110 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
   );
 
   const confirmIngoingSection = useCallback(
-    async (sectionId: string, dispute?: string) => {
-      if (!ingoing) return;
+    async (
+      sectionId: string,
+      options?: { dispute?: string; feedback?: string; inspectionId?: string },
+    ) => {
+      const targetId = options?.inspectionId ?? ingoing?.id;
+      if (!targetId) return;
+      const dispute = options?.dispute?.trim();
+      const feedback = options?.feedback?.trim();
 
       if (!apiConnected) {
         setIngoing((prev) => {
-          if (!prev) return prev;
+          if (!prev || prev.id !== targetId) return prev;
           const sections = prev.sections.map((s) =>
             s.id === sectionId
               ? {
                   ...s,
                   tenantConfirmed: !dispute,
+                  tenantFeedback: !dispute ? feedback : undefined,
                   tenantDispute: dispute,
                   confirmedAt: dispute ? undefined : new Date().toISOString(),
                 }
               : s,
           );
-          const confirmedCount = sections.filter((s) => s.tenantConfirmed).length;
-          const hasDispute = sections.some((s) => s.tenantDispute);
-          const allConfirmed = sections.every(
+          const confirmedCount = sections.filter(
             (s) => s.tenantConfirmed || s.tenantDispute,
-          );
-          let reportStatus = prev.status;
-          if (hasDispute) reportStatus = 'disputed';
-          else if (allConfirmed) reportStatus = 'confirmed';
-          else if (confirmedCount > 0) reportStatus = 'partially_confirmed';
-          const next = { ...prev, sections, confirmedCount, status: reportStatus };
+          ).length;
+          const hasDispute = sections.some((s) => s.tenantDispute);
+          const next = {
+            ...prev,
+            sections,
+            confirmedCount,
+            status: hasDispute
+              ? ('disputed' as const)
+              : confirmedCount > 0
+                ? ('partially_confirmed' as const)
+                : prev.status,
+          };
           patchTenantStore({ ingoingReport: next });
           return next;
         });
         return;
       }
 
-      if (dispute) {
-        const section = ingoing.sections.find((s) => s.id === sectionId);
-        const updated = await disputeTenantIngoingSection(ingoing.id, {
-          area: section?.room ?? 'Area',
-          description: dispute,
-          sectionId,
+      const updated = await submitTenantIngoingSectionFeedback(targetId, sectionId, {
+        status: dispute ? 'disputed' : 'confirmed',
+        comment: dispute || feedback || undefined,
+      });
+      const mapped = toIngoingReport(updated);
+      setIngoing(mapped);
+      setIngoingInspections((prev) => prev.map((r) => (r.id === mapped.id ? mapped : r)));
+    },
+    [apiConnected, ingoing?.id],
+  );
+
+  const approveIngoingReport = useCallback(
+    async (inspectionId?: string) => {
+      const targetId = inspectionId ?? ingoing?.id;
+      if (!targetId) return;
+      if (!apiConnected) {
+        setIngoing((prev) => {
+          if (!prev || prev.id !== targetId) return prev;
+          const next: IngoingReport = {
+            ...prev,
+            status: 'confirmed',
+            tenantApproved: true,
+            tenantRejected: false,
+          };
+          patchTenantStore({ ingoingReport: next });
+          return next;
         });
-        const mapped = toIngoingReport(updated);
-        setIngoing(mapped);
-        setIngoingInspections((prev) =>
-          prev.map((r) => (r.id === mapped.id ? mapped : r)),
-        );
         return;
       }
-
-      const sections = ingoing.sections.map((s) =>
-        s.id === sectionId
-          ? {
-              ...s,
-              tenantConfirmed: true,
-              tenantDispute: undefined,
-              confirmedAt: new Date().toISOString(),
-            }
-          : s,
-      );
-      const confirmedCount = sections.filter((s) => s.tenantConfirmed).length;
-      const allConfirmed = sections.every(
-        (s) => s.tenantConfirmed || s.tenantDispute,
-      );
-      const hasDispute = sections.some((s) => s.tenantDispute);
-      const interim: IngoingReport = {
-        ...ingoing,
-        sections,
-        confirmedCount,
-        status: hasDispute
-          ? 'disputed'
-          : allConfirmed
-            ? 'partially_confirmed'
-            : 'partially_confirmed',
-      };
-      setIngoing(interim);
-
-      if (allConfirmed && !hasDispute) {
-        const approved = await approveTenantIngoingInspection(ingoing.id);
-        const mapped = toIngoingReport(approved);
-        setIngoing(mapped);
-        setIngoingInspections((prev) =>
-          prev.map((r) => (r.id === mapped.id ? mapped : r)),
-        );
-      }
+      const approved = await approveTenantIngoingInspection(targetId);
+      const mapped = toIngoingReport(approved);
+      setIngoing(mapped);
+      setIngoingInspections((prev) => prev.map((r) => (r.id === mapped.id ? mapped : r)));
     },
-    [apiConnected, ingoing],
+    [apiConnected, ingoing?.id],
+  );
+
+  const rejectIngoingReport = useCallback(
+    async (reason: string, inspectionId?: string) => {
+      const targetId = inspectionId ?? ingoing?.id;
+      if (!targetId) return;
+      if (!apiConnected) {
+        setIngoing((prev) => {
+          if (!prev || prev.id !== targetId) return prev;
+          const next: IngoingReport = {
+            ...prev,
+            status: 'rejected',
+            tenantRejected: true,
+            rejectReason: reason,
+          };
+          patchTenantStore({ ingoingReport: next });
+          return next;
+        });
+        return;
+      }
+      const rejected = await rejectTenantIngoingInspection(targetId, reason);
+      const mapped = toIngoingReport(rejected);
+      setIngoing(mapped);
+      setIngoingInspections((prev) => prev.map((r) => (r.id === mapped.id ? mapped : r)));
+    },
+    [apiConnected, ingoing?.id],
   );
 
   const confirmOutgoingSection = useCallback(
@@ -1402,6 +1428,8 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       storedDocuments,
       markNotificationRead,
       confirmIngoingSection,
+      approveIngoingReport,
+      rejectIngoingReport,
       confirmOutgoingSection,
       respondRentReview,
     }),
@@ -1444,6 +1472,8 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       recordRentPayment,
       markNotificationRead,
       confirmIngoingSection,
+      approveIngoingReport,
+      rejectIngoingReport,
       confirmOutgoingSection,
       approveRepairCompletion,
       recordVacatingDate,

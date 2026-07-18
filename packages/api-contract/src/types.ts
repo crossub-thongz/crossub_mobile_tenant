@@ -338,6 +338,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/tenant/ingoing-inspections/{inspectionId}/sections/{sectionId}/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm or dispute one section of the ingoing report (with feedback). */
+        post: operations["TenantAccountController_submitIngoingSectionFeedback"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/tenant/ingoing-inspections/{inspectionId}/approve": {
         parameters: {
             query?: never;
@@ -353,6 +370,23 @@ export interface paths {
         head?: never;
         /** Approve the ingoing condition report after review. */
         patch: operations["TenantAccountController_approveIngoingInspection"];
+        trace?: never;
+    };
+    "/tenant/ingoing-inspections/{inspectionId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject the whole ingoing condition report with a reason. */
+        post: operations["TenantAccountController_rejectIngoingInspection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/tenant/outgoing-inspections": {
@@ -3354,6 +3388,10 @@ export interface components {
             room: string;
             description: string;
             photos: string[];
+            confirmed: boolean;
+            /** Format: date-time */
+            confirmedAt?: string | null;
+            feedbackComment?: string | null;
             disputed: boolean;
             disputeComment?: string | null;
         };
@@ -3369,8 +3407,10 @@ export interface components {
             scheduledAt?: string | null;
             reportUrl?: string | null;
             /** @enum {string} */
-            status: "scheduled" | "awaiting_report" | "awaiting_confirmation" | "confirmed";
+            status: "scheduled" | "awaiting_report" | "awaiting_confirmation" | "confirmed" | "rejected";
             tenantApproved: boolean;
+            tenantRejected: boolean;
+            rejectReason?: string | null;
             /** Format: date-time */
             dueBy?: string | null;
             sectionCount: number;
@@ -3381,6 +3421,14 @@ export interface components {
             description: string;
             /** Format: uuid */
             sectionId?: string;
+        };
+        TenantIngoingSectionFeedbackDto: {
+            /** @enum {string} */
+            status: "confirmed" | "disputed";
+            comment?: string;
+        };
+        TenantIngoingRejectDto: {
+            reason: string;
         };
         TenantOutgoingInspectionSectionDto: {
             /** Format: uuid */
@@ -7166,6 +7214,32 @@ export interface operations {
             };
         };
     };
+    TenantAccountController_submitIngoingSectionFeedback: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inspectionId: string;
+                sectionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TenantIngoingSectionFeedbackDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantIngoingInspectionResponseDto"];
+                };
+            };
+        };
+    };
     TenantAccountController_approveIngoingInspection: {
         parameters: {
             query?: never;
@@ -7176,6 +7250,31 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantIngoingInspectionResponseDto"];
+                };
+            };
+        };
+    };
+    TenantAccountController_rejectIngoingInspection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inspectionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TenantIngoingRejectDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {

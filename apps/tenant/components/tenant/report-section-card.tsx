@@ -10,14 +10,18 @@ import { formatDateTime } from '@/lib/utils';
 
 export function ReportSectionCard({
   section,
+  disabled,
   onConfirm,
   onDispute,
 }: {
   section: ReportSection;
-  onConfirm: () => void;
+  disabled?: boolean;
+  onConfirm: (feedback?: string) => void;
   onDispute: (comment: string) => void;
 }) {
-  const [disputeText, setDisputeText] = useState(section.tenantDispute ?? '');
+  const [feedbackText, setFeedbackText] = useState(
+    section.tenantFeedback ?? section.tenantDispute ?? '',
+  );
   const done = section.tenantConfirmed || !!section.tenantDispute;
 
   return (
@@ -27,60 +31,70 @@ export function ReportSectionCard({
       {section.photos.length > 0 ? (
         <div className="mt-3 flex gap-2 overflow-x-auto">
           {section.photos.map((src) => (
-            <div
+            <a
               key={src}
-              className="bg-secondary flex size-16 shrink-0 items-center justify-center rounded-lg text-xs text-muted-foreground"
+              href={src}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-secondary block size-16 shrink-0 overflow-hidden rounded-lg border"
             >
-              Photo
-            </div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={src} alt="" className="size-full object-cover" />
+            </a>
           ))}
         </div>
       ) : (
         <p className="text-muted-foreground mt-2 flex items-center gap-1 text-xs">
-          <ImageIcon className="size-3" /> Photos on file with inspection report
+          <ImageIcon className="size-3" /> No section photos uploaded
         </p>
       )}
-      {section.tenantConfirmed && section.confirmedAt && (
+      {section.tenantConfirmed && section.confirmedAt ? (
         <p className="text-primary mt-2 text-xs">
           Confirmed {formatDateTime(section.confirmedAt)}
+          {section.tenantFeedback ? ` — “${section.tenantFeedback}”` : ''}
         </p>
-      )}
-      {section.tenantDispute && (
-        <p className="text-amber-400 mt-2 text-xs">Dispute: {section.tenantDispute}</p>
-      )}
-      {!done && (
+      ) : null}
+      {section.tenantDispute ? (
+        <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+          Dispute: {section.tenantDispute}
+        </p>
+      ) : null}
+      {!done && !disabled ? (
         <div className="mt-3 space-y-2">
           <textarea
             className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm"
-            placeholder="Optional comment or dispute before confirming"
-            value={disputeText}
-            onChange={(e) => setDisputeText(e.target.value)}
+            placeholder="Optional feedback on this section (required if you dispute)"
+            value={feedbackText}
+            onChange={(e) => setFeedbackText(e.target.value)}
           />
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               size="sm"
               variant="outline"
               onClick={() => {
-                const d = disputeText.trim();
+                const d = feedbackText.trim();
                 if (!d) {
-                  toast.error('Enter a dispute comment');
+                  toast.error('Enter a reason to dispute this section');
                   return;
                 }
                 onDispute(d);
-                toast.info('Dispute recorded — timestamped for audit');
+                toast.info('Dispute recorded');
               }}
             >
-              Raise dispute
+              Dispute section
             </Button>
-            <Button size="sm" onClick={() => {
-              onConfirm();
-              toast.success(`${section.room} confirmed`);
-            }}>
+            <Button
+              size="sm"
+              onClick={() => {
+                onConfirm(feedbackText.trim() || undefined);
+                toast.success(`${section.room} confirmed`);
+              }}
+            >
               Confirm section
             </Button>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

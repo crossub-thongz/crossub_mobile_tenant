@@ -493,9 +493,10 @@ export function toIngoingReport(dto: TenantIngoingInspection): IngoingReport {
       room: section.room,
       description: section.description,
       photos: section.photos ?? [],
-      tenantConfirmed: dto.tenantApproved ? !section.disputed : false,
+      tenantConfirmed: Boolean(section.confirmed) || (dto.tenantApproved && !section.disputed),
+      tenantFeedback: section.feedbackComment ?? undefined,
       tenantDispute: section.disputeComment ?? undefined,
-      confirmedAt: undefined,
+      confirmedAt: section.confirmedAt ?? undefined,
     })) ?? [];
 
   const confirmedCount = sections.filter(
@@ -504,6 +505,7 @@ export function toIngoingReport(dto: TenantIngoingInspection): IngoingReport {
   const hasDispute = sections.some((s) => s.tenantDispute);
   let status: IngoingReport['status'] = 'pending_tenant_review';
   if (dto.tenantApproved || dto.status === 'confirmed') status = 'confirmed';
+  else if (dto.tenantRejected || dto.status === 'rejected') status = 'rejected';
   else if (hasDispute) status = 'disputed';
   else if (confirmedCount > 0) status = 'partially_confirmed';
 
@@ -512,8 +514,12 @@ export function toIngoingReport(dto: TenantIngoingInspection): IngoingReport {
     propertyAddress: mapPropertyAddress(dto.propertyAddress),
     status,
     dueBy: asString(dto.dueBy)?.slice(0, 10) ?? '',
+    reportUrl: dto.reportUrl ?? undefined,
     sections,
     confirmedCount,
+    tenantApproved: dto.tenantApproved,
+    tenantRejected: dto.tenantRejected,
+    rejectReason: dto.rejectReason ?? undefined,
   };
 }
 

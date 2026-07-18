@@ -33,6 +33,7 @@ export type IngoingReportStatus =
   | 'partially_confirmed'
   | 'disputed'
   | 'confirmed'
+  | 'rejected'
   | 'overdue';
 
 export type MaintenanceTenantStatus =
@@ -196,6 +197,8 @@ export interface ReportSection {
   description: string;
   photos: string[];
   tenantConfirmed: boolean;
+  /** Optional feedback left when confirming the section. */
+  tenantFeedback?: string;
   tenantDispute?: string;
   confirmedAt?: string;
 }
@@ -205,8 +208,12 @@ export interface IngoingReport {
   propertyAddress: string;
   status: IngoingReportStatus;
   dueBy: string;
+  reportUrl?: string;
   sections: ReportSection[];
   confirmedCount: number;
+  tenantApproved?: boolean;
+  tenantRejected?: boolean;
+  rejectReason?: string;
 }
 
 export interface MaintenanceRequest {

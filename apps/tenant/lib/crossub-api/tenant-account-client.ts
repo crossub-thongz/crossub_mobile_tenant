@@ -162,6 +162,22 @@ export async function disputeTenantIngoingSection(
   return data;
 }
 
+export async function submitTenantIngoingSectionFeedback(
+  inspectionId: string,
+  sectionId: string,
+  body: { status: 'confirmed' | 'disputed'; comment?: string },
+): Promise<TenantIngoingInspection> {
+  const { data, error } = await crossub.POST(
+    '/tenant/ingoing-inspections/{inspectionId}/sections/{sectionId}/feedback',
+    {
+      params: { path: { inspectionId, sectionId } },
+      body,
+    },
+  );
+  if (error || !data) throw new Error('Failed to save section feedback');
+  return data;
+}
+
 export async function approveTenantIngoingInspection(
   inspectionId: string,
 ): Promise<TenantIngoingInspection> {
@@ -172,6 +188,21 @@ export async function approveTenantIngoingInspection(
     },
   );
   if (error || !data) throw new Error('Failed to approve ingoing inspection');
+  return data;
+}
+
+export async function rejectTenantIngoingInspection(
+  inspectionId: string,
+  reason: string,
+): Promise<TenantIngoingInspection> {
+  const { data, error } = await crossub.POST(
+    '/tenant/ingoing-inspections/{inspectionId}/reject',
+    {
+      params: { path: { inspectionId } },
+      body: { reason },
+    },
+  );
+  if (error || !data) throw new Error('Failed to reject ingoing inspection');
   return data;
 }
 

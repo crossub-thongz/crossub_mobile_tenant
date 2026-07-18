@@ -33,6 +33,7 @@ export const INGOING_STATUS_LABEL: Record<IngoingReportStatus, string> = {
   partially_confirmed: 'Partially confirmed',
   disputed: 'Disputed',
   confirmed: 'Confirmed',
+  rejected: 'Rejected',
   overdue: 'Overdue — please complete',
 };
 
