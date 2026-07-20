@@ -114,7 +114,7 @@ import type {
 export interface NewRepairInput {
   category: string;
   description: string;
-  area: string;
+  area?: string;
   urgency: Priority;
   propertyAddress?: string;
   /**
@@ -707,7 +707,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
         propertyAddress: input.propertyAddress ?? propertyAddress,
         category: input.category,
         description: input.description,
-        area: input.area,
+        area: input.area ?? '',
         urgency: input.urgency,
         status: 'submitted',
         statusLabel: 'Submitted',

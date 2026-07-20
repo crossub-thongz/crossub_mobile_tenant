@@ -207,11 +207,23 @@ const MAINTENANCE_PROGRESS: Record<
 };
 
 /**
- * Map the tenant's submitted maintenance requests (API summaries) onto the app's
- * MaintenanceRequest cards. The summary carries no contractor/timeline internals, so
- * those stay empty; the tenant sees status, category, urgency and a derived progress.
- * `fallbackAddress` (the lease address) fills in when a ticket carries no property.
+ * Map maintenance request summaries onto repair cards. Includes tenant-filed tickets
+ * and agent/admin jobs on the leased property.
  */
+function maintenanceCategoryLabel(
+  categoryName: string | null,
+  description: string | null,
+): string {
+  if (categoryName?.trim()) return categoryName.trim();
+  const raw = description?.trim() ?? '';
+  const colon = raw.indexOf(':');
+  if (colon > 0) {
+    const prefix = raw.slice(0, colon).trim();
+    if (prefix.length > 0 && prefix.length <= 120) return prefix;
+  }
+  return 'General';
+}
+
 export function toTenantMaintenanceRequests(
   summaries: TenantMaintenanceRequestSummary[],
   fallbackAddress?: string,
@@ -223,8 +235,19 @@ export function toTenantMaintenanceRequests(
       const mapped = mapPropertyAddress(s.propertyAddress);
       return mapped !== '—' ? mapped : (fallbackAddress ?? '—');
     })(),
-    category: asString(s.categoryName) ?? 'General',
-    description: asString(s.description) ?? '',
+    category: maintenanceCategoryLabel(
+      asString(s.categoryName),
+      asString(s.description),
+    ),
+    description: (() => {
+      const raw = asString(s.description) ?? '';
+      const colon = raw.indexOf(':');
+      if (colon > 0 && colon < 120) {
+        const body = raw.slice(colon + 1).trim();
+        if (body) return body;
+      }
+      return raw;
+    })(),
     area: '—',
     urgency: s.urgent ? 'urgent' : 'normal',
     status: MAINTENANCE_VIEW_STATUS[s.status] ?? 'submitted',

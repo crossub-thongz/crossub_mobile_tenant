@@ -372,7 +372,7 @@ export async function declineTenantVacatingSettlement(
   return data;
 }
 
-/** Maintenance requests the signed-in tenant has filed (`GET /api/v1/tenant/maintenance-requests`). */
+/** Maintenance on the tenant’s leased property (`GET /api/v1/tenant/maintenance-requests`). */
 export async function fetchMaintenanceRequests(): Promise<
   TenantMaintenanceRequestSummary[]
 > {
