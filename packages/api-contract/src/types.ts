@@ -3588,6 +3588,14 @@ export interface components {
              */
             url: string;
         };
+        MaintenancePropertyContactDto: {
+            /** @example Harbour Strata Management */
+            name?: string;
+            /** @example strata@example.com */
+            email?: string;
+            /** @example +61 2 9000 0000 */
+            phone?: string;
+        };
         TenantMaintenanceRequestSummaryDto: {
             /** Format: uuid */
             id: string;
@@ -3666,6 +3674,20 @@ export interface components {
              * @example false
              */
             tenantCompletionApproved: boolean;
+            /**
+             * @description Building name when recorded on the property.
+             * @example Harbour Residences
+             */
+            buildingName?: Record<string, never>;
+            /**
+             * @description Strata plan number when recorded on the property.
+             * @example SP12345
+             */
+            strataPlanNumber?: Record<string, never>;
+            /** @description Building manager contact from the linked property. */
+            buildingManager?: components["schemas"]["MaintenancePropertyContactDto"];
+            /** @description Strata body contact from the linked property. */
+            strataContact?: components["schemas"]["MaintenancePropertyContactDto"];
         };
         PaginatedTenantRequestsDto: {
             /**
@@ -4945,6 +4967,19 @@ export interface components {
             completedDate: string | null;
             /** Format: date-time */
             createdAt: string;
+            /**
+             * @description Who is responsible for resolving this repair, once classified.
+             * @enum {string|null}
+             */
+            responsibility?: "tenant" | "landlord" | "strata" | null;
+            /** @description Building name when recorded on the property. */
+            buildingName?: Record<string, never>;
+            /** @description Strata plan number when recorded on the property. */
+            strataPlanNumber?: Record<string, never>;
+            /** @description Building manager contact from the linked property. */
+            buildingManager?: components["schemas"]["MaintenancePropertyContactDto"];
+            /** @description Strata body contact from the linked property. */
+            strataContact?: components["schemas"]["MaintenancePropertyContactDto"];
         };
         PaginatedLandlordMaintenanceDto: {
             /**

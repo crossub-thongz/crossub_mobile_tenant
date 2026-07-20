@@ -56,7 +56,7 @@ export function InfoCard({
           )}
         </div>
       )}
-      {children}
+      <div className="min-w-0 break-words">{children}</div>
     </div>
   );
 }

@@ -30,6 +30,7 @@ import type {
   InspectionListType,
   InspectionSummary,
   LeaseSummary,
+  MaintenancePropertyContact,
   MaintenanceRequest,
   MessageCategory,
   MessageThread,
@@ -87,6 +88,18 @@ function mapPropertyAddress(propertyAddress: unknown): string {
 }
 function asNumber(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function readMaintenancePropertyContact(
+  value: unknown,
+): MaintenancePropertyContact | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const contact = value as Record<string, unknown>;
+  const name = asString(contact.name) ?? undefined;
+  const email = asString(contact.email) ?? undefined;
+  const phone = asString(contact.phone) ?? undefined;
+  if (!name && !email && !phone) return undefined;
+  return { name, email, phone };
 }
 
 /** Whole days from now until `iso`, or undefined when it's missing/past/unparseable. */
@@ -260,6 +273,10 @@ export function toTenantMaintenanceRequests(
       completionEvidenceUploaded: s.completionEvidenceUploaded ?? completionEvidenceUrls.length > 0,
       completionApprovalPending: s.completionApprovalPending ?? false,
       tenantCompletionApproved: s.tenantCompletionApproved ?? false,
+      buildingName: asString(s.buildingName),
+      strataPlanNumber: asString(s.strataPlanNumber),
+      buildingManager: readMaintenancePropertyContact(s.buildingManager),
+      strataContact: readMaintenancePropertyContact(s.strataContact),
     };
 
     return mapped;

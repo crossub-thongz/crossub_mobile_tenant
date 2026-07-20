@@ -99,7 +99,7 @@ export function TenantShell({
     : navClearance;
 
   return (
-    <div className="mx-auto min-h-screen max-w-lg bg-background">
+    <div className="mx-auto min-h-screen max-w-lg overflow-x-hidden bg-background">
       <header
         ref={headerRef}
         className="fixed top-0 left-1/2 z-40 w-full max-w-lg -translate-x-1/2 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80"

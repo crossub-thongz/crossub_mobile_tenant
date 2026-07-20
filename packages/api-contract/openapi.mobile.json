@@ -10193,6 +10193,23 @@
           "url"
         ]
       },
+      "MaintenancePropertyContactDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Harbour Strata Management"
+          },
+          "email": {
+            "type": "string",
+            "example": "strata@example.com"
+          },
+          "phone": {
+            "type": "string",
+            "example": "+61 2 9000 0000"
+          }
+        }
+      },
       "TenantMaintenanceRequestSummaryDto": {
         "type": "object",
         "properties": {
@@ -10326,6 +10343,32 @@
             "type": "boolean",
             "description": "True after the tenant has approved completed work (tenant sign-off).",
             "example": false
+          },
+          "buildingName": {
+            "type": "object",
+            "description": "Building name when recorded on the property.",
+            "example": "Harbour Residences"
+          },
+          "strataPlanNumber": {
+            "type": "object",
+            "description": "Strata plan number when recorded on the property.",
+            "example": "SP12345"
+          },
+          "buildingManager": {
+            "description": "Building manager contact from the linked property.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MaintenancePropertyContactDto"
+              }
+            ]
+          },
+          "strataContact": {
+            "description": "Strata body contact from the linked property.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MaintenancePropertyContactDto"
+              }
+            ]
           }
         },
         "required": [
@@ -13257,6 +13300,40 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "responsibility": {
+            "type": "string",
+            "enum": [
+              "tenant",
+              "landlord",
+              "strata"
+            ],
+            "nullable": true,
+            "description": "Who is responsible for resolving this repair, once classified."
+          },
+          "buildingName": {
+            "type": "object",
+            "description": "Building name when recorded on the property."
+          },
+          "strataPlanNumber": {
+            "type": "object",
+            "description": "Strata plan number when recorded on the property."
+          },
+          "buildingManager": {
+            "description": "Building manager contact from the linked property.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MaintenancePropertyContactDto"
+              }
+            ]
+          },
+          "strataContact": {
+            "description": "Strata body contact from the linked property.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MaintenancePropertyContactDto"
+              }
+            ]
           }
         },
         "required": [

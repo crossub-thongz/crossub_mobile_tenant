@@ -104,6 +104,22 @@ export function mapTenantMaintenancePresentation(input: {
     };
   }
 
+  if (input.tenantCompletionApproved) {
+    if (
+      input.status === MAINTENANCE_STATUS.COMPLETED ||
+      input.status === MAINTENANCE_STATUS.CANCELLED
+    ) {
+      return base;
+    }
+    return {
+      status: 'in_progress',
+      statusLabel: 'Completion approved',
+      statusHint:
+        'You confirmed the repair work is complete. CROSSUB is finalising this case.',
+      progressPercent: 95,
+    };
+  }
+
   if (input.responsibilityAckStatus === 'disagreed') {
     return {
       status: 'closed',

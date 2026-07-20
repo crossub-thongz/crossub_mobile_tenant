@@ -46,6 +46,12 @@ export type MaintenanceTenantStatus =
   | 'completed'
   | 'closed';
 
+export interface MaintenancePropertyContact {
+  name?: string;
+  email?: string;
+  phone?: string;
+}
+
 export type MessageType =
   | 'general'
   | 'maintenance'
@@ -247,6 +253,10 @@ export interface MaintenanceRequest {
   completionEvidenceUploaded: boolean;
   completionApprovalPending: boolean;
   tenantCompletionApproved: boolean;
+  buildingName?: string | null;
+  strataPlanNumber?: string | null;
+  buildingManager?: MaintenancePropertyContact;
+  strataContact?: MaintenancePropertyContact;
 }
 
 export type InspectionListType = 'ingoing' | 'outgoing' | 'routine';

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Building2,
   CalendarClock,
@@ -19,6 +19,8 @@ import {
 import { toast } from 'sonner';
 
 import { MaintenanceMediaGallery } from '@/components/maintenance/maintenance-media-gallery';
+import { TenantMaintenanceCompletionPopup } from '@/components/maintenance/tenant-maintenance-completion-popup';
+import { TenantMaintenanceStrataContacts } from '@/components/maintenance/tenant-maintenance-strata-contacts';
 import {
   responsibilityLabel,
   TenantMaintenanceResponsibilityAckTimer,
@@ -44,11 +46,20 @@ export default function RepairDetailPage() {
   const [tab, setTab] = useState<Tab>('overview');
   const [submittingAck, setSubmittingAck] = useState(false);
   const [submittingCompletion, setSubmittingCompletion] = useState(false);
+  const [completionPopupOpen, setCompletionPopupOpen] = useState(false);
 
   const needsCompletionApproval =
     request?.completionApprovalPending && !request.tenantCompletionApproved;
   const needsResponsibilityAck = request?.responsibilityAckRequired === true;
   const responsibilityText = responsibilityLabel(request?.responsibility);
+
+  useEffect(() => {
+    if (needsCompletionApproval && request?.completionEvidenceUploaded) {
+      setCompletionPopupOpen(true);
+    } else {
+      setCompletionPopupOpen(false);
+    }
+  }, [needsCompletionApproval, request?.completionEvidenceUploaded, request?.id]);
 
   const handleResponsibilityAck = async (agreed: boolean) => {
     if (!request) return;
@@ -96,16 +107,11 @@ export default function RepairDetailPage() {
 
   return (
     <TenantShell title={request.trackingNumber} backHref={ROUTES.REPAIRS}>
-      <div
-        className={cn(
-          'space-y-4',
-          (needsCompletionApproval || needsResponsibilityAck) && 'pb-36',
-        )}
-      >
+      <div className={cn('space-y-4', needsResponsibilityAck && 'pb-36')}>
         {/* Progress hero */}
         <div className="from-primary/15 via-card to-card rounded-2xl border border-primary/20 bg-gradient-to-br p-5">
           <div className="flex items-start justify-between gap-3">
-            <div>
+            <div className="min-w-0 flex-1">
               <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
                 Repair progress
               </p>
@@ -123,7 +129,9 @@ export default function RepairDetailPage() {
           </div>
           <p className="text-muted-foreground mt-2 text-xs">{request.trackingNumber}</p>
           {request.statusHint && (
-            <p className="text-muted-foreground mt-2 text-sm leading-relaxed">{request.statusHint}</p>
+            <p className="text-muted-foreground mt-2 break-words text-sm leading-relaxed">
+              {request.statusHint}
+            </p>
           )}
         </div>
 
@@ -150,6 +158,17 @@ export default function RepairDetailPage() {
             )}
           </InfoCard>
         )}
+
+        {request.responsibility === 'strata' &&
+        request.status !== 'completed' &&
+        request.status !== 'closed' ? (
+          <TenantMaintenanceStrataContacts
+            buildingManager={request.buildingManager}
+            strataContact={request.strataContact}
+            strataPlanNumber={request.strataPlanNumber}
+            buildingName={request.buildingName}
+          />
+        ) : null}
 
         {/* Property */}
         <InfoCard icon={Building2} label="Property">
@@ -184,6 +203,36 @@ export default function RepairDetailPage() {
                 {request.contractorPhone}
               </a>
             )}
+          </InfoCard>
+        )}
+
+        {request.completionEvidenceUploaded && (
+          <InfoCard icon={CheckCircle2} label="Completion evidence" accent="primary">
+            <p className="text-muted-foreground mb-3 text-xs">
+              Photos and videos uploaded by the contractor or property manager when the repair
+              was marked complete.
+            </p>
+            <MaintenanceMediaGallery photos={request.completionEvidenceUrls} />
+            {needsCompletionApproval ? (
+              <div className="mt-4 space-y-2 border-t border-primary/15 pt-4">
+                <p className="text-sm font-medium">Confirm you are satisfied with the work</p>
+                <p className="text-muted-foreground text-xs leading-relaxed">
+                  Review the completion evidence above, then approve when the repair meets your
+                  expectations.
+                </p>
+                <Button
+                  className="w-full"
+                  disabled={submittingCompletion}
+                  onClick={() => void handleCompletionApproval()}
+                >
+                  Approve repair completed
+                </Button>
+              </div>
+            ) : request.tenantCompletionApproved ? (
+              <p className="text-primary mt-4 text-sm font-medium">
+                You approved this completion.
+              </p>
+            ) : null}
           </InfoCard>
         )}
 
@@ -226,16 +275,6 @@ export default function RepairDetailPage() {
               </p>
               <MaintenanceMediaGallery photos={request.photos} />
             </InfoCard>
-
-            {request.completionEvidenceUploaded && (
-              <InfoCard icon={CheckCircle2} label="Completion evidence">
-                <p className="text-muted-foreground mb-3 text-xs">
-                  Photos and videos uploaded by the contractor or property manager when the
-                  repair was marked complete.
-                </p>
-                <MaintenanceMediaGallery photos={request.completionEvidenceUrls} />
-              </InfoCard>
-            )}
           </div>
         )}
 
@@ -253,12 +292,12 @@ export default function RepairDetailPage() {
                   )}
                   <span className="bg-primary relative z-10 mt-1.5 size-3.5 shrink-0 rounded-full ring-4 ring-background" />
                   <div className="min-w-0 flex-1 rounded-xl border bg-card px-3 py-2.5">
-                    <p className="font-medium">{entry.title}</p>
+                    <p className="break-words font-medium">{entry.title}</p>
                     <p className="text-muted-foreground mt-0.5 text-xs">
                       {entry.actor} · {formatDateTime(entry.at)}
                     </p>
                     {entry.detail && (
-                      <p className="text-muted-foreground mt-1 text-xs">{entry.detail}</p>
+                      <p className="text-muted-foreground mt-1 break-words text-xs">{entry.detail}</p>
                     )}
                   </div>
                 </div>
@@ -334,31 +373,11 @@ export default function RepairDetailPage() {
         </div>
       )}
 
-      {needsCompletionApproval && (
-        <div className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-1/2 z-40 w-full max-w-lg -translate-x-1/2 border-t border-primary/20 bg-background/95 px-4 py-4 backdrop-blur">
-          <div className="from-primary/10 to-card rounded-2xl border border-primary/25 bg-gradient-to-br p-4">
-            <div className="flex items-start gap-3">
-              <div className="bg-primary/15 text-primary flex size-10 shrink-0 items-center justify-center rounded-xl">
-                <CheckCircle2 className="size-5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="font-semibold">Completion approval</p>
-                <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-                  The contractor has marked this repair complete. Confirm you are satisfied
-                  with the work.
-                </p>
-              </div>
-            </div>
-            <Button
-              className="mt-4 w-full"
-              disabled={submittingCompletion}
-              onClick={() => void handleCompletionApproval()}
-            >
-              Approve repair completed
-            </Button>
-          </div>
-        </div>
-      )}
+      <TenantMaintenanceCompletionPopup
+        open={completionPopupOpen}
+        onOpenChange={setCompletionPopupOpen}
+        trackingNumber={request.trackingNumber}
+      />
     </TenantShell>
   );
 }
