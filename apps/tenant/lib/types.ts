@@ -234,6 +234,12 @@ export interface MaintenanceRequest {
   tenantCompletionApproved?: boolean;
   timeline: TimelineEntry[];
   createdAt: string;
+  /** Cost responsibility once classified (tenant / landlord / strata). */
+  responsibility?: 'tenant' | 'landlord' | 'strata' | null;
+  /** True when the tenant must acknowledge tenant-responsibility. */
+  responsibilityAckRequired?: boolean;
+  responsibilityAckStatus?: 'pending' | 'agreed' | 'disagreed' | null;
+  responsibilityAckDeadline?: string | null;
 }
 
 export type InspectionListType = 'ingoing' | 'outgoing' | 'routine';

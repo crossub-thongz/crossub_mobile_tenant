@@ -372,6 +372,9 @@ export async function declineTenantVacatingSettlement(
   return data;
 }
 
+export type TenantMaintenanceResponsibilityAck =
+  components['schemas']['TenantMaintenanceResponsibilityAckDto'];
+
 /** Maintenance on the tenant’s leased property (`GET /api/v1/tenant/maintenance-requests`). */
 export async function fetchMaintenanceRequests(): Promise<
   TenantMaintenanceRequestSummary[]
@@ -379,6 +382,24 @@ export async function fetchMaintenanceRequests(): Promise<
   const { data, error } = await crossub.GET('/tenant/maintenance-requests');
   if (error || !data) throw new Error('Failed to load maintenance requests');
   return data.items;
+}
+
+/** Acknowledge or disagree with tenant-responsibility (`PATCH .../responsibility-ack`). */
+export async function respondMaintenanceResponsibilityAck(
+  requestId: string,
+  body: TenantMaintenanceResponsibilityAck,
+): Promise<TenantMaintenanceRequestSummary> {
+  const { data, error } = await crossub.PATCH(
+    '/tenant/maintenance-requests/{requestId}/responsibility-ack',
+    {
+      params: { path: { requestId } },
+      body,
+    },
+  );
+  if (error || !data) {
+    throw new Error('Failed to record maintenance responsibility response');
+  }
+  return data;
 }
 
 /** Raise a maintenance request (`POST /api/v1/tenant/maintenance-requests`). */

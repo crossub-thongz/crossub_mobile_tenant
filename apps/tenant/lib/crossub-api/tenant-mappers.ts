@@ -256,6 +256,10 @@ export function toTenantMaintenanceRequests(
     scheduledAt: asString(s.scheduledDate) ?? undefined,
     timeline: [],
     createdAt: asString(s.createdAt) ?? '',
+    responsibility: s.responsibility ?? null,
+    responsibilityAckRequired: s.responsibilityAckRequired ?? false,
+    responsibilityAckStatus: s.responsibilityAckStatus ?? null,
+    responsibilityAckDeadline: asString(s.responsibilityAckDeadline) ?? null,
   }));
 }
 

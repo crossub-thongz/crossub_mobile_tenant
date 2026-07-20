@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import {
   Building2,
@@ -12,10 +12,15 @@ import {
   ListTree,
   MessageSquare,
   Phone,
+  Scale,
   Wrench,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import {
+  responsibilityLabel,
+  TenantMaintenanceResponsibilityAckTimer,
+} from '@/components/maintenance/tenant-maintenance-responsibility-ack';
 import { TenantShell } from '@/components/layout/tenant-shell';
 import { InfoCard } from '@/components/tenant/info-card';
 import { SegmentTabs } from '@/components/tenant/segment-tabs';
@@ -28,14 +33,39 @@ import { cn, formatDateTime } from '@/lib/utils';
 type Tab = 'overview' | 'status' | 'message';
 
 export default function RepairDetailPage() {
+  const router = useRouter();
   const { id } = useParams<{ id: string }>();
-  const { maintenance, messages, approveRepairCompletion } = useTenantData();
+  const { maintenance, messages, approveRepairCompletion, respondMaintenanceResponsibilityAck, refresh } =
+    useTenantData();
   const request = maintenance.find((m) => m.id === id);
   const thread = messages.find((m) => m.linkedCaseId === id);
   const [tab, setTab] = useState<Tab>('overview');
+  const [submittingAck, setSubmittingAck] = useState(false);
 
-  const needsApproval =
+  const needsCompletionApproval =
     request?.completionApprovalPending && !request.tenantCompletionApproved;
+  const needsResponsibilityAck = request?.responsibilityAckRequired === true;
+  const responsibilityText = responsibilityLabel(request?.responsibility);
+
+  const handleResponsibilityAck = async (agreed: boolean) => {
+    if (!request) return;
+    setSubmittingAck(true);
+    try {
+      await respondMaintenanceResponsibilityAck(request.id, agreed);
+      toast.success(
+        agreed
+          ? 'You acknowledged this repair is your responsibility.'
+          : 'Your disagreement was recorded.',
+      );
+      router.refresh();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'Could not record your response. Try again.',
+      );
+    } finally {
+      setSubmittingAck(false);
+    }
+  };
 
   if (!request) {
     return (
@@ -47,7 +77,12 @@ export default function RepairDetailPage() {
 
   return (
     <TenantShell title={request.trackingNumber} backHref={ROUTES.REPAIRS}>
-      <div className={cn('space-y-4', needsApproval && 'pb-36')}>
+      <div
+        className={cn(
+          'space-y-4',
+          (needsCompletionApproval || needsResponsibilityAck) && 'pb-36',
+        )}
+      >
         {/* Progress hero */}
         <div className="from-primary/15 via-card to-card rounded-2xl border border-primary/20 bg-gradient-to-br p-5">
           <div className="flex items-start justify-between gap-3">
@@ -69,6 +104,30 @@ export default function RepairDetailPage() {
           </div>
           <p className="text-muted-foreground mt-2 text-xs">{request.trackingNumber}</p>
         </div>
+
+        {responsibilityText && (
+          <InfoCard icon={Scale} label="Responsibility">
+            <p className="font-semibold">{responsibilityText}</p>
+            {request.responsibility === 'tenant' && (
+              <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
+                CROSSUB has classified this repair as your responsibility. You will need to
+                arrange your own contractor to resolve it.
+              </p>
+            )}
+            {request.responsibility === 'landlord' && (
+              <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
+                The landlord is responsible for this repair. CROSSUB will coordinate quotes and
+                contractors.
+              </p>
+            )}
+            {request.responsibility === 'strata' && (
+              <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
+                This repair falls under strata responsibility. CROSSUB will coordinate with the
+                strata body.
+              </p>
+            )}
+          </InfoCard>
+        )}
 
         {/* Property */}
         <InfoCard icon={Building2} label="Property">
@@ -144,23 +203,29 @@ export default function RepairDetailPage() {
 
         {tab === 'status' && (
           <div className="relative space-y-0 pl-2">
-            {request.timeline.map((entry, i) => (
-              <div key={entry.id} className="relative flex gap-4 pb-5 last:pb-0">
-                {i < request.timeline.length - 1 && (
-                  <span className="bg-border absolute top-3 left-[7px] h-[calc(100%-4px)] w-px" />
-                )}
-                <span className="bg-primary relative z-10 mt-1.5 size-3.5 shrink-0 rounded-full ring-4 ring-background" />
-                <div className="min-w-0 flex-1 rounded-xl border bg-card px-3 py-2.5">
-                  <p className="font-medium">{entry.title}</p>
-                  <p className="text-muted-foreground mt-0.5 text-xs">
-                    {entry.actor} · {formatDateTime(entry.at)}
-                  </p>
-                  {entry.detail && (
-                    <p className="text-muted-foreground mt-1 text-xs">{entry.detail}</p>
+            {request.timeline.length === 0 ? (
+              <p className="text-muted-foreground text-sm">
+                Status updates will appear here as CROSSUB progresses your repair.
+              </p>
+            ) : (
+              request.timeline.map((entry, i) => (
+                <div key={entry.id} className="relative flex gap-4 pb-5 last:pb-0">
+                  {i < request.timeline.length - 1 && (
+                    <span className="bg-border absolute top-3 left-[7px] h-[calc(100%-4px)] w-px" />
                   )}
+                  <span className="bg-primary relative z-10 mt-1.5 size-3.5 shrink-0 rounded-full ring-4 ring-background" />
+                  <div className="min-w-0 flex-1 rounded-xl border bg-card px-3 py-2.5">
+                    <p className="font-medium">{entry.title}</p>
+                    <p className="text-muted-foreground mt-0.5 text-xs">
+                      {entry.actor} · {formatDateTime(entry.at)}
+                    </p>
+                    {entry.detail && (
+                      <p className="text-muted-foreground mt-1 text-xs">{entry.detail}</p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         )}
 
@@ -192,7 +257,46 @@ export default function RepairDetailPage() {
         )}
       </div>
 
-      {needsApproval && (
+      {needsResponsibilityAck && (
+        <div className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-1/2 z-40 w-full max-w-lg -translate-x-1/2 border-t border-amber-500/30 bg-background/95 px-4 py-4 backdrop-blur">
+          <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/10 to-card p-4">
+            <p className="font-semibold">Acknowledgement required</p>
+            <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+              Please confirm you accept this is your responsibility and will arrange your own
+              contractor. If you disagree, CROSSUB will record your objection and close the case.
+            </p>
+            {request.responsibilityAckDeadline && (
+              <div className="mt-3">
+                <TenantMaintenanceResponsibilityAckTimer
+                  deadline={request.responsibilityAckDeadline}
+                  onExpire={() => {
+                    void refresh({ force: true });
+                  }}
+                />
+              </div>
+            )}
+            <div className="mt-4 flex gap-2">
+              <Button
+                className="flex-1"
+                disabled={submittingAck}
+                onClick={() => void handleResponsibilityAck(true)}
+              >
+                I agree
+              </Button>
+              <Button
+                variant="destructive"
+                className="flex-1"
+                disabled={submittingAck}
+                onClick={() => void handleResponsibilityAck(false)}
+              >
+                I disagree
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {needsCompletionApproval && (
         <div className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-1/2 z-40 w-full max-w-lg -translate-x-1/2 border-t border-primary/20 bg-background/95 px-4 py-4 backdrop-blur">
           <div className="from-primary/10 to-card rounded-2xl border border-primary/25 bg-gradient-to-br p-4">
             <div className="flex items-start gap-3">

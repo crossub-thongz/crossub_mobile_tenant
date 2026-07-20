@@ -15,6 +15,7 @@ import {
   createTenantMessageThread,
   fetchLedger,
   fetchMaintenanceRequests,
+  respondMaintenanceResponsibilityAck,
   fetchTenancies,
   fetchTenantApplications,
   fetchTenantDocuments,
@@ -193,6 +194,11 @@ interface TenantDataContextValue {
   sendThreadMessage: (threadId: string, body: string, to: MessageParty) => void;
   recordRentPayment: (input: RecordRentPaymentInput) => RentReceipt;
   approveRepairCompletion: (id: string) => void;
+  respondMaintenanceResponsibilityAck: (
+    id: string,
+    agreed: boolean,
+    reason?: string,
+  ) => Promise<void>;
   recordVacatingDate: (date: string) => void;
   startVacating: (date: string, reason?: string) => Promise<void>;
   cancelVacatingCase: (reason?: string) => Promise<void>;
@@ -1114,6 +1120,25 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     [persistMaintenance],
   );
 
+  const respondMaintenanceResponsibilityAckHandler = useCallback(
+    async (id: string, agreed: boolean, reason?: string) => {
+      if (!apiConnected) {
+        throw new Error('Connect to the API to respond to maintenance responsibility.');
+      }
+      const summary = await respondMaintenanceResponsibilityAck(id, {
+        agreed,
+        ...(reason?.trim() ? { reason: reason.trim() } : {}),
+      });
+      const [mapped] = toTenantMaintenanceRequests([summary], propertyAddress);
+      setMaintenance((prev) => {
+        const next = prev.map((m) => (m.id === id ? { ...m, ...mapped } : m));
+        persistMaintenance(next);
+        return next;
+      });
+    },
+    [apiConnected, persistMaintenance, propertyAddress],
+  );
+
   const startVacating = useCallback(
     async (date: string, reason?: string) => {
       const applyLocalVacating = () => {
@@ -1415,6 +1440,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       sendThreadMessage,
       recordRentPayment,
       approveRepairCompletion,
+      respondMaintenanceResponsibilityAck: respondMaintenanceResponsibilityAckHandler,
       recordVacatingDate,
       startVacating,
       cancelVacatingCase,
@@ -1476,6 +1502,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       rejectIngoingReport,
       confirmOutgoingSection,
       approveRepairCompletion,
+      respondMaintenanceResponsibilityAckHandler,
       recordVacatingDate,
       startVacating,
       cancelVacatingCase,

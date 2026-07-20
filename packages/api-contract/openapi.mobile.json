@@ -143,7 +143,7 @@
         ]
       },
       "get": {
-        "description": "Returns a page of the tenant’s own submitted requests (scoped to the tickets they filed), newest first.",
+        "description": "Returns a page of maintenance tickets the tenant filed plus every job logged on their currently leased property (including agent/admin-created work), newest first.",
         "operationId": "TenantMaintenanceController_list",
         "parameters": [
           {
@@ -193,7 +193,7 @@
             "bearer": []
           }
         ],
-        "summary": "List the maintenance requests the signed-in tenant has submitted.",
+        "summary": "List maintenance requests for the signed-in tenant’s leased property.",
         "tags": [
           "tenant"
         ]
@@ -281,7 +281,7 @@
             "description": "Caller is not a TENANT."
           },
           "404": {
-            "description": "requestId does not exist or was not submitted by this tenant."
+            "description": "requestId does not exist or is not on a property this tenant leases."
           }
         },
         "security": [
@@ -289,7 +289,67 @@
             "bearer": []
           }
         ],
-        "summary": "Get one of the signed-in tenant’s submitted requests by id.",
+        "summary": "Get one maintenance request visible to the signed-in tenant.",
+        "tags": [
+          "tenant"
+        ]
+      }
+    },
+    "/tenant/maintenance-requests/{requestId}/responsibility-ack": {
+      "patch": {
+        "description": "When an agent classifies a repair as tenant responsibility, the tenant must agree or disagree. If they do not respond within 48 hours, the system automatically agrees and closes the case.",
+        "operationId": "TenantMaintenanceController_respondToResponsibility",
+        "parameters": [
+          {
+            "name": "requestId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantMaintenanceResponsibilityAckDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantMaintenanceRequestSummaryDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Acknowledgement is not required, or was already recorded."
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller is not a TENANT."
+          },
+          "404": {
+            "description": "requestId does not exist or is not on a property this tenant leases."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Acknowledge or disagree with a tenant-responsibility repair decision.",
         "tags": [
           "tenant"
         ]
@@ -625,7 +685,7 @@
     },
     "/tenant/documents": {
       "get": {
-        "description": "Real file URLs aggregated off the property rows — inspection reports, maintenance completion reports, and lease PDFs. Newest first.",
+        "description": "Real file URLs — inspection reports, maintenance completion reports, and lease PDFs on the leased property, plus rental-application uploads (100-point check) for this applicant. Newest first. Application docs appear even before a lease is active.",
         "operationId": "TenantAccountController_listDocuments",
         "parameters": [],
         "responses": {
@@ -654,7 +714,7 @@
             "bearer": []
           }
         ],
-        "summary": "List documents attached to the tenant’s leased property.",
+        "summary": "List documents for the signed-in tenant.",
         "tags": [
           "tenant"
         ]
@@ -920,6 +980,62 @@
         ]
       }
     },
+    "/tenant/ingoing-inspections/{inspectionId}/sections/{sectionId}/feedback": {
+      "post": {
+        "operationId": "TenantAccountController_submitIngoingSectionFeedback",
+        "parameters": [
+          {
+            "name": "inspectionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "sectionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantIngoingSectionFeedbackDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantIngoingInspectionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Confirm or dispute one section of the ingoing report (with feedback).",
+        "tags": [
+          "tenant"
+        ]
+      }
+    },
     "/tenant/ingoing-inspections/{inspectionId}/approve": {
       "patch": {
         "operationId": "TenantAccountController_approveIngoingInspection",
@@ -952,6 +1068,53 @@
           }
         ],
         "summary": "Approve the ingoing condition report after review.",
+        "tags": [
+          "tenant"
+        ]
+      }
+    },
+    "/tenant/ingoing-inspections/{inspectionId}/reject": {
+      "post": {
+        "operationId": "TenantAccountController_rejectIngoingInspection",
+        "parameters": [
+          {
+            "name": "inspectionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantIngoingRejectDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantIngoingInspectionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Reject the whole ingoing condition report with a reason.",
         "tags": [
           "tenant"
         ]
@@ -5354,6 +5517,65 @@
         ]
       }
     },
+    "/inspector/inspections/{inspectionId}/photos/link-area": {
+      "post": {
+        "operationId": "InspectorInspectionsController_linkAreaPhotos",
+        "parameters": [
+          {
+            "name": "inspectionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkInspectorAreaPhotosDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InspectorPhotoDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller is not an INSPECTOR, or has no inspector roster record."
+          },
+          "404": {
+            "description": "inspectionId does not exist or is not assigned to this inspector."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Attach existing photo URLs to an area (copy reference INGOING photos onto OUTGOING).",
+        "tags": [
+          "inspector"
+        ]
+      }
+    },
     "/inspector/inspections/{inspectionId}/key-custody/photos/upload": {
       "post": {
         "description": "Decodes the base64 body, puts it to object storage (R2), and appends the URL to the collect or return proof array (per `phase`) on the inspection’s key-custody record. Distinct from findings photos — this proof never enters the findings tree.",
@@ -6214,6 +6436,319 @@
         ]
       }
     },
+    "/agent/agencies/{agencyId}/billing": {
+      "patch": {
+        "description": "Persists ABN, licence number, contact email, and remittance bank details on the assigned agency.",
+        "operationId": "AgentPortalController_updateAgencyBilling",
+        "parameters": [
+          {
+            "name": "agencyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentUpdateAgencyBillingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentAgencyResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body is invalid."
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller is not an ACCOUNT_MANAGER."
+          },
+          "404": {
+            "description": "agencyId does not exist or is not assigned to this agent."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update agency billing details used on tax invoices.",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/agent/invoices": {
+      "get": {
+        "operationId": "AgentPortalController_listInvoices",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "1-based page number.",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "description": "Items per page (max 100).",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedAgentInvoicesDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller is not an ACCOUNT_MANAGER."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List tax invoices for the signed-in agent’s agencies.",
+        "tags": [
+          "agent"
+        ]
+      },
+      "post": {
+        "operationId": "AgentPortalController_createInvoice",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentCreateInvoiceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentInvoiceDetailDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body is invalid."
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller is not an ACCOUNT_MANAGER."
+          },
+          "404": {
+            "description": "agencyId does not exist or is not assigned to this agent."
+          },
+          "409": {
+            "description": "Invoice number already exists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a Crossub management tax invoice.",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/agent/invoices/{invoiceId}": {
+      "get": {
+        "operationId": "AgentPortalController_getInvoice",
+        "parameters": [
+          {
+            "name": "invoiceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentInvoiceDetailDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invoiceId is not a valid UUID."
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller is not an ACCOUNT_MANAGER."
+          },
+          "404": {
+            "description": "Invoice not found for this agent."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get one tax invoice by id.",
+        "tags": [
+          "agent"
+        ]
+      },
+      "patch": {
+        "operationId": "AgentPortalController_updateInvoice",
+        "parameters": [
+          {
+            "name": "invoiceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentUpdateInvoiceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentInvoiceDetailDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body is invalid."
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller is not an ACCOUNT_MANAGER."
+          },
+          "404": {
+            "description": "Invoice not found for this agent."
+          },
+          "409": {
+            "description": "Invoice number already exists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a tax invoice.",
+        "tags": [
+          "agent"
+        ]
+      },
+      "delete": {
+        "operationId": "AgentPortalController_deleteInvoice",
+        "parameters": [
+          {
+            "name": "invoiceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Invoice deleted."
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller is not an ACCOUNT_MANAGER."
+          },
+          "404": {
+            "description": "Invoice not found for this agent."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a tax invoice.",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
     "/agent/agencies/{agencyId}/preferred-contractors": {
       "get": {
         "description": "Returns AgencyPreferredContractor rows created by this agent only — the same maintenance contractor records staff create in crossub_web, scoped to the creator.",
@@ -6347,6 +6882,16 @@
               "maximum": 100,
               "default": 20,
               "type": "number"
+            }
+          },
+          {
+            "name": "archived",
+            "required": false,
+            "in": "query",
+            "description": "When true, returns properties whose management has ended (archived). When omitted or false, returns the active managed portfolio.",
+            "schema": {
+              "default": false,
+              "type": "boolean"
             }
           }
         ],
@@ -6526,6 +7071,47 @@
           }
         ],
         "summary": "Update a property registry record (including intake wizard drafts).",
+        "tags": [
+          "agent"
+        ]
+      },
+      "delete": {
+        "description": "Hard-deletes a property while registryIntakeComplete is false. Completed properties must use end-management instead.",
+        "operationId": "AgentPortalController_deleteDraftProperty",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Draft discarded."
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller is not an ACCOUNT_MANAGER."
+          },
+          "404": {
+            "description": "propertyId does not exist or is not within an assigned agency."
+          },
+          "409": {
+            "description": "Property intake is already complete — use end-management instead."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Discard an incomplete property registry draft.",
         "tags": [
           "agent"
         ]
@@ -7377,6 +7963,178 @@
         ]
       }
     },
+    "/agent/properties/{propertyId}/workflows/tribunal/rent-chasing": {
+      "post": {
+        "operationId": "AgentPortalController_createTribunalRentChasing",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentCreateTribunalRentChasingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentWorkflowCreateResultDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Open a Rent Chasing tribunal case (rent / bill / bond arrears) and sync profile fields.",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/agent/tribunal/{caseId}": {
+      "get": {
+        "operationId": "AgentPortalController_getTribunalCase",
+        "parameters": [
+          {
+            "name": "caseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentTribunalRentChasingDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rent Chasing tribunal case detail (arrears, tenancy summary, notes).",
+        "tags": [
+          "agent"
+        ]
+      },
+      "delete": {
+        "operationId": "AgentPortalController_deleteTribunalCase",
+        "parameters": [
+          {
+            "name": "caseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentDeleteTribunalCaseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Tribunal case deleted."
+          },
+          "404": {
+            "description": "Tribunal case not found for this agent."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a tribunal case from the agent portfolio.",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/agent/tribunal/{caseId}/rent-chasing": {
+      "patch": {
+        "operationId": "AgentPortalController_updateTribunalRentChasing",
+        "parameters": [
+          {
+            "name": "caseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentUpdateTribunalRentChasingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentTribunalRentChasingDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update Rent Chasing agent notes and/or eviction-required flag.",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
     "/agent/properties/{propertyId}/workflows/end-leasing/{caseId}/cancel": {
       "post": {
         "operationId": "AgentPortalController_cancelTerminationCase",
@@ -7475,6 +8233,62 @@
           }
         ],
         "summary": "Log a maintenance job for a managed property.",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/agent/properties/{propertyId}/workflows/maintenance/{requestId}/cancel": {
+      "post": {
+        "operationId": "AgentPortalController_cancelMaintenance",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "requestId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelAgentMaintenanceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentWorkflowCreateResultDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cancel (delete) a maintenance job for a managed property.",
         "tags": [
           "agent"
         ]
@@ -7582,6 +8396,62 @@
           }
         ],
         "summary": "Schedule an ingoing (move-in) inspection.",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/agent/properties/{propertyId}/workflows/inspection/ingoing/{inspectionId}/cancel": {
+      "post": {
+        "operationId": "AgentPortalController_cancelIngoingInspection",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "inspectionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelAgentOpenInspectionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentWorkflowCreateResultDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cancel an ingoing (move-in) inspection with a recorded reason.",
         "tags": [
           "agent"
         ]
@@ -8272,6 +9142,55 @@
         ]
       }
     },
+    "/agent/messages/{threadId}/read": {
+      "patch": {
+        "operationId": "AgentPortalController_markMessageThreadRead",
+        "parameters": [
+          {
+            "name": "threadId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentMessageThreadResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "threadId is not a valid UUID."
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller is not an ACCOUNT_MANAGER."
+          },
+          "404": {
+            "description": "threadId does not exist or is not a thread this agent can see."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark one of the agent’s message threads as read.",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
     "/agent/messages/{threadId}/reply": {
       "post": {
         "operationId": "AgentPortalController_replyToMessageThread",
@@ -8879,6 +9798,44 @@
         ]
       }
     },
+    "/agent/gii/chat": {
+      "post": {
+        "description": "Stateless: resend the full conversation each turn. Returns the assistant reply plus, when the turn produced one, the deterministic vacate assessment behind it.",
+        "operationId": "AgentGiiController_chat",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GiiChatRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GiiChatResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Send a message to Gii",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
     "/me": {
       "get": {
         "operationId": "MeController_getMe",
@@ -9243,6 +10200,37 @@
             "type": "string",
             "nullable": true,
             "format": "date-time"
+          },
+          "responsibility": {
+            "type": "string",
+            "enum": [
+              "tenant",
+              "landlord",
+              "strata"
+            ],
+            "nullable": true,
+            "description": "Who is responsible for resolving this repair, once classified in review."
+          },
+          "responsibilityAckRequired": {
+            "type": "boolean",
+            "description": "True when the tenant must acknowledge or disagree with a tenant-responsibility decision.",
+            "example": false
+          },
+          "responsibilityAckStatus": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "agreed",
+              "disagreed"
+            ],
+            "nullable": true,
+            "description": "Tenant acknowledgement outcome for tenant-responsibility jobs."
+          },
+          "responsibilityAckDeadline": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "When responsibilityAckRequired is true, the tenant must respond before this time or the system auto-agrees (48 hours)."
           }
         },
         "required": [
@@ -9256,7 +10244,8 @@
           "propertyAddress",
           "createdAt",
           "scheduledDate",
-          "completedDate"
+          "completedDate",
+          "responsibilityAckRequired"
         ]
       },
       "PaginatedTenantRequestsDto": {
@@ -9295,6 +10284,64 @@
           "pageSize",
           "hasMore",
           "items"
+        ]
+      },
+      "TenantMaintenanceResponsibilityAckDto": {
+        "type": "object",
+        "properties": {
+          "agreed": {
+            "type": "boolean",
+            "description": "True to acknowledge tenant responsibility; false to disagree.",
+            "example": true
+          },
+          "reason": {
+            "type": "string",
+            "description": "Optional reason when disagreeing with the responsibility decision.",
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "agreed"
+        ]
+      },
+      "TenantPaymentProofInlineUploadSessionDto": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "inline"
+            ],
+            "example": "inline"
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
+      "TenantPaymentProofDirectUploadSessionDto": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "direct"
+            ],
+            "example": "direct"
+          },
+          "uploadUrl": {
+            "type": "string",
+            "description": "Presigned PUT URL (valid ~1 hour). Send the raw file bytes with Content-Type."
+          },
+          "storageKey": {
+            "type": "string",
+            "description": "Storage key to pass to the matching proof/upload-complete endpoint."
+          }
+        },
+        "required": [
+          "mode",
+          "uploadUrl",
+          "storageKey"
         ]
       },
       "TenantTenancyResponseDto": {
@@ -9770,7 +10817,8 @@
               "maintenance_invoice",
               "statement",
               "tribunal",
-              "insurance"
+              "insurance",
+              "application"
             ],
             "example": "inspection"
           },
@@ -10085,6 +11133,20 @@
               "type": "string"
             }
           },
+          "confirmed": {
+            "type": "boolean",
+            "description": "Whether the tenant has confirmed this section."
+          },
+          "confirmedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "feedbackComment": {
+            "type": "string",
+            "nullable": true,
+            "description": "Optional feedback left when confirming the section."
+          },
           "disputed": {
             "type": "boolean",
             "description": "Whether the tenant has disputed this section."
@@ -10099,6 +11161,9 @@
           "room",
           "description",
           "photos",
+          "confirmed",
+          "confirmedAt",
+          "feedbackComment",
           "disputed",
           "disputeComment"
         ]
@@ -10138,11 +11203,20 @@
               "scheduled",
               "awaiting_report",
               "awaiting_confirmation",
-              "confirmed"
+              "confirmed",
+              "rejected"
             ]
           },
           "tenantApproved": {
             "type": "boolean"
+          },
+          "tenantRejected": {
+            "type": "boolean",
+            "description": "Whether the tenant rejected the whole report."
+          },
+          "rejectReason": {
+            "type": "string",
+            "nullable": true
           },
           "dueBy": {
             "type": "string",
@@ -10168,6 +11242,8 @@
           "reportUrl",
           "status",
           "tenantApproved",
+          "tenantRejected",
+          "rejectReason",
           "dueBy",
           "sectionCount"
         ]
@@ -10192,6 +11268,40 @@
         "required": [
           "area",
           "description"
+        ]
+      },
+      "TenantIngoingSectionFeedbackDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "confirmed",
+              "disputed"
+            ],
+            "description": "Confirm the section as accurate, or dispute it (comment required when disputed)."
+          },
+          "comment": {
+            "type": "string",
+            "example": "Minor mark on the wall not shown in photos.",
+            "description": "Optional feedback when confirming; required when disputing the section."
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "TenantIngoingRejectDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "example": "Several rooms do not match the condition shown in the report.",
+            "description": "Reason the tenant is rejecting the whole ingoing report."
+          }
+        },
+        "required": [
+          "reason"
         ]
       },
       "TenantOutgoingInspectionSectionDto": {
@@ -12505,7 +13615,8 @@
               "maintenance_invoice",
               "statement",
               "tribunal",
-              "insurance"
+              "insurance",
+              "application"
             ],
             "example": "inspection"
           },
@@ -14120,6 +15231,51 @@
           "photos"
         ]
       },
+      "InspectorReferenceIngoingAreaDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Kitchen"
+          },
+          "photos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InspectorPhotoDto"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "photos"
+        ]
+      },
+      "InspectorReferenceIngoingDto": {
+        "type": "object",
+        "properties": {
+          "inspectionId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Source INGOING inspection id."
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Property id (must match the outgoing inspection property)."
+          },
+          "areas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InspectorReferenceIngoingAreaDto"
+            }
+          }
+        },
+        "required": [
+          "inspectionId",
+          "propertyId",
+          "areas"
+        ]
+      },
       "InspectorInspectionDetailDto": {
         "type": "object",
         "properties": {
@@ -14139,12 +15295,22 @@
             "items": {
               "$ref": "#/components/schemas/InspectorPhotoDto"
             }
+          },
+          "referenceIngoing": {
+            "nullable": true,
+            "description": "For OUTGOING jobs only: latest completed/published INGOING report for the same property (null when none).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InspectorReferenceIngoingDto"
+              }
+            ]
           }
         },
         "required": [
           "inspectionId",
           "areas",
-          "photos"
+          "photos",
+          "referenceIngoing"
         ]
       },
       "CompleteInspectorInspectionDto": {
@@ -14242,6 +15408,29 @@
         },
         "required": [
           "areaName"
+        ]
+      },
+      "LinkInspectorAreaPhotosDto": {
+        "type": "object",
+        "properties": {
+          "areaName": {
+            "type": "string",
+            "maxLength": 200,
+            "example": "Kitchen (Ingoing)"
+          },
+          "urls": {
+            "example": [
+              "https://cdn.example.com/inspections/kitchen-1.jpg"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "areaName",
+          "urls"
         ]
       },
       "UploadKeyCustodyPhotoDto": {
@@ -15106,6 +16295,819 @@
           "longitude"
         ]
       },
+      "AgentDocumentInlineUploadSessionDto": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "inline"
+            ],
+            "example": "inline"
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
+      "AgentDocumentDirectUploadSessionDto": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "direct"
+            ],
+            "example": "direct"
+          },
+          "uploadUrl": {
+            "type": "string",
+            "description": "Presigned PUT URL (valid ~1 hour). Send the raw file bytes with Content-Type."
+          },
+          "storageKey": {
+            "type": "string",
+            "description": "Storage key to pass to POST /agent/documents/upload-complete."
+          }
+        },
+        "required": [
+          "mode",
+          "uploadUrl",
+          "storageKey"
+        ]
+      },
+      "AgentTribunalRentArrearsDto": {
+        "type": "object",
+        "properties": {
+          "rentAmount": {
+            "type": "number",
+            "description": "Rent amount in the selected payment cycle units."
+          },
+          "paymentCycle": {
+            "type": "string",
+            "enum": [
+              "weekly",
+              "fortnightly",
+              "monthly"
+            ]
+          },
+          "rentPaidTo": {
+            "type": "string",
+            "description": "ISO date — rent paid to."
+          }
+        }
+      },
+      "AgentTribunalBillArrearsRowDto": {
+        "type": "object",
+        "properties": {
+          "billType": {
+            "type": "string",
+            "example": "Water"
+          },
+          "billName": {
+            "type": "string",
+            "example": "Q3 water rates"
+          },
+          "dueDate": {
+            "type": "string",
+            "description": "ISO date — bill due date."
+          },
+          "amount": {
+            "type": "number",
+            "example": 240.5
+          }
+        },
+        "required": [
+          "billType"
+        ]
+      },
+      "AgentTribunalBondArrearsDto": {
+        "type": "object",
+        "properties": {
+          "leaseStartDate": {
+            "type": "string",
+            "description": "ISO date — lease agreement start."
+          },
+          "agreementEndDate": {
+            "type": "string",
+            "description": "ISO date — agreement / lease end. Bond days overdue count from this date once the tenant has vacated."
+          },
+          "bondAmount": {
+            "type": "number"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      },
+      "AgentCreateTribunalRentChasingDto": {
+        "type": "object",
+        "properties": {
+          "rentArrears": {
+            "$ref": "#/components/schemas/AgentTribunalRentArrearsDto"
+          },
+          "billArrears": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentTribunalBillArrearsRowDto"
+            }
+          },
+          "bondArrears": {
+            "$ref": "#/components/schemas/AgentTribunalBondArrearsDto"
+          }
+        }
+      },
+      "AgentTribunalArrearRowDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "rent",
+              "bill",
+              "bond"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "example": "Rent Arrears"
+          },
+          "tenantName": {
+            "type": "string",
+            "example": "Liam Tenant"
+          },
+          "amount": {
+            "type": "number",
+            "nullable": true,
+            "example": 850
+          },
+          "daysOverdue": {
+            "type": "number",
+            "nullable": true,
+            "example": 14
+          },
+          "dueDate": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "kind",
+          "name",
+          "tenantName",
+          "amount",
+          "daysOverdue"
+        ]
+      },
+      "AgentTribunalFileUploadDto": {
+        "type": "object",
+        "properties": {
+          "fileName": {
+            "type": "string",
+            "example": "hearing-notice.pdf"
+          },
+          "mimeType": {
+            "type": "string",
+            "example": "application/pdf"
+          },
+          "sizeBytes": {
+            "type": "number",
+            "example": 240000
+          },
+          "contentBase64": {
+            "type": "string",
+            "description": "Base64-encoded file contents."
+          }
+        },
+        "required": [
+          "fileName",
+          "mimeType",
+          "sizeBytes",
+          "contentBase64"
+        ]
+      },
+      "AgentTribunalRentChasingDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "caseNumber": {
+            "type": "string",
+            "example": "TRB-2026-0001"
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyAddress": {
+            "type": "string",
+            "example": "8 Crown Street"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "SUBMITTED",
+              "AWAITING_HEARING",
+              "HEARING_SCHEDULED",
+              "COMPLETED",
+              "CLOSED"
+            ]
+          },
+          "tribunalType": {
+            "type": "string",
+            "enum": [
+              "RENTAL_ARREARS",
+              "BOND_CLAIM",
+              "PROPERTY_DAMAGE",
+              "LEASE_TERMINATION",
+              "LEASE_BREACH",
+              "MAINTENANCE_DISPUTE"
+            ]
+          },
+          "matter": {
+            "type": "string",
+            "example": "Rent Chasing"
+          },
+          "tenantName": {
+            "type": "string",
+            "nullable": true
+          },
+          "tenantPhone": {
+            "type": "string",
+            "nullable": true
+          },
+          "tenantEmail": {
+            "type": "string",
+            "nullable": true
+          },
+          "leaseStart": {
+            "type": "string",
+            "nullable": true,
+            "description": "ISO date — lease / agreement start."
+          },
+          "agreementEnd": {
+            "type": "string",
+            "nullable": true,
+            "description": "ISO date — lease / agreement end."
+          },
+          "currentRent": {
+            "type": "number",
+            "nullable": true,
+            "description": "Current rent in payment-cycle units."
+          },
+          "paymentCycle": {
+            "type": "string",
+            "enum": [
+              "weekly",
+              "fortnightly",
+              "monthly"
+            ],
+            "nullable": true
+          },
+          "rentPaidTo": {
+            "type": "string",
+            "nullable": true,
+            "description": "ISO date — rent paid to."
+          },
+          "arrears": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentTribunalArrearRowDto"
+            }
+          },
+          "agentNotes": {
+            "type": "string",
+            "nullable": true
+          },
+          "evictionRequired": {
+            "type": "boolean",
+            "description": "Agent marked eviction as required."
+          },
+          "lodgementDate": {
+            "type": "string",
+            "nullable": true,
+            "description": "ISO date — tribunal lodgement."
+          },
+          "hearingDate": {
+            "type": "string",
+            "nullable": true,
+            "description": "ISO date — hearing."
+          },
+          "hearingNoticeUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "hearingNoticeName": {
+            "type": "string",
+            "nullable": true
+          },
+          "membersOrderUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "membersOrderName": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "caseNumber",
+          "propertyId",
+          "propertyAddress",
+          "status",
+          "tribunalType",
+          "matter",
+          "tenantName",
+          "arrears",
+          "agentNotes",
+          "evictionRequired",
+          "createdAt"
+        ]
+      },
+      "AgentUpdateTribunalRentChasingDto": {
+        "type": "object",
+        "properties": {
+          "agentNotes": {
+            "type": "string",
+            "description": "Agent working notes on the case."
+          },
+          "evictionRequired": {
+            "type": "boolean",
+            "description": "Mark that eviction is required."
+          },
+          "lodgementDate": {
+            "type": "string",
+            "description": "ISO date — tribunal lodgement (optional)."
+          },
+          "hearingDate": {
+            "type": "string",
+            "description": "ISO date — hearing (optional)."
+          },
+          "hearingNotice": {
+            "$ref": "#/components/schemas/AgentTribunalFileUploadDto"
+          },
+          "membersOrder": {
+            "$ref": "#/components/schemas/AgentTribunalFileUploadDto"
+          },
+          "rentArrears": {
+            "$ref": "#/components/schemas/AgentTribunalRentArrearsDto"
+          },
+          "billArrears": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentTribunalBillArrearsRowDto"
+            }
+          },
+          "bondArrears": {
+            "$ref": "#/components/schemas/AgentTribunalBondArrearsDto"
+          }
+        }
+      },
+      "AgentDeleteTribunalCaseDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "description": "Why this tribunal case is being deleted."
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "AgentInvoiceBankDto": {
+        "type": "object",
+        "properties": {
+          "bankName": {
+            "type": "string",
+            "nullable": true
+          },
+          "accountName": {
+            "type": "string",
+            "nullable": true
+          },
+          "bsb": {
+            "type": "string",
+            "nullable": true
+          },
+          "accountNumber": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "AgentInvoiceManagementLineDto": {
+        "type": "object",
+        "properties": {
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyAddress": {
+            "type": "string",
+            "example": "8 Crown Street"
+          },
+          "rent": {
+            "type": "number",
+            "example": 1980
+          },
+          "pmFeeGst": {
+            "type": "string",
+            "enum": [
+              "include",
+              "exclude"
+            ]
+          },
+          "serviceRate": {
+            "type": "number",
+            "example": 7.5,
+            "description": "Service rate percent of rent."
+          },
+          "amount": {
+            "type": "number",
+            "example": 148.5
+          }
+        },
+        "required": [
+          "propertyId",
+          "propertyAddress",
+          "rent",
+          "pmFeeGst",
+          "serviceRate",
+          "amount"
+        ]
+      },
+      "AgentInvoiceSimpleLineDto": {
+        "type": "object",
+        "properties": {
+          "propertyId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "propertyAddress": {
+            "type": "string",
+            "example": "8 Crown Street"
+          },
+          "description": {
+            "type": "string",
+            "example": "Tribunal filing fee"
+          },
+          "amount": {
+            "type": "number",
+            "example": 120
+          }
+        },
+        "required": [
+          "propertyAddress",
+          "description",
+          "amount"
+        ]
+      },
+      "AgentInvoiceListItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "invoiceNumber": {
+            "type": "string",
+            "example": "INV-T76231"
+          },
+          "periodStart": {
+            "type": "string",
+            "description": "ISO date — period start."
+          },
+          "periodEnd": {
+            "type": "string",
+            "description": "ISO date — period end."
+          },
+          "invoiceDate": {
+            "type": "string",
+            "description": "ISO date — invoice date."
+          },
+          "dueDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "totalAmount": {
+            "type": "number",
+            "example": 1840.5
+          },
+          "status": {
+            "type": "string",
+            "example": "OPEN"
+          },
+          "agencyId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "id",
+          "invoiceNumber",
+          "periodStart",
+          "periodEnd",
+          "invoiceDate",
+          "totalAmount",
+          "status",
+          "agencyId"
+        ]
+      },
+      "AgentInvoiceDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "invoiceNumber": {
+            "type": "string",
+            "example": "INV-T76231"
+          },
+          "periodStart": {
+            "type": "string",
+            "description": "ISO date — period start."
+          },
+          "periodEnd": {
+            "type": "string",
+            "description": "ISO date — period end."
+          },
+          "invoiceDate": {
+            "type": "string",
+            "description": "ISO date — invoice date."
+          },
+          "dueDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "totalAmount": {
+            "type": "number",
+            "example": 1840.5
+          },
+          "status": {
+            "type": "string",
+            "example": "OPEN"
+          },
+          "agencyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "agencyName": {
+            "type": "string",
+            "nullable": true
+          },
+          "licenceNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "abn": {
+            "type": "string",
+            "nullable": true
+          },
+          "bank": {
+            "$ref": "#/components/schemas/AgentInvoiceBankDto"
+          },
+          "managementFee": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentInvoiceManagementLineDto"
+            }
+          },
+          "lettingTribunal": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentInvoiceSimpleLineDto"
+            }
+          },
+          "otherService": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentInvoiceSimpleLineDto"
+            }
+          },
+          "totalManagementFee": {
+            "type": "number",
+            "example": 1200
+          },
+          "totalLettingTribunal": {
+            "type": "number",
+            "example": 200
+          },
+          "totalOtherService": {
+            "type": "number",
+            "example": 50
+          },
+          "subtotal": {
+            "type": "number",
+            "example": 1450
+          },
+          "totalGst": {
+            "type": "number",
+            "example": 145
+          },
+          "totalAud": {
+            "type": "number",
+            "example": 1595
+          }
+        },
+        "required": [
+          "id",
+          "invoiceNumber",
+          "periodStart",
+          "periodEnd",
+          "invoiceDate",
+          "totalAmount",
+          "status",
+          "agencyId",
+          "bank",
+          "managementFee",
+          "lettingTribunal",
+          "otherService",
+          "totalManagementFee",
+          "totalLettingTribunal",
+          "totalOtherService",
+          "subtotal",
+          "totalGst",
+          "totalAud"
+        ]
+      },
+      "AgentCreateInvoiceDto": {
+        "type": "object",
+        "properties": {
+          "agencyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "invoiceNumber": {
+            "type": "string",
+            "example": "INV-T76231"
+          },
+          "invoiceDate": {
+            "type": "string",
+            "description": "ISO date — invoice date."
+          },
+          "dueDate": {
+            "type": "string",
+            "description": "ISO date — due date."
+          },
+          "periodStart": {
+            "type": "string",
+            "description": "ISO date — period start (From)."
+          },
+          "periodEnd": {
+            "type": "string",
+            "description": "ISO date — period end (To)."
+          },
+          "reference": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "abn": {
+            "type": "string"
+          },
+          "licenceNumber": {
+            "type": "string"
+          },
+          "bankName": {
+            "type": "string"
+          },
+          "bankAccountName": {
+            "type": "string"
+          },
+          "bankBsb": {
+            "type": "string"
+          },
+          "bankAccountNumber": {
+            "type": "string"
+          },
+          "managementFee": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentInvoiceManagementLineDto"
+            }
+          },
+          "lettingTribunal": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentInvoiceSimpleLineDto"
+            }
+          },
+          "otherService": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentInvoiceSimpleLineDto"
+            }
+          }
+        },
+        "required": [
+          "agencyId",
+          "invoiceDate",
+          "periodStart",
+          "periodEnd",
+          "managementFee",
+          "lettingTribunal",
+          "otherService"
+        ]
+      },
+      "AgentUpdateInvoiceDto": {
+        "type": "object",
+        "properties": {
+          "agencyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "invoiceNumber": {
+            "type": "string",
+            "example": "INV-T76231"
+          },
+          "invoiceDate": {
+            "type": "string",
+            "description": "ISO date — invoice date."
+          },
+          "dueDate": {
+            "type": "string",
+            "description": "ISO date — due date."
+          },
+          "periodStart": {
+            "type": "string",
+            "description": "ISO date — period start (From)."
+          },
+          "periodEnd": {
+            "type": "string",
+            "description": "ISO date — period end (To)."
+          },
+          "reference": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "abn": {
+            "type": "string"
+          },
+          "licenceNumber": {
+            "type": "string"
+          },
+          "bankName": {
+            "type": "string"
+          },
+          "bankAccountName": {
+            "type": "string"
+          },
+          "bankBsb": {
+            "type": "string"
+          },
+          "bankAccountNumber": {
+            "type": "string"
+          },
+          "managementFee": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentInvoiceManagementLineDto"
+            }
+          },
+          "lettingTribunal": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentInvoiceSimpleLineDto"
+            }
+          },
+          "otherService": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentInvoiceSimpleLineDto"
+            }
+          }
+        },
+        "required": [
+          "agencyId",
+          "invoiceDate",
+          "periodStart",
+          "periodEnd",
+          "managementFee",
+          "lettingTribunal",
+          "otherService"
+        ]
+      },
       "AgentAgencyResponseDto": {
         "type": "object",
         "properties": {
@@ -15160,6 +17162,32 @@
             ],
             "example": "LEVEL_2_FULL_MANAGEMENT",
             "description": "Agent portal service tier for this client agency — Level 1 is inspection-only; Level 2 is full property management."
+          },
+          "abn": {
+            "type": "string",
+            "nullable": true,
+            "description": "Australian Business Number — shown on tax invoices."
+          },
+          "licenceNumber": {
+            "type": "string",
+            "nullable": true,
+            "description": "Estate agent licence number — shown on tax invoices."
+          },
+          "bankName": {
+            "type": "string",
+            "nullable": true
+          },
+          "bankAccountName": {
+            "type": "string",
+            "nullable": true
+          },
+          "bankBsb": {
+            "type": "string",
+            "nullable": true
+          },
+          "bankAccountNumber": {
+            "type": "string",
+            "nullable": true
           }
         },
         "required": [
@@ -15171,7 +17199,13 @@
           "contactEmail",
           "contactPhone",
           "assignedAt",
-          "portalServiceLevel"
+          "portalServiceLevel",
+          "abn",
+          "licenceNumber",
+          "bankName",
+          "bankAccountName",
+          "bankBsb",
+          "bankAccountNumber"
         ]
       },
       "PaginatedAgentAgenciesDto": {
@@ -15243,6 +17277,70 @@
         },
         "required": [
           "name"
+        ]
+      },
+      "AgentUpdateAgencyBillingDto": {
+        "type": "object",
+        "properties": {
+          "abn": {
+            "type": "string"
+          },
+          "licenceNumber": {
+            "type": "string"
+          },
+          "contactEmail": {
+            "type": "string"
+          },
+          "bankName": {
+            "type": "string"
+          },
+          "bankAccountName": {
+            "type": "string"
+          },
+          "bankBsb": {
+            "type": "string"
+          },
+          "bankAccountNumber": {
+            "type": "string"
+          }
+        }
+      },
+      "PaginatedAgentInvoicesDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number",
+            "example": 42,
+            "description": "Total records matching the query."
+          },
+          "page": {
+            "type": "number",
+            "example": 1,
+            "description": "1-based page returned."
+          },
+          "pageSize": {
+            "type": "number",
+            "example": 20,
+            "description": "Items per page applied."
+          },
+          "hasMore": {
+            "type": "boolean",
+            "example": true,
+            "description": "Whether a further page exists after this one."
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentInvoiceListItemDto"
+            }
+          }
+        },
+        "required": [
+          "total",
+          "page",
+          "pageSize",
+          "hasMore",
+          "items"
         ]
       },
       "AgentPreferredContractorResponseDto": {
@@ -15539,6 +17637,40 @@
               "exclude"
             ]
           },
+          "managementFees": {
+            "type": "array",
+            "nullable": true,
+            "description": "Full management fee rows from intake / Fees tab.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "feeType": {
+                  "type": "string"
+                },
+                "valueMode": {
+                  "type": "string",
+                  "enum": [
+                    "rate",
+                    "amount"
+                  ]
+                },
+                "amount": {
+                  "type": "string"
+                },
+                "gst": {
+                  "type": "string",
+                  "enum": [
+                    "",
+                    "include",
+                    "exclude"
+                  ]
+                }
+              }
+            }
+          },
           "buildingManagerName": {
             "type": "string",
             "nullable": true,
@@ -15642,6 +17774,7 @@
           "lettingFee",
           "managementRatePercent",
           "managementRateGst",
+          "managementFees",
           "buildingManagerName",
           "buildingManagerEmail",
           "buildingManagerPhone",
@@ -15711,6 +17844,11 @@
             "format": "date",
             "example": "2026-07-31",
             "description": "The date agency management of this property ends."
+          },
+          "archiveOnBondRelease": {
+            "type": "boolean",
+            "deprecated": true,
+            "description": "Deprecated — the server always archives on end management. Ignored."
           }
         },
         "required": [
@@ -15847,6 +17985,19 @@
         "required": [
           "issueType",
           "description"
+        ]
+      },
+      "CancelAgentMaintenanceDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "example": "Logged against the wrong property — duplicate case",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "reason"
         ]
       },
       "AgentUploadKeyPhotoDto": {
@@ -16163,6 +18314,12 @@
             "format": "date-time",
             "nullable": true
           },
+          "moveInDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Tenant move-in from ingoing workflow meta — used to derive the target schedule when scheduledDate is null."
+          },
           "reportUrl": {
             "type": "string",
             "nullable": true
@@ -16186,6 +18343,7 @@
           "scheduledDate",
           "inspectionDate",
           "completedDate",
+          "moveInDate",
           "reportUrl",
           "urgent",
           "createdAt"
@@ -16280,6 +18438,15 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "closureReason": {
+            "type": "string",
+            "nullable": true,
+            "description": "Reason recorded when the job was deleted/cancelled."
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
           }
         },
         "required": [
@@ -16298,7 +18465,9 @@
           "agencyApproved",
           "scheduledDate",
           "completedDate",
-          "createdAt"
+          "createdAt",
+          "closureReason",
+          "updatedAt"
         ]
       },
       "AgentRentReviewDto": {
@@ -16804,6 +18973,36 @@
             "nullable": true,
             "example": 2550
           },
+          "rentArrearsAmount": {
+            "type": "number",
+            "nullable": true,
+            "description": "Rent arrears amount from Rent Chasing snapshot."
+          },
+          "rentArrearsDaysOverdue": {
+            "type": "number",
+            "nullable": true,
+            "description": "Calendar days overdue for rent (from rent paid to)."
+          },
+          "billArrearsAmount": {
+            "type": "number",
+            "nullable": true,
+            "description": "Summed bill arrears amount."
+          },
+          "billArrearsDaysOverdue": {
+            "type": "number",
+            "nullable": true,
+            "description": "Max calendar days overdue across bill arrears."
+          },
+          "bondArrearsAmount": {
+            "type": "number",
+            "nullable": true,
+            "description": "Bond arrears amount."
+          },
+          "bondArrearsDaysOverdue": {
+            "type": "number",
+            "nullable": true,
+            "description": "Calendar days overdue for bond (from agreement end, once vacated)."
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -16885,7 +19084,7 @@
             "format": "uuid"
           },
           "propertyId": {
-            "type": "object",
+            "type": "string",
             "format": "uuid",
             "nullable": true
           },
@@ -16924,7 +19123,7 @@
             "format": "uuid"
           },
           "propertyId": {
-            "type": "object",
+            "type": "string",
             "format": "uuid",
             "nullable": true
           },
@@ -17843,11 +20042,11 @@
             "format": "email"
           },
           "firstName": {
-            "type": "object",
+            "type": "string",
             "nullable": true
           },
           "lastName": {
-            "type": "object",
+            "type": "string",
             "nullable": true
           },
           "role": {
@@ -17872,6 +20071,398 @@
           "lastName",
           "role",
           "status"
+        ]
+      },
+      "GiiChatMessageDto": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "assistant"
+            ],
+            "example": "user"
+          },
+          "content": {
+            "type": "string",
+            "example": "66 Berry Street — tenant moving out 31 August 2026"
+          }
+        },
+        "required": [
+          "role",
+          "content"
+        ]
+      },
+      "GiiChatContextDto": {
+        "type": "object",
+        "properties": {
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "moveOutDate": {
+            "type": "string",
+            "example": "2026-08-31"
+          }
+        }
+      },
+      "GiiChatRequestDto": {
+        "type": "object",
+        "properties": {
+          "messages": {
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GiiChatMessageDto"
+            }
+          },
+          "context": {
+            "$ref": "#/components/schemas/GiiChatContextDto"
+          }
+        },
+        "required": [
+          "messages"
+        ]
+      },
+      "GiiTermProgressDto": {
+        "type": "object",
+        "properties": {
+          "totalTermDays": {
+            "type": "number",
+            "example": 365
+          },
+          "daysOccupied": {
+            "type": "number",
+            "example": 243
+          },
+          "daysRemaining": {
+            "type": "number",
+            "example": 122
+          },
+          "pctElapsed": {
+            "type": "number",
+            "example": 0.6657534246575343,
+            "description": "Unrounded fraction of the term elapsed. Format for display only."
+          }
+        },
+        "required": [
+          "totalTermDays",
+          "daysOccupied",
+          "daysRemaining",
+          "pctElapsed"
+        ]
+      },
+      "GiiBreakFeeDto": {
+        "type": "object",
+        "properties": {
+          "weeks": {
+            "type": "number",
+            "example": 2
+          },
+          "band": {
+            "type": "string",
+            "example": "50–<75%"
+          },
+          "totalFee": {
+            "type": "number",
+            "example": 2000
+          },
+          "citation": {
+            "type": "string",
+            "example": "Residential Tenancies Regulation 2019 (NSW) cl.10A",
+            "description": "The rule THIS fee comes from. Never cite a rule from elsewhere for it."
+          }
+        },
+        "required": [
+          "weeks",
+          "band",
+          "totalFee",
+          "citation"
+        ]
+      },
+      "GiiNoticeDto": {
+        "type": "object",
+        "properties": {
+          "minDays": {
+            "type": "number",
+            "example": 21,
+            "description": "The NSW minimum notice days for this tenancy."
+          },
+          "noticeDays": {
+            "type": "number",
+            "example": 54
+          },
+          "sufficient": {
+            "type": "boolean",
+            "example": true
+          },
+          "earliestCompliantVacateDate": {
+            "type": "string",
+            "example": "2026-07-29"
+          },
+          "citation": {
+            "type": "string",
+            "example": "Residential Tenancies Act 2010 (NSW) s97",
+            "description": "The rule THIS minimum comes from (s96 fixed term / s97 periodic)."
+          }
+        },
+        "required": [
+          "minDays",
+          "noticeDays",
+          "sufficient",
+          "earliestCompliantVacateDate",
+          "citation"
+        ]
+      },
+      "GiiRentOwedDto": {
+        "type": "object",
+        "properties": {
+          "rentPaidTo": {
+            "type": "string",
+            "example": "2026-08-15"
+          },
+          "daysOwed": {
+            "type": "number",
+            "example": 16
+          },
+          "amountOwed": {
+            "type": "number",
+            "example": 2285.71
+          },
+          "creditDays": {
+            "type": "number",
+            "example": 0,
+            "description": "Days paid beyond the vacate date."
+          },
+          "creditAmount": {
+            "type": "number",
+            "example": 0
+          }
+        },
+        "required": [
+          "rentPaidTo",
+          "daysOwed",
+          "amountOwed",
+          "creditDays",
+          "creditAmount"
+        ]
+      },
+      "GiiAssessmentDto": {
+        "type": "object",
+        "properties": {
+          "case": {
+            "type": "string",
+            "enum": [
+              "BREAK_LEASE",
+              "FIXED_TERM_NOTICE",
+              "PERIODIC_NOTICE"
+            ],
+            "example": "BREAK_LEASE"
+          },
+          "tenancyKind": {
+            "type": "string",
+            "enum": [
+              "FIXED_TERM",
+              "PERIODIC"
+            ],
+            "example": "FIXED_TERM"
+          },
+          "basis": {
+            "type": "string",
+            "example": "fixed term ends 2026-12-31"
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Echo this back as request `context.propertyId` on the next turn so Gii keeps the subject without re-resolving the address."
+          },
+          "propertyLabel": {
+            "type": "string",
+            "example": "66 Berry Street, North Sydney NSW 2060"
+          },
+          "tenantName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Jane Tenant"
+          },
+          "leaseStartDate": {
+            "type": "string",
+            "nullable": true,
+            "example": "2026-01-01"
+          },
+          "leaseEndDate": {
+            "type": "string",
+            "nullable": true,
+            "example": "2026-12-31"
+          },
+          "moveOutDate": {
+            "type": "string",
+            "example": "2026-08-31"
+          },
+          "weeklyRent": {
+            "type": "number",
+            "nullable": true,
+            "example": 1000
+          },
+          "dailyRent": {
+            "type": "number",
+            "nullable": true,
+            "example": 142.85714285714286
+          },
+          "dailyRentDisplay": {
+            "type": "string",
+            "nullable": true,
+            "example": "142.857",
+            "description": "The daily rate as displayed. Render this verbatim; do not re-round."
+          },
+          "term": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GiiTermProgressDto"
+              }
+            ]
+          },
+          "breakFee": {
+            "nullable": true,
+            "description": "Null unless this is a genuine breach with a quotable fee.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GiiBreakFeeDto"
+              }
+            ]
+          },
+          "breakFeeIneligibleReason": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "NOT_A_BREACH",
+              "TERM_OVER_3_YEARS",
+              "PRE_2020_AGREEMENT",
+              "UNKNOWN_LEASE_DATES",
+              "UNKNOWN_RENT"
+            ],
+            "example": null
+          },
+          "notice": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GiiNoticeDto"
+              }
+            ]
+          },
+          "rent": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GiiRentOwedDto"
+              }
+            ]
+          },
+          "missing": {
+            "example": [
+              "rentPaidTo"
+            ],
+            "description": "Facts the engine lacked. Gii asks for exactly these rather than guessing.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "ruleCitations": {
+            "example": [
+              "Residential Tenancies Regulation 2019 (NSW) cl.10A"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "conflicts": {
+            "example": [],
+            "description": "Lease facts where the tenancy agreement and property registry disagree.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "case",
+          "tenancyKind",
+          "basis",
+          "propertyId",
+          "propertyLabel",
+          "tenantName",
+          "leaseStartDate",
+          "leaseEndDate",
+          "moveOutDate",
+          "weeklyRent",
+          "dailyRent",
+          "dailyRentDisplay",
+          "term",
+          "breakFee",
+          "breakFeeIneligibleReason",
+          "notice",
+          "rent",
+          "missing",
+          "ruleCitations",
+          "conflicts"
+        ]
+      },
+      "GiiLodgedDto": {
+        "type": "object",
+        "properties": {
+          "caseRef": {
+            "type": "string",
+            "example": "VT-1042"
+          }
+        },
+        "required": [
+          "caseRef"
+        ]
+      },
+      "GiiChatResponseDto": {
+        "type": "object",
+        "properties": {
+          "reply": {
+            "type": "string",
+            "example": "That is a break lease — 243 of 365 days elapsed (66.6%), so a 2-week fee of $2,000.00 applies."
+          },
+          "assessment": {
+            "nullable": true,
+            "description": "The deterministic assessment behind the reply, for rendering. Null when the turn produced no assessment.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GiiAssessmentDto"
+              }
+            ]
+          },
+          "lodged": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GiiLodgedDto"
+              }
+            ]
+          },
+          "stoppedOn": {
+            "type": "string",
+            "enum": [
+              "end_turn",
+              "max_turns",
+              "max_tokens"
+            ],
+            "example": "end_turn"
+          }
+        },
+        "required": [
+          "reply",
+          "assessment",
+          "lodged",
+          "stoppedOn"
         ]
       },
       "MeProfileResponseDto": {
