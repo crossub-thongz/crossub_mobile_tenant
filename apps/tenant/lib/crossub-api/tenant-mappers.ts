@@ -200,7 +200,15 @@ export function toTenantMaintenanceRequests(
       responsibility: s.responsibility ?? null,
       responsibilityAckRequired: s.responsibilityAckRequired ?? false,
       responsibilityAckStatus: s.responsibilityAckStatus ?? null,
+      completionApprovalPending: s.completionApprovalPending ?? false,
+      tenantCompletionApproved: s.tenantCompletionApproved ?? false,
     });
+
+    const completionEvidenceUrls = Array.isArray(s.completionEvidenceUrls)
+      ? s.completionEvidenceUrls.filter(
+          (url): url is string => typeof url === 'string' && url.trim().length > 0,
+        )
+      : [];
 
     const mapped: MaintenanceRequest = {
       id: s.id,
@@ -237,6 +245,9 @@ export function toTenantMaintenanceRequests(
         responsibility: s.responsibility ?? null,
         responsibilityAckRequired: s.responsibilityAckRequired ?? false,
         responsibilityAckStatus: s.responsibilityAckStatus ?? null,
+        completionApprovalPending: s.completionApprovalPending ?? false,
+        tenantCompletionApproved: s.tenantCompletionApproved ?? false,
+        completionEvidenceUploaded: s.completionEvidenceUploaded ?? completionEvidenceUrls.length > 0,
         status: presentation.status,
       }),
       createdAt,
@@ -245,6 +256,10 @@ export function toTenantMaintenanceRequests(
       responsibilityAckStatus: s.responsibilityAckStatus ?? null,
       responsibilityAckDeadline: asString(s.responsibilityAckDeadline) ?? null,
       photos: Array.isArray(s.photos) ? s.photos.filter((url): url is string => typeof url === 'string' && url.trim().length > 0) : [],
+      completionEvidenceUrls,
+      completionEvidenceUploaded: s.completionEvidenceUploaded ?? completionEvidenceUrls.length > 0,
+      completionApprovalPending: s.completionApprovalPending ?? false,
+      tenantCompletionApproved: s.tenantCompletionApproved ?? false,
     };
 
     return mapped;

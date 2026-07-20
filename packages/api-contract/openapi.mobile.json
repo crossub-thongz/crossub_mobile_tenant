@@ -355,6 +355,66 @@
         ]
       }
     },
+    "/tenant/maintenance-requests/{requestId}/completion-approval": {
+      "patch": {
+        "description": "Records tenant sign-off after the tenant reviews completion photos or videos. This checks the tenant approval gate in the agent and admin maintenance workflow.",
+        "operationId": "TenantMaintenanceController_approveCompletion",
+        "parameters": [
+          {
+            "name": "requestId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantMaintenanceCompletionApprovalDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantMaintenanceRequestSummaryDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Completion evidence is missing or approval was already recorded."
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller is not a TENANT."
+          },
+          "404": {
+            "description": "requestId does not exist or is not on a property this tenant leases."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Approve contractor completion evidence for a landlord/strata repair.",
+        "tags": [
+          "tenant"
+        ]
+      }
+    },
     "/tenant/tenancies": {
       "get": {
         "operationId": "TenantAccountController_listTenancies",
@@ -10241,6 +10301,31 @@
             "items": {
               "type": "string"
             }
+          },
+          "completionEvidenceUrls": {
+            "description": "Completion photos and videos uploaded by the contractor or property manager.",
+            "example": [
+              "https://cdn.example.com/repairs/completion-1.jpg"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "completionEvidenceUploaded": {
+            "type": "boolean",
+            "description": "True when completion evidence exists on the job.",
+            "example": false
+          },
+          "completionApprovalPending": {
+            "type": "boolean",
+            "description": "True when the tenant should review completion evidence and confirm the work.",
+            "example": false
+          },
+          "tenantCompletionApproved": {
+            "type": "boolean",
+            "description": "True after the tenant has approved completed work (tenant sign-off).",
+            "example": false
           }
         },
         "required": [
@@ -10256,7 +10341,11 @@
           "scheduledDate",
           "completedDate",
           "responsibilityAckRequired",
-          "photos"
+          "photos",
+          "completionEvidenceUrls",
+          "completionEvidenceUploaded",
+          "completionApprovalPending",
+          "tenantCompletionApproved"
         ]
       },
       "PaginatedTenantRequestsDto": {
@@ -10314,6 +10403,16 @@
         "required": [
           "agreed"
         ]
+      },
+      "TenantMaintenanceCompletionApprovalDto": {
+        "type": "object",
+        "properties": {
+          "approved": {
+            "type": "boolean",
+            "description": "Confirm the tenant is satisfied with the completed repair work.",
+            "default": true
+          }
+        }
       },
       "TenantPaymentProofInlineUploadSessionDto": {
         "type": "object",

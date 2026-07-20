@@ -402,6 +402,27 @@ export async function respondMaintenanceResponsibilityAck(
   return data;
 }
 
+export type TenantMaintenanceCompletionApproval =
+  components['schemas']['TenantMaintenanceCompletionApprovalDto'];
+
+/** Approve contractor completion evidence (`PATCH .../completion-approval`). */
+export async function approveMaintenanceCompletion(
+  requestId: string,
+  body: TenantMaintenanceCompletionApproval = { approved: true },
+): Promise<TenantMaintenanceRequestSummary> {
+  const { data, error } = await crossub.PATCH(
+    '/tenant/maintenance-requests/{requestId}/completion-approval',
+    {
+      params: { path: { requestId } },
+      body,
+    },
+  );
+  if (error || !data) {
+    throw new Error('Failed to record maintenance completion approval');
+  }
+  return data;
+}
+
 /** Raise a maintenance request (`POST /api/v1/tenant/maintenance-requests`). */
 export async function submitMaintenanceRequest(
   body: CreateTenantMaintenanceRequest,

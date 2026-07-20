@@ -15,6 +15,7 @@ import {
   createTenantMessageThread,
   fetchLedger,
   fetchMaintenanceRequests,
+  approveMaintenanceCompletion,
   respondMaintenanceResponsibilityAck,
   fetchTenancies,
   fetchTenantApplications,
@@ -194,7 +195,7 @@ interface TenantDataContextValue {
   getThreadMessages: (threadId: string) => ThreadMessage[];
   sendThreadMessage: (threadId: string, body: string, to: MessageParty) => void;
   recordRentPayment: (input: RecordRentPaymentInput) => RentReceipt;
-  approveRepairCompletion: (id: string) => void;
+  approveRepairCompletion: (id: string) => Promise<void>;
   respondMaintenanceResponsibilityAck: (
     id: string,
     agreed: boolean,
@@ -422,6 +423,20 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       setRentReviews(toTenantRentReviews(rentReviewsRes.value));
     }
   }, [status]);
+
+  /** Poll maintenance list without a full app refresh (status, ack, photos, etc.). */
+  const syncMaintenanceRequests = useCallback(async () => {
+    if (status !== 'authed' || !apiConnected) return;
+    try {
+      const requests = await fetchMaintenanceRequests();
+      const fromApi = toTenantMaintenanceRequests(requests, lease?.propertyAddress);
+      const apiIds = new Set(fromApi.map((r) => r.id));
+      const localOnly = readTenantStore().maintenance.filter((m) => !apiIds.has(m.id));
+      setMaintenance([...localOnly, ...fromApi]);
+    } catch {
+      // keep last good snapshot
+    }
+  }, [status, apiConnected, lease?.propertyAddress]);
 
   const refresh = useCallback(async (options?: { force?: boolean }) => {
     const isInitialLoad = !hasLoadedOnceRef.current;
@@ -657,16 +672,18 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     void refresh();
   }, [refresh]);
 
-  // Background sync for rent-review notices — do not call full refresh (it used to wipe
-  // lease state from localStorage and flash the property page every 5s).
+  // Background sync for rent-review notices and maintenance jobs — do not call full
+  // refresh (it used to wipe lease state from localStorage and flash the property page).
   useEffect(() => {
     if (status !== 'authed' || !apiConnected) return;
-    void syncLiveAttention();
-    const id = window.setInterval(() => {
+    const tick = () => {
       void syncLiveAttention();
-    }, LIVE_POLL_MS);
+      void syncMaintenanceRequests();
+    };
+    void tick();
+    const id = window.setInterval(tick, LIVE_POLL_MS);
     return () => window.clearInterval(id);
-  }, [status, apiConnected, syncLiveAttention]);
+  }, [status, apiConnected, syncLiveAttention, syncMaintenanceRequests]);
 
   const onboardingPendingAgent = useMemo(
     () => onboardingSteps.some((s) => s.status === 'uploaded'),
@@ -690,17 +707,18 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     loadLeasingOnboarding,
   ]);
 
-  // Refresh attention items when the tenant returns to this tab (not a full state reset).
+  // Refresh attention items and repairs when the tenant returns to this tab.
   useEffect(() => {
     if (status !== 'authed' || !apiConnected) return;
     const onVisible = () => {
       if (document.visibilityState === 'visible') {
         void syncLiveAttention();
+        void syncMaintenanceRequests();
       }
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
-  }, [status, apiConnected, syncLiveAttention]);
+  }, [status, apiConnected, syncLiveAttention, syncMaintenanceRequests]);
 
   const propertyAddress = lease?.propertyAddress ?? 'Your property';
   const leaseId = lease?.id;
@@ -729,6 +747,10 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
           },
         ],
         photos: input.photos ?? [],
+        completionEvidenceUrls: [],
+        completionEvidenceUploaded: false,
+        completionApprovalPending: false,
+        tenantCompletionApproved: false,
       };
       setMaintenance((prev) => {
         const next = [item, ...prev];
@@ -1101,25 +1123,19 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
   );
 
   const approveRepairCompletion = useCallback(
-    (id: string) => {
+    async (id: string) => {
+      if (!apiConnected) {
+        throw new Error('Connect to the API to approve repair completion.');
+      }
+      const summary = await approveMaintenanceCompletion(id, { approved: true });
+      const [mapped] = toTenantMaintenanceRequests([summary], propertyAddress);
       setMaintenance((prev) => {
-        const next = prev.map((m) =>
-          m.id === id
-            ? {
-                ...m,
-                tenantCompletionApproved: true,
-                completionApprovalPending: false,
-                status: 'closed' as const,
-                statusLabel: 'Closed',
-                progressPercent: 100,
-              }
-            : m,
-        );
+        const next = prev.map((m) => (m.id === id ? { ...m, ...mapped } : m));
         persistMaintenance(next);
         return next;
       });
     },
-    [persistMaintenance],
+    [apiConnected, persistMaintenance, propertyAddress],
   );
 
   const respondMaintenanceResponsibilityAckHandler = useCallback(

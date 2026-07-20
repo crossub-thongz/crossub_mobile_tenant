@@ -43,6 +43,7 @@ export default function RepairDetailPage() {
   const thread = messages.find((m) => m.linkedCaseId === id);
   const [tab, setTab] = useState<Tab>('overview');
   const [submittingAck, setSubmittingAck] = useState(false);
+  const [submittingCompletion, setSubmittingCompletion] = useState(false);
 
   const needsCompletionApproval =
     request?.completionApprovalPending && !request.tenantCompletionApproved;
@@ -66,6 +67,22 @@ export default function RepairDetailPage() {
       );
     } finally {
       setSubmittingAck(false);
+    }
+  };
+
+  const handleCompletionApproval = async () => {
+    if (!request) return;
+    setSubmittingCompletion(true);
+    try {
+      await approveRepairCompletion(request.id);
+      toast.success('Repair completion confirmed');
+      router.refresh();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'Could not record your approval. Try again.',
+      );
+    } finally {
+      setSubmittingCompletion(false);
     }
   };
 
@@ -209,6 +226,16 @@ export default function RepairDetailPage() {
               </p>
               <MaintenanceMediaGallery photos={request.photos} />
             </InfoCard>
+
+            {request.completionEvidenceUploaded && (
+              <InfoCard icon={CheckCircle2} label="Completion evidence">
+                <p className="text-muted-foreground mb-3 text-xs">
+                  Photos and videos uploaded by the contractor or property manager when the
+                  repair was marked complete.
+                </p>
+                <MaintenanceMediaGallery photos={request.completionEvidenceUrls} />
+              </InfoCard>
+            )}
           </div>
         )}
 
@@ -281,7 +308,7 @@ export default function RepairDetailPage() {
                 <TenantMaintenanceResponsibilityAckTimer
                   deadline={request.responsibilityAckDeadline}
                   onExpire={() => {
-                    void refresh({ force: true });
+                    void refresh();
                   }}
                 />
               </div>
@@ -324,10 +351,8 @@ export default function RepairDetailPage() {
             </div>
             <Button
               className="mt-4 w-full"
-              onClick={() => {
-                approveRepairCompletion(request.id);
-                toast.success('Repair completion confirmed');
-              }}
+              disabled={submittingCompletion}
+              onClick={() => void handleCompletionApproval()}
             >
               Approve repair completed
             </Button>

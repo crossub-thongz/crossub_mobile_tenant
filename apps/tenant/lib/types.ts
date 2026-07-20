@@ -232,8 +232,6 @@ export interface MaintenanceRequest {
   contractorPhone?: string;
   scheduledAt?: string;
   progressPercent: number;
-  completionApprovalPending?: boolean;
-  tenantCompletionApproved?: boolean;
   timeline: TimelineEntry[];
   createdAt: string;
   /** Cost responsibility once classified (tenant / landlord / strata). */
@@ -244,6 +242,11 @@ export interface MaintenanceRequest {
   responsibilityAckDeadline?: string | null;
   /** Photo and video URLs uploaded when the repair was filed. */
   photos: string[];
+  /** Completion photos/videos uploaded by contractor or property manager. */
+  completionEvidenceUrls: string[];
+  completionEvidenceUploaded: boolean;
+  completionApprovalPending: boolean;
+  tenantCompletionApproved: boolean;
 }
 
 export type InspectionListType = 'ingoing' | 'outgoing' | 'routine';

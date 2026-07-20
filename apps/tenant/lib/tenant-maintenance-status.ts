@@ -79,6 +79,8 @@ export function mapTenantMaintenancePresentation(input: {
   responsibility?: TenantMaintenanceRequestSummary['responsibility'];
   responsibilityAckRequired?: boolean;
   responsibilityAckStatus?: TenantMaintenanceRequestSummary['responsibilityAckStatus'];
+  completionApprovalPending?: boolean;
+  tenantCompletionApproved?: boolean;
 }): TenantMaintenancePresentation {
   const base = baseFromPrisma(input.status);
 
@@ -89,6 +91,16 @@ export function mapTenantMaintenancePresentation(input: {
       statusHint:
         'Please acknowledge or disagree with the responsibility decision. If you do not respond within 48 hours, the case will automatically close.',
       progressPercent: 55,
+    };
+  }
+
+  if (input.completionApprovalPending && !input.tenantCompletionApproved) {
+    return {
+      status: 'waiting_for_approval',
+      statusLabel: 'Action required',
+      statusHint:
+        'The contractor has finished this repair. Review the completion photos or videos and confirm you are satisfied.',
+      progressPercent: 90,
     };
   }
 
@@ -191,6 +203,9 @@ export function buildTenantMaintenanceTimeline(input: {
   responsibility?: TenantMaintenanceRequestSummary['responsibility'];
   responsibilityAckRequired?: boolean;
   responsibilityAckStatus?: TenantMaintenanceRequestSummary['responsibilityAckStatus'];
+  completionApprovalPending?: boolean;
+  tenantCompletionApproved?: boolean;
+  completionEvidenceUploaded?: boolean;
   status: MaintenanceTenantStatus;
 }): TimelineEntry[] {
   const entries: TimelineEntry[] = [
@@ -242,6 +257,34 @@ export function buildTenantMaintenanceTimeline(input: {
       actor: 'You',
       title: 'Responsibility disputed',
       detail: 'You disagreed with the responsibility decision.',
+    });
+  }
+
+  if (input.completionEvidenceUploaded) {
+    entries.push({
+      id: `${input.id}-completion-evidence`,
+      at: input.createdAt,
+      actor: 'Contractor',
+      title: 'Completion evidence uploaded',
+      detail: 'Photos or videos of the finished repair are available for your review.',
+    });
+  }
+
+  if (input.completionApprovalPending) {
+    entries.push({
+      id: `${input.id}-completion-approval`,
+      at: input.createdAt,
+      actor: 'CROSSUB',
+      title: 'Completion approval required',
+      detail: 'Please confirm you are satisfied with the completed repair work.',
+    });
+  } else if (input.tenantCompletionApproved) {
+    entries.push({
+      id: `${input.id}-completion-approved`,
+      at: input.createdAt,
+      actor: 'You',
+      title: 'Completion approved',
+      detail: 'You confirmed the repair work is complete.',
     });
   }
 
