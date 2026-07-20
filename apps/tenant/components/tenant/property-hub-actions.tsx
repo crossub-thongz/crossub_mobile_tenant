@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 
 import { useTenantData } from '@/components/providers/tenant-data-provider';
+import { isActiveMaintenanceRequest } from '@/lib/maintenance-request-filters';
 import {
   rentReviewDetail,
   ROUTES,
@@ -96,9 +97,7 @@ export function PropertyHubActions() {
     lease,
   } = useTenantData();
 
-  const openRepairs = maintenance.filter(
-    (m) => m.status !== 'closed' && !m.tenantCompletionApproved,
-  );
+  const openRepairs = maintenance.filter(isActiveMaintenanceRequest);
   const pendingRentReview = findPendingRentReview(rentReviews);
   const urgentNewLeasing = findUrgentNewLeasingCase(
     newLeasingCases,

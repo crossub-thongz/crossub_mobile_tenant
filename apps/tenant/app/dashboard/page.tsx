@@ -37,6 +37,7 @@ import {
   needsRoutineInspectionAction,
 } from '@/lib/routine-inspection';
 import { findPendingRentReview } from '@/lib/rent-review';
+import { isActiveMaintenanceRequest } from '@/lib/maintenance-request-filters';
 import { needsVacatingSettlementAction } from '@/lib/end-leasing';
 import {
   findUrgentNewLeasingCase,
@@ -65,9 +66,7 @@ export default function DashboardPage() {
     vacatingCase,
   } = useTenantData();
 
-  const openRepairs = maintenance.filter(
-    (m) => m.status !== 'closed' && !m.tenantCompletionApproved,
-  );
+  const openRepairs = maintenance.filter(isActiveMaintenanceRequest);
   const unreadMessages = messages.reduce((s, m) => s + m.unread, 0);
   const urgentIngoing = findUrgentIngoingInspection(ingoingInspections);
   const urgentOutgoing = findUrgentOutgoingInspection(outgoingInspections);

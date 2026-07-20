@@ -13,23 +13,21 @@ import { Button } from '@/components/ui/button';
 import { InfoCard } from '@/components/tenant/info-card';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
 import { repairNew } from '@/constants/routes';
+import {
+  isActiveMaintenanceRequest,
+  isHistoryMaintenanceRequest,
+} from '@/lib/maintenance-request-filters';
 
 export default function RepairsPage() {
   const { maintenance } = useTenantData();
   const [tab, setTab] = useState<'active' | 'history'>('active');
 
   const active = useMemo(
-    () =>
-      maintenance.filter(
-        (m) => m.status !== 'closed' && !m.tenantCompletionApproved,
-      ),
+    () => maintenance.filter(isActiveMaintenanceRequest),
     [maintenance],
   );
   const history = useMemo(
-    () =>
-      maintenance.filter(
-        (m) => m.status === 'closed' || m.tenantCompletionApproved,
-      ),
+    () => maintenance.filter(isHistoryMaintenanceRequest),
     [maintenance],
   );
   const list = tab === 'active' ? active : history;
