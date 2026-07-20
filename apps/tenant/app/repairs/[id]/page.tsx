@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   ClipboardList,
   HardHat,
+  ImageIcon,
   ListTree,
   MessageSquare,
   Phone,
@@ -17,6 +18,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { MaintenanceMediaGallery } from '@/components/maintenance/maintenance-media-gallery';
 import {
   responsibilityLabel,
   TenantMaintenanceResponsibilityAckTimer,
@@ -179,26 +181,35 @@ export default function RepairDetailPage() {
         />
 
         {tab === 'overview' && (
-          <InfoCard label="Details">
-            <dl className="space-y-3 text-sm">
-              <div>
-                <dt className="text-muted-foreground text-xs uppercase">Description</dt>
-                <dd className="mt-1 leading-relaxed">{request.description}</dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground text-xs uppercase">Urgency</dt>
-                <dd className="mt-1 capitalize">{request.urgency}</dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground text-xs uppercase">Status</dt>
-                <dd className="mt-1">{request.statusLabel}</dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground text-xs uppercase">Submitted</dt>
-                <dd className="mt-1">{formatDateTime(request.createdAt)}</dd>
-              </div>
-            </dl>
-          </InfoCard>
+          <div className="space-y-3">
+            <InfoCard label="Details">
+              <dl className="space-y-3 text-sm">
+                <div>
+                  <dt className="text-muted-foreground text-xs uppercase">Description</dt>
+                  <dd className="mt-1 leading-relaxed">{request.description}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground text-xs uppercase">Urgency</dt>
+                  <dd className="mt-1 capitalize">{request.urgency}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground text-xs uppercase">Status</dt>
+                  <dd className="mt-1">{request.statusLabel}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground text-xs uppercase">Submitted</dt>
+                  <dd className="mt-1">{formatDateTime(request.createdAt)}</dd>
+                </div>
+              </dl>
+            </InfoCard>
+
+            <InfoCard icon={ImageIcon} label="Photos & videos">
+              <p className="text-muted-foreground mb-3 text-xs">
+                Evidence you uploaded when filing this repair.
+              </p>
+              <MaintenanceMediaGallery photos={request.photos} />
+            </InfoCard>
+          </div>
         )}
 
         {tab === 'status' && (

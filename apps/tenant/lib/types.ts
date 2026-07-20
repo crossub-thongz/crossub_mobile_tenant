@@ -242,6 +242,8 @@ export interface MaintenanceRequest {
   responsibilityAckRequired?: boolean;
   responsibilityAckStatus?: 'pending' | 'agreed' | 'disagreed' | null;
   responsibilityAckDeadline?: string | null;
+  /** Photo and video URLs uploaded when the repair was filed. */
+  photos: string[];
 }
 
 export type InspectionListType = 'ingoing' | 'outgoing' | 'routine';

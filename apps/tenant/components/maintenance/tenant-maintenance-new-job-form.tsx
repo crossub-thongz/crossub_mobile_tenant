@@ -110,6 +110,7 @@ export function TenantMaintenanceNewJobForm() {
         id: created.id,
         trackingNumber:
           typeof created.orderNumber === 'string' ? created.orderNumber : undefined,
+        photos: mediaUrls,
       });
       toast.success('Maintenance job logged', {
         description: `Tracking ${item.trackingNumber} — saved to your list.`,

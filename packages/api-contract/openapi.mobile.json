@@ -10231,6 +10231,16 @@
             "format": "date-time",
             "nullable": true,
             "description": "When responsibilityAckRequired is true, the tenant must respond before this time or the system auto-agrees (48 hours)."
+          },
+          "photos": {
+            "description": "Photo and video URLs the tenant (or agent on their behalf) uploaded when filing the repair.",
+            "example": [
+              "https://cdn.example.com/repairs/kitchen-leak.jpg"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
@@ -10245,7 +10255,8 @@
           "createdAt",
           "scheduledDate",
           "completedDate",
-          "responsibilityAckRequired"
+          "responsibilityAckRequired",
+          "photos"
         ]
       },
       "PaginatedTenantRequestsDto": {

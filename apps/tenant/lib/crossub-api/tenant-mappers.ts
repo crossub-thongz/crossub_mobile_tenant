@@ -244,6 +244,7 @@ export function toTenantMaintenanceRequests(
       responsibilityAckRequired: s.responsibilityAckRequired ?? false,
       responsibilityAckStatus: s.responsibilityAckStatus ?? null,
       responsibilityAckDeadline: asString(s.responsibilityAckDeadline) ?? null,
+      photos: Array.isArray(s.photos) ? s.photos.filter((url): url is string => typeof url === 'string' && url.trim().length > 0) : [],
     };
 
     return mapped;

@@ -125,6 +125,7 @@ export interface NewRepairInput {
    */
   id?: string;
   trackingNumber?: string;
+  photos?: string[];
 }
 
 export interface NewApplicationInput {
@@ -727,6 +728,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
             title: 'Request submitted',
           },
         ],
+        photos: input.photos ?? [],
       };
       setMaintenance((prev) => {
         const next = [item, ...prev];

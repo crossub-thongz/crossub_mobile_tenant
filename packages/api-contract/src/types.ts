@@ -3617,6 +3617,13 @@ export interface components {
              * @description When responsibilityAckRequired is true, the tenant must respond before this time or the system auto-agrees (48 hours).
              */
             responsibilityAckDeadline?: string | null;
+            /**
+             * @description Photo and video URLs the tenant (or agent on their behalf) uploaded when filing the repair.
+             * @example [
+             *       "https://cdn.example.com/repairs/kitchen-leak.jpg"
+             *     ]
+             */
+            photos: string[];
         };
         PaginatedTenantRequestsDto: {
             /**
