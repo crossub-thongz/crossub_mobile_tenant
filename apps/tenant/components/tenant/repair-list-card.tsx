@@ -4,7 +4,7 @@ import { ChevronRight, Wrench } from 'lucide-react';
 import { StatusBadge } from '@/components/tenant/status-badge';
 import { repairDetail } from '@/constants/routes';
 import type { MaintenanceRequest } from '@/lib/types';
-import { cn, formatRelative } from '@/lib/utils';
+import { cn, formatDateTime, formatRelative } from '@/lib/utils';
 
 export function RepairListCard({
   repair,
@@ -29,7 +29,9 @@ export function RepairListCard({
                 {repair.trackingNumber}
               </p>
               <p className="mt-0.5 truncate font-semibold">{repair.category}</p>
-              <p className="text-muted-foreground truncate text-xs">{repair.area}</p>
+              <p className="text-muted-foreground truncate text-xs">
+                {repair.createdAt ? formatDateTime(repair.createdAt) : '—'}
+              </p>
             </div>
             <ChevronRight className="text-muted-foreground size-4 shrink-0 opacity-60 transition group-hover:opacity-100" />
           </div>
