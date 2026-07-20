@@ -103,6 +103,9 @@ export default function RepairDetailPage() {
             />
           </div>
           <p className="text-muted-foreground mt-2 text-xs">{request.trackingNumber}</p>
+          {request.statusHint && (
+            <p className="text-muted-foreground mt-2 text-sm leading-relaxed">{request.statusHint}</p>
+          )}
         </div>
 
         {responsibilityText && (
@@ -137,7 +140,6 @@ export default function RepairDetailPage() {
         {/* Repair request */}
         <InfoCard icon={Wrench} label="Repair request">
           <p className="text-lg font-semibold">{request.category}</p>
-          <p className="text-muted-foreground text-sm">{request.area}</p>
           <p className="mt-3 text-sm leading-relaxed">{request.description}</p>
           <div className="mt-3 flex flex-wrap gap-2">
             <StatusBadge label={request.urgency} priority={request.urgency} />
@@ -183,15 +185,13 @@ export default function RepairDetailPage() {
                 <dt className="text-muted-foreground text-xs uppercase">Description</dt>
                 <dd className="mt-1 leading-relaxed">{request.description}</dd>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <dt className="text-muted-foreground text-xs uppercase">Urgency</dt>
-                  <dd className="mt-1 capitalize">{request.urgency}</dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground text-xs uppercase">Area</dt>
-                  <dd className="mt-1">{request.area}</dd>
-                </div>
+              <div>
+                <dt className="text-muted-foreground text-xs uppercase">Urgency</dt>
+                <dd className="mt-1 capitalize">{request.urgency}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground text-xs uppercase">Status</dt>
+                <dd className="mt-1">{request.statusLabel}</dd>
               </div>
               <div>
                 <dt className="text-muted-foreground text-xs uppercase">Submitted</dt>

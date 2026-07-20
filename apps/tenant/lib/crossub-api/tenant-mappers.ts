@@ -15,12 +15,15 @@ import {
   LEASE_STATUS,
   LEDGER_DIRECTION,
   LEDGER_ENTRY_TYPE,
-  MAINTENANCE_STATUS,
   RENT_REVIEW_WORKFLOW_STATE,
   TENANT_NOTIFICATION_TYPE,
 } from '@/constants/api-enums';
 import { routineInspectionStatusLabel } from '@/lib/routine-inspection';
 import { resolvePropertyAddress } from '@/lib/format-address';
+import {
+  buildTenantMaintenanceTimeline,
+  mapTenantMaintenancePresentation,
+} from '@/lib/tenant-maintenance-status';
 import type {
   ApplicationStatus,
   IngoingReport,
@@ -28,7 +31,6 @@ import type {
   InspectionSummary,
   LeaseSummary,
   MaintenanceRequest,
-  MaintenanceTenantStatus,
   MessageCategory,
   MessageThread,
   MessageType,
@@ -167,45 +169,6 @@ export function toRentPaymentReceipts(
     });
 }
 
-const MAINTENANCE_VIEW_STATUS: Record<
-  TenantMaintenanceRequestSummary['status'],
-  MaintenanceTenantStatus
-> = {
-  [MAINTENANCE_STATUS.OPEN]: 'submitted',
-  [MAINTENANCE_STATUS.APPROVED]: 'under_review',
-  [MAINTENANCE_STATUS.QUOTING]: 'under_review',
-  [MAINTENANCE_STATUS.SCHEDULED]: 'contractor_assigned',
-  [MAINTENANCE_STATUS.INVOICED]: 'in_progress',
-  [MAINTENANCE_STATUS.COMPLETED]: 'completed',
-  [MAINTENANCE_STATUS.CANCELLED]: 'closed',
-};
-
-const MAINTENANCE_STATUS_LABEL: Record<
-  TenantMaintenanceRequestSummary['status'],
-  string
-> = {
-  [MAINTENANCE_STATUS.OPEN]: 'Submitted',
-  [MAINTENANCE_STATUS.APPROVED]: 'Approved',
-  [MAINTENANCE_STATUS.QUOTING]: 'Getting quotes',
-  [MAINTENANCE_STATUS.SCHEDULED]: 'Scheduled',
-  [MAINTENANCE_STATUS.INVOICED]: 'Work completed',
-  [MAINTENANCE_STATUS.COMPLETED]: 'Completed',
-  [MAINTENANCE_STATUS.CANCELLED]: 'Closed',
-};
-
-const MAINTENANCE_PROGRESS: Record<
-  TenantMaintenanceRequestSummary['status'],
-  number
-> = {
-  [MAINTENANCE_STATUS.OPEN]: 10,
-  [MAINTENANCE_STATUS.APPROVED]: 30,
-  [MAINTENANCE_STATUS.QUOTING]: 45,
-  [MAINTENANCE_STATUS.SCHEDULED]: 65,
-  [MAINTENANCE_STATUS.INVOICED]: 85,
-  [MAINTENANCE_STATUS.COMPLETED]: 100,
-  [MAINTENANCE_STATUS.CANCELLED]: 100,
-};
-
 /**
  * Map maintenance request summaries onto repair cards. Includes tenant-filed tickets
  * and agent/admin jobs on the leased property.
@@ -228,39 +191,63 @@ export function toTenantMaintenanceRequests(
   summaries: TenantMaintenanceRequestSummary[],
   fallbackAddress?: string,
 ): MaintenanceRequest[] {
-  return summaries.map((s) => ({
-    id: s.id,
-    trackingNumber: asString(s.orderNumber) ?? s.id,
-    propertyAddress: (() => {
-      const mapped = mapPropertyAddress(s.propertyAddress);
-      return mapped !== '—' ? mapped : (fallbackAddress ?? '—');
-    })(),
-    category: maintenanceCategoryLabel(
-      asString(s.categoryName),
-      asString(s.description),
-    ),
-    description: (() => {
-      const raw = asString(s.description) ?? '';
-      const colon = raw.indexOf(':');
-      if (colon > 0 && colon < 120) {
-        const body = raw.slice(colon + 1).trim();
-        if (body) return body;
-      }
-      return raw;
-    })(),
-    area: '—',
-    urgency: s.urgent ? 'urgent' : 'normal',
-    status: MAINTENANCE_VIEW_STATUS[s.status] ?? 'submitted',
-    statusLabel: MAINTENANCE_STATUS_LABEL[s.status] ?? 'Submitted',
-    progressPercent: MAINTENANCE_PROGRESS[s.status] ?? 10,
-    scheduledAt: asString(s.scheduledDate) ?? undefined,
-    timeline: [],
-    createdAt: asString(s.createdAt) ?? '',
-    responsibility: s.responsibility ?? null,
-    responsibilityAckRequired: s.responsibilityAckRequired ?? false,
-    responsibilityAckStatus: s.responsibilityAckStatus ?? null,
-    responsibilityAckDeadline: asString(s.responsibilityAckDeadline) ?? null,
-  }));
+  return summaries.map((s) => {
+    const createdAt = asString(s.createdAt) ?? '';
+    const presentation = mapTenantMaintenancePresentation({
+      status: s.status,
+      urgent: s.urgent,
+      scheduledDate: asString(s.scheduledDate),
+      responsibility: s.responsibility ?? null,
+      responsibilityAckRequired: s.responsibilityAckRequired ?? false,
+      responsibilityAckStatus: s.responsibilityAckStatus ?? null,
+    });
+
+    const mapped: MaintenanceRequest = {
+      id: s.id,
+      trackingNumber: asString(s.orderNumber) ?? s.id,
+      propertyAddress: (() => {
+        const mappedAddress = mapPropertyAddress(s.propertyAddress);
+        return mappedAddress !== '—' ? mappedAddress : (fallbackAddress ?? '—');
+      })(),
+      category: maintenanceCategoryLabel(
+        asString(s.categoryName),
+        asString(s.description),
+      ),
+      description: (() => {
+        const raw = asString(s.description) ?? '';
+        const colon = raw.indexOf(':');
+        if (colon > 0 && colon < 120) {
+          const body = raw.slice(colon + 1).trim();
+          if (body) return body;
+        }
+        return raw;
+      })(),
+      area: '',
+      urgency: s.urgent ? 'urgent' : 'normal',
+      status: presentation.status,
+      statusLabel: presentation.statusLabel,
+      statusHint: presentation.statusHint,
+      progressPercent: presentation.progressPercent,
+      scheduledAt: asString(s.scheduledDate) ?? undefined,
+      timeline: buildTenantMaintenanceTimeline({
+        id: s.id,
+        createdAt,
+        statusLabel: presentation.statusLabel,
+        statusHint: presentation.statusHint,
+        responsibility: s.responsibility ?? null,
+        responsibilityAckRequired: s.responsibilityAckRequired ?? false,
+        responsibilityAckStatus: s.responsibilityAckStatus ?? null,
+        status: presentation.status,
+      }),
+      createdAt,
+      responsibility: s.responsibility ?? null,
+      responsibilityAckRequired: s.responsibilityAckRequired ?? false,
+      responsibilityAckStatus: s.responsibilityAckStatus ?? null,
+      responsibilityAckDeadline: asString(s.responsibilityAckDeadline) ?? null,
+    };
+
+    return mapped;
+  });
 }
 
 /** Map the API conversation department onto the app's inbox category tag. */

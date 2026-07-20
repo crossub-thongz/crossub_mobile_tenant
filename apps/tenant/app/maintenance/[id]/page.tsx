@@ -27,9 +27,11 @@ export default function MaintenanceDetailPage() {
       <div className="space-y-4">
         <div className="rounded-xl border bg-card p-4">
           <p className="font-semibold">{request.category}</p>
-          <p className="text-muted-foreground text-sm">{request.area}</p>
           <p className="mt-2 text-sm">{request.description}</p>
           <p className="text-primary mt-3 font-medium">{request.statusLabel}</p>
+          {request.statusHint && (
+            <p className="text-muted-foreground mt-1 text-xs leading-relaxed">{request.statusHint}</p>
+          )}
           {request.contractorName && (
             <p className="text-muted-foreground mt-1 text-xs">
               Contractor: {request.contractorName}

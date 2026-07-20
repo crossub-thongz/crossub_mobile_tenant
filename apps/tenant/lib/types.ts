@@ -222,10 +222,12 @@ export interface MaintenanceRequest {
   propertyAddress: string;
   category: string;
   description: string;
-  area: string;
+  area?: string;
   urgency: Priority;
   status: MaintenanceTenantStatus;
   statusLabel: string;
+  /** Plain-language explanation of the current step for the tenant. */
+  statusHint?: string;
   contractorName?: string;
   contractorPhone?: string;
   scheduledAt?: string;
