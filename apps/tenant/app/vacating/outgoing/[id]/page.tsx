@@ -76,6 +76,7 @@ export default function OutgoingReportPage() {
           <ReportSectionCard
             key={section.id}
             section={section}
+            currentPhotoLabel="Outgoing"
             onConfirm={() => void confirmOutgoingSection(section.id)}
             onDispute={(comment) => void confirmOutgoingSection(section.id, comment)}
           />

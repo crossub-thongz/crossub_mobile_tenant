@@ -5,6 +5,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 import { TenantShell } from '@/components/layout/tenant-shell';
+import { ReportSectionCard } from '@/components/tenant/report-section-card';
 import { StatusBadge } from '@/components/tenant/status-badge';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
 import { ROUTES } from '@/constants/routes';
@@ -15,7 +16,16 @@ import {
   needsRoutineInspectionAction,
   routineInspectionStatusLabel,
 } from '@/lib/routine-inspection';
+import type { ReportSection } from '@/lib/types';
 import { formatDateTime } from '@/lib/utils';
+
+type RoutineSectionDto = {
+  id: string;
+  room: string;
+  description: string;
+  photos?: string[];
+  referencePhotos?: string[];
+};
 
 export default function RoutineInspectionPage() {
   const { id } = useParams<{ id: string }>();
@@ -30,15 +40,11 @@ export default function RoutineInspectionPage() {
   const inspection = loaded ?? summary;
 
   useEffect(() => {
-    if (summary) {
-      setLoaded(summary);
-      return;
-    }
     if (!apiConnected) return;
     setLoading(true);
     void fetchTenantRoutineInspection(id)
       .then(setLoaded)
-      .catch(() => setLoaded(null))
+      .catch(() => setLoaded(summary))
       .finally(() => setLoading(false));
   }, [apiConnected, id, summary]);
 
@@ -64,6 +70,17 @@ export default function RoutineInspectionPage() {
 
   const flowLabel =
     inspection.flow === 'self' ? 'Tenant self-inspection' : 'In-person visit';
+
+  const sections: ReportSection[] = (
+    (inspection as { sections?: RoutineSectionDto[] }).sections ?? []
+  ).map((section) => ({
+    id: section.id,
+    room: section.room,
+    description: section.description,
+    photos: section.photos ?? [],
+    referencePhotos: section.referencePhotos ?? [],
+    tenantConfirmed: false,
+  }));
 
   return (
     <TenantShell title="Routine inspection" backHref={backHref}>
@@ -96,6 +113,24 @@ export default function RoutineInspectionPage() {
           </p>
         </div>
       )}
+
+      {sections.length > 0 ? (
+        <div className="mb-4 space-y-4">
+          <p className="text-muted-foreground text-xs">
+            Latest move-in (ingoing) photos are shown beside routine evidence for each
+            section.
+          </p>
+          {sections.map((section) => (
+            <ReportSectionCard
+              key={section.id}
+              section={section}
+              currentPhotoLabel="Routine"
+              readOnly
+            />
+          ))}
+        </div>
+      ) : null}
+
       {inspection.reportUrl && (
         <Link
           href={inspection.reportUrl}

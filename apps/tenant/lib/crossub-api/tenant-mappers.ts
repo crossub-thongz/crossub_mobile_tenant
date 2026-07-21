@@ -579,15 +579,21 @@ export function toIngoingReportSummaries(
 
 export function toOutgoingReport(dto: TenantOutgoingInspection): OutgoingReport {
   const sections =
-    dto.sections?.map((section) => ({
-      id: section.id,
-      room: section.room,
-      description: section.description,
-      photos: section.photos ?? [],
-      tenantConfirmed: dto.tenantApproved ? !section.disputed : false,
-      tenantDispute: section.disputeComment ?? undefined,
-      confirmedAt: undefined,
-    })) ?? [];
+    dto.sections?.map((section) => {
+      const refPhotos = (
+        section as { referencePhotos?: string[] | null }
+      ).referencePhotos;
+      return {
+        id: section.id,
+        room: section.room,
+        description: section.description,
+        photos: section.photos ?? [],
+        referencePhotos: refPhotos ?? [],
+        tenantConfirmed: dto.tenantApproved ? !section.disputed : false,
+        tenantDispute: section.disputeComment ?? undefined,
+        confirmedAt: undefined,
+      };
+    }) ?? [];
 
   const confirmedCount = sections.filter(
     (s) => s.tenantConfirmed || s.tenantDispute,

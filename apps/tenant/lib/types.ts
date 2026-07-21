@@ -202,6 +202,8 @@ export interface ReportSection {
   room: string;
   description: string;
   photos: string[];
+  /** Latest completed ingoing photos for the same section (side-by-side). */
+  referencePhotos?: string[];
   tenantConfirmed: boolean;
   /** Optional feedback left when confirming the section. */
   tenantFeedback?: string;
