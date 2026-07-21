@@ -7,6 +7,7 @@ import {
   EmailPreviewDialog,
   type EmailPreviewContent,
 } from '@/components/tenant/email-preview-dialog';
+import { tenantRentReviewNoticePdfUrl } from '@/lib/crossub-api/tenant-account-client';
 import type { RentReviewCase, RentReviewEmail } from '@/lib/types';
 import { formatDateTime } from '@/lib/utils';
 
@@ -14,7 +15,17 @@ function emailKindLabel(kind: RentReviewEmail['kind']): string {
   return kind === 'notice' ? 'Formal notice' : 'Automated reminder';
 }
 
-function toPreviewContent(email: RentReviewEmail): EmailPreviewContent {
+function toPreviewContent(email: RentReviewEmail, review: RentReviewCase): EmailPreviewContent {
+  const attachments =
+    email.kind === 'notice' && review.noticeTerms?.noticePdfAvailable
+      ? [
+          {
+            name: 'NSW-Fair-Trading-Notice.pdf',
+            url: tenantRentReviewNoticePdfUrl(review.id),
+          },
+        ]
+      : undefined;
+
   return {
     subject: email.subject,
     body: email.body,
@@ -22,6 +33,7 @@ function toPreviewContent(email: RentReviewEmail): EmailPreviewContent {
     to: email.to,
     sentAt: email.sentAt,
     kindLabel: emailKindLabel(email.kind),
+    attachments,
   };
 }
 
@@ -79,7 +91,7 @@ export function RentReviewEmailsSection({ review }: { review: RentReviewCase }) 
       </section>
 
       <EmailPreviewDialog
-        email={selected ? toPreviewContent(selected) : null}
+        email={selected ? toPreviewContent(selected, review) : null}
         open={selected != null}
         onOpenChange={(open) => {
           if (!open) setSelected(null);

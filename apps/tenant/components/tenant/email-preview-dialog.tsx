@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
+import { EmailAttachmentList } from '@/components/tenant/email-attachment-list';
 import { Button } from '@/components/ui/button';
 import { formatDateTime } from '@/lib/utils';
 
@@ -14,6 +15,7 @@ export interface EmailPreviewContent {
   to: string;
   sentAt: string;
   kindLabel?: string;
+  attachments?: Array<{ name: string; url: string; sizeLabel?: string }>;
 }
 
 export function EmailPreviewDialog({
@@ -92,6 +94,9 @@ export function EmailPreviewDialog({
               {email.body}
             </pre>
           </div>
+          {email.attachments?.length ? (
+            <EmailAttachmentList attachments={email.attachments} />
+          ) : null}
         </div>
       </div>
     </div>,
