@@ -50,13 +50,13 @@ export function RentReviewNoticePdfDialog({
       >
         <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
           <p id="rent-review-notice-pdf-title" className="text-sm font-semibold">
-            Notice of rent increase
+            Lease extension agreement
           </p>
           <div className="flex items-center gap-2">
             <Button asChild variant="outline" size="sm" className="h-8 gap-1.5 px-2.5 text-xs">
               <a
                 href={pdfUrl}
-                download={`notice-of-rent-increase-${reviewId.slice(0, 8)}.pdf`}
+                download={`lease-extension-agreement-${reviewId.slice(0, 8)}.pdf`}
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -78,7 +78,7 @@ export function RentReviewNoticePdfDialog({
         </div>
         <div className="min-h-0 flex-1 overflow-hidden bg-muted/20 p-3">
           <iframe
-            title="Notice of rent increase PDF"
+            title="Lease extension agreement PDF"
             src={pdfUrl}
             className="h-[min(75vh,640px)] w-full rounded-lg border bg-white"
           />

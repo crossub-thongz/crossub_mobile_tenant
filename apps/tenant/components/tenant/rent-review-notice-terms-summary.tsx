@@ -67,7 +67,7 @@ export function RentReviewNoticeTermsSummary({ review }: { review: RentReviewCas
               tabular
             />
             <div>
-              <dt className="text-muted-foreground text-xs">Rent increase notice</dt>
+              <dt className="text-muted-foreground text-xs">Lease extension agreement</dt>
               <dd className="mt-0.5">
                 {terms.noticePdfAvailable ? (
                   <Button
