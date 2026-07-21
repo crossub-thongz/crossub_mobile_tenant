@@ -10,8 +10,10 @@ import { TenantShell } from '@/components/layout/tenant-shell';
 import { InfoCard } from '@/components/tenant/info-card';
 import { PageIntro, SectionTitle } from '@/components/tenant/page-intro';
 import { StatusBadge } from '@/components/tenant/status-badge';
+import { UpcomingRentHint } from '@/components/tenant/upcoming-rent-hint';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
 import { ROUTES, statementDetail } from '@/constants/routes';
+import { resolveUpcomingRentHint } from '@/lib/rent-review';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
 export default function AccountingPage() {
@@ -22,7 +24,11 @@ export default function AccountingPage() {
     outstandingBalance,
     finalStatement,
     storedDocuments,
+    rentReviews,
+    vacatingCase,
   } = useTenantData();
+
+  const upcomingRentHint = resolveUpcomingRentHint(rentReviews, lease, vacatingCase);
 
   return (
     <TenantShell title="Accounting">
@@ -38,6 +44,7 @@ export default function AccountingPage() {
               {formatCurrency(lease.rentWeekly)}
               <span className="text-muted-foreground text-base font-normal">/week</span>
             </p>
+            <UpcomingRentHint hint={upcomingRentHint} />
           </InfoCard>
         )}
 

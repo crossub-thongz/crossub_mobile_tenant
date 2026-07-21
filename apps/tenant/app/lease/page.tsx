@@ -5,12 +5,15 @@ import { FileText } from 'lucide-react';
 import { TenantShell } from '@/components/layout/tenant-shell';
 import { DocumentActions } from '@/components/tenant/document-actions';
 import { StatusBadge } from '@/components/tenant/status-badge';
+import { UpcomingRentHint } from '@/components/tenant/upcoming-rent-hint';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
+import { resolveUpcomingRentHint } from '@/lib/rent-review';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
 export default function LeasePage() {
-  const { lease, storedDocuments } = useTenantData();
+  const { lease, storedDocuments, rentReviews, vacatingCase } = useTenantData();
   const leaseDocuments = storedDocuments.filter((d) => d.category === 'Lease');
+  const upcomingRentHint = resolveUpcomingRentHint(rentReviews, lease, vacatingCase);
 
   if (!lease) {
     return (
@@ -28,6 +31,7 @@ export default function LeasePage() {
           <p className="text-primary mt-2 text-lg font-semibold">
             {formatCurrency(lease.rentWeekly)}/week
           </p>
+          <UpcomingRentHint hint={upcomingRentHint} />
           <p className="text-muted-foreground mt-2 text-sm">
             {formatDate(lease.leaseStart)} – {formatDate(lease.leaseEnd)}
             {lease.periodic && ' · Periodic tenancy'}

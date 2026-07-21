@@ -9,12 +9,14 @@ import { OnboardingPendingAlert } from '@/components/tenant/onboarding-pending-a
 import { EmptyState } from '@/components/tenant/empty-state';
 import { InfoCard } from '@/components/tenant/info-card';
 import { StatusBadge } from '@/components/tenant/status-badge';
+import { UpcomingRentHint } from '@/components/tenant/upcoming-rent-hint';
 import { Button } from '@/components/ui/button';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
 import { ROUTES } from '@/constants/routes';
 import { findActiveNewLeasingCase } from '@/lib/new-leasing';
 import {
   resolveNextRentReviewDate,
+  resolveUpcomingRentHint,
   shouldShowNextRentReviewDate,
 } from '@/lib/rent-review';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -25,6 +27,7 @@ export default function PropertyPage() {
     leasingOnboarding,
     newLeasingCases,
     rentReviews,
+    vacatingCase,
     loading,
     apiConnected,
     profileUnlinked,
@@ -73,6 +76,7 @@ export default function PropertyPage() {
   const inOnboarding = Boolean(leasingOnboarding || activeNewLeasing?.onboardingActive);
   const nextRentReviewDate = resolveNextRentReviewDate(lease, rentReviews);
   const showNextRentReview = shouldShowNextRentReviewDate(lease, rentReviews);
+  const upcomingRentHint = resolveUpcomingRentHint(rentReviews, lease, vacatingCase);
 
   return (
     <TenantShell title="Property details">
@@ -82,10 +86,13 @@ export default function PropertyPage() {
         <InfoCard icon={MapPin} accent="primary">
           <p className="text-lg font-semibold leading-snug">{address}</p>
           {lease ? (
-            <p className="text-primary mt-3 text-2xl font-bold tracking-tight">
-              {formatCurrency(lease.rentWeekly)}
-              <span className="text-muted-foreground text-base font-normal">/week</span>
-            </p>
+            <>
+              <p className="text-primary mt-3 text-2xl font-bold tracking-tight">
+                {formatCurrency(lease.rentWeekly)}
+                <span className="text-muted-foreground text-base font-normal">/week</span>
+              </p>
+              <UpcomingRentHint hint={upcomingRentHint} />
+            </>
           ) : (
             <p className="text-muted-foreground mt-3 text-sm">
               Approved — complete onboarding to finalise your move-in.
