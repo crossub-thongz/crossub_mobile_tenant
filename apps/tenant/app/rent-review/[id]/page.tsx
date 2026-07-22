@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { TenantShell } from '@/components/layout/tenant-shell';
 import { InfoCard } from '@/components/tenant/info-card';
 import { RentReviewEmailsSection } from '@/components/tenant/rent-review-emails-section';
+import { RentReviewLeaseAgreementSection } from '@/components/tenant/rent-review-lease-agreement-section';
 import { RentReviewNoticeTermsSummary } from '@/components/tenant/rent-review-notice-terms-summary';
 import { RentReviewResponsePanel } from '@/components/tenant/rent-review-response-panel';
 import { StatusBadge } from '@/components/tenant/status-badge';
@@ -51,6 +52,19 @@ export default function RentReviewDetailPage() {
 
         <RentReviewNoticeTermsSummary review={review} />
 
+        {review.status !== 'pending' ? (
+          <RentReviewLeaseAgreementSection
+            review={review}
+            busy={busy}
+            onSignLeaseAgreement={
+              review.noticeTerms?.leaseAgreementPdfAvailable ||
+              review.noticeTerms?.requiresLeaseAgreementSign
+                ? () => signLeaseAgreement(review.id)
+                : undefined
+            }
+          />
+        ) : null}
+
         <RentReviewEmailsSection review={review} />
 
         {review.status === 'countered' ? (
@@ -90,7 +104,8 @@ export default function RentReviewDetailPage() {
             review={review}
             busy={busy}
             onSignLeaseAgreement={
-              review.noticeTerms?.leaseAgreementPdfAvailable
+              review.noticeTerms?.leaseAgreementPdfAvailable ||
+              review.noticeTerms?.requiresLeaseAgreementSign
                 ? () => signLeaseAgreement(review.id)
                 : undefined
             }

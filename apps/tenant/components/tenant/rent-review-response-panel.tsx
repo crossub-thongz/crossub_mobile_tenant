@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { FileText, PenLine } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,7 @@ export function RentReviewResponsePanel({
   const [moveOutDate, setMoveOutDate] = useState(review.moveOutDate ?? '');
   const [counterWeekly, setCounterWeekly] = useState('');
   const [agreementOpen, setAgreementOpen] = useState(false);
+  const [signing, setSigning] = useState(false);
   const canCounter = review.rentNegotiable === true;
 
   const leaseTerms = review.noticeTerms;
@@ -38,6 +39,17 @@ export function RentReviewResponsePanel({
   const leaseSigned = leaseTerms?.leaseAgreementSigned === true;
   const mustSignBeforeAccept = leaseTerms?.requiresLeaseAgreementSign === true;
   const canAccept = !mustSignBeforeAccept || leaseSigned;
+
+  const handleSign = async () => {
+    if (!onSignLeaseAgreement) return;
+    try {
+      await onSignLeaseAgreement();
+      setAgreementOpen(false);
+      toast.success('Agreement signed — you can now accept the increase');
+    } catch {
+      toast.error('Could not sign the agreement');
+    }
+  };
 
   return (
     <div className="space-y-3 rounded-2xl border border-primary/30 bg-primary/5 p-4">
@@ -67,25 +79,15 @@ export function RentReviewResponsePanel({
               onClick={() => setAgreementOpen(true)}
             >
               <FileText className="size-4" />
-              View agreement
+              Preview agreement
             </Button>
             {!leaseSigned && onSignLeaseAgreement ? (
               <Button
                 type="button"
                 className="w-full gap-2 sm:flex-1"
                 disabled={busy}
-                onClick={() => {
-                  void (async () => {
-                    try {
-                      await onSignLeaseAgreement();
-                      toast.success('Agreement signed — you can now accept the increase');
-                    } catch {
-                      toast.error('Could not sign the agreement');
-                    }
-                  })();
-                }}
+                onClick={() => setAgreementOpen(true)}
               >
-                <PenLine className="size-4" />
                 Sign agreement
               </Button>
             ) : null}
@@ -96,13 +98,27 @@ export function RentReviewResponsePanel({
             </p>
           ) : (
             <p className="text-xs text-amber-800 dark:text-amber-200">
-              Sign the agreement to unlock the accept button.
+              Preview and sign the agreement to unlock the accept button.
             </p>
           )}
           <RentReviewLeaseAgreementPdfDialog
             reviewId={review.id}
             open={agreementOpen}
             onOpenChange={setAgreementOpen}
+            showSignButton={!leaseSigned && Boolean(onSignLeaseAgreement)}
+            signing={signing}
+            onSign={
+              !leaseSigned && onSignLeaseAgreement
+                ? async () => {
+                    setSigning(true);
+                    try {
+                      await handleSign();
+                    } finally {
+                      setSigning(false);
+                    }
+                  }
+                : undefined
+            }
           />
         </div>
       ) : null}
