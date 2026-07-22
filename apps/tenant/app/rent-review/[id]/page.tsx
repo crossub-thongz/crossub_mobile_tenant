@@ -39,6 +39,11 @@ export default function RentReviewDetailPage() {
     );
   }
 
+  const leaseAgreementEnabled =
+    review.noticeTerms?.leaseAgreementPdfAvailable ||
+    review.noticeTerms?.requiresLeaseAgreementSign;
+  const signLease = leaseAgreementEnabled ? () => signLeaseAgreement(review.id) : undefined;
+
   return (
     <TenantShell title="Notice of rent review" backHref={ROUTES.RENT_REVIEW}>
       <div className="space-y-5">
@@ -52,16 +57,11 @@ export default function RentReviewDetailPage() {
 
         <RentReviewNoticeTermsSummary review={review} />
 
-        {review.status !== 'pending' ? (
+        {leaseAgreementEnabled ? (
           <RentReviewLeaseAgreementSection
             review={review}
             busy={busy}
-            onSignLeaseAgreement={
-              review.noticeTerms?.leaseAgreementPdfAvailable ||
-              review.noticeTerms?.requiresLeaseAgreementSign
-                ? () => signLeaseAgreement(review.id)
-                : undefined
-            }
+            onSignLeaseAgreement={signLease}
           />
         ) : null}
 
@@ -103,17 +103,13 @@ export default function RentReviewDetailPage() {
           <RentReviewResponsePanel
             review={review}
             busy={busy}
-            onSignLeaseAgreement={
-              review.noticeTerms?.leaseAgreementPdfAvailable ||
-              review.noticeTerms?.requiresLeaseAgreementSign
-                ? () => signLeaseAgreement(review.id)
-                : undefined
-            }
             onAccept={async () => {
               setBusy(true);
               try {
                 await respondRentReview(review.id, 'accept');
-                toast.success('Acceptance recorded — sent to your property manager');
+                toast.success('Rent increase accepted', {
+                  description: 'Your property manager has been notified.',
+                });
               } catch {
                 toast.error('Could not record acceptance');
               } finally {

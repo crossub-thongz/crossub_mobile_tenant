@@ -34,18 +34,7 @@ function formatLeaseType(value: 'fixed' | 'periodic' | null): string {
 
 export function RentReviewNoticeTermsSummary({ review }: { review: RentReviewCase }) {
   const [pdfOpen, setPdfOpen] = useState(false);
-  const terms =
-    review.noticeTerms ??
-    (review.noticeDispatchedAt
-      ? {
-          newRentWeekly: review.proposedRentWeekly,
-          leaseType: null as const,
-          leaseTerm: '—',
-          rentIncreaseOn: review.effectiveDate || null,
-          newLeaseStart: null,
-          noticePdfAvailable: true,
-        }
-      : null);
+  const terms = review.noticeTerms;
 
   if (!terms) return null;
 
@@ -60,14 +49,14 @@ export function RentReviewNoticeTermsSummary({ review }: { review: RentReviewCas
               value={`${formatCurrency(terms.newRentWeekly)}/wk`}
               tabular
             />
-            <Term label="Lease term" value={terms.leaseTerm} />
+            <Term label="Lease term" value={terms.leaseTerm || '—'} />
             <Term
               label="Rent increase on"
               value={terms.rentIncreaseOn ? formatDate(terms.rentIncreaseOn) : '—'}
               tabular
             />
             <div>
-              <dt className="text-muted-foreground text-xs">Notice of Rent Increase</dt>
+              <dt className="text-muted-foreground text-xs">Notice of rent increase</dt>
               <dd className="mt-0.5">
                 {terms.noticePdfAvailable ? (
                   <Button

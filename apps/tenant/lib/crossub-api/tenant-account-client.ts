@@ -12,8 +12,13 @@ export function tenantRentReviewNoticePdfUrl(reviewId: string): string {
 }
 
 /** Fixed-term residential tenancy agreement PDF (tenant session required). */
-export function tenantRentReviewLeaseAgreementPdfUrl(reviewId: string): string {
-  return `${API_BASE}/tenant/rent-reviews/${reviewId}/residential-tenancy-agreement.pdf`;
+export function tenantRentReviewLeaseAgreementPdfUrl(
+  reviewId: string,
+  options?: { cacheBuster?: string | number },
+): string {
+  const base = `${API_BASE}/tenant/rent-reviews/${reviewId}/residential-tenancy-agreement.pdf`;
+  if (options?.cacheBuster == null) return base;
+  return `${base}?v=${encodeURIComponent(String(options.cacheBuster))}`;
 }
 
 /** CROSSUB notice of rent review summary for a dispatched rent review. */

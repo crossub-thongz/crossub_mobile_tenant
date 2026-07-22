@@ -2,28 +2,23 @@
 
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Download, PenLine, X } from 'lucide-react';
+import { Download, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { tenantRentReviewLeaseAgreementPdfUrl } from '@/lib/crossub-api/tenant-account-client';
 
 export function RentReviewLeaseAgreementPdfDialog({
-  reviewId,
+  title,
+  pdfUrl,
+  downloadFileName,
   open,
   onOpenChange,
-  onSign,
-  signing = false,
-  showSignButton = false,
 }: {
-  reviewId: string;
+  title: string;
+  pdfUrl: string;
+  downloadFileName: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSign?: () => Promise<void>;
-  signing?: boolean;
-  showSignButton?: boolean;
 }) {
-  const pdfUrl = tenantRentReviewLeaseAgreementPdfUrl(reviewId);
-
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -45,7 +40,7 @@ export function RentReviewLeaseAgreementPdfDialog({
       <button
         type="button"
         className="absolute inset-0 bg-black/50"
-        aria-label="Close lease extension agreement preview"
+        aria-label="Close agreement preview"
         onClick={() => onOpenChange(false)}
       />
       <div
@@ -56,16 +51,11 @@ export function RentReviewLeaseAgreementPdfDialog({
       >
         <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
           <p id="rent-review-lease-agreement-pdf-title" className="text-sm font-semibold">
-            Lease extension agreement
+            {title}
           </p>
           <div className="flex items-center gap-2">
             <Button asChild variant="outline" size="sm" className="h-8 gap-1.5 px-2.5 text-xs">
-              <a
-                href={pdfUrl}
-                download={`lease-extension-agreement-${reviewId.slice(0, 8)}.pdf`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
+              <a href={pdfUrl} download={downloadFileName} target="_blank" rel="noopener noreferrer">
                 <Download className="size-3.5" />
                 Download
               </a>
@@ -84,24 +74,12 @@ export function RentReviewLeaseAgreementPdfDialog({
         </div>
         <div className="min-h-0 flex-1 overflow-hidden bg-muted/20 p-3">
           <iframe
-            title="Lease extension agreement PDF"
+            key={pdfUrl}
+            title={title}
             src={pdfUrl}
             className="h-[min(75vh,640px)] w-full rounded-lg border bg-white"
           />
         </div>
-        {showSignButton && onSign ? (
-          <div className="border-t px-4 py-3">
-            <Button
-              type="button"
-              className="w-full gap-2"
-              disabled={signing}
-              onClick={() => void onSign()}
-            >
-              <PenLine className="size-4" />
-              {signing ? 'Signing…' : 'Sign agreement'}
-            </Button>
-          </div>
-        ) : null}
       </div>
     </div>,
     document.body,
