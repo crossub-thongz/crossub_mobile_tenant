@@ -497,6 +497,18 @@ export async function replyToTenantMessageThread(
   return data;
 }
 
+/** Mark a message thread read (`PATCH /api/v1/tenant/messages/:threadId/read`). */
+export async function markTenantMessageThreadRead(
+  threadId: string,
+): Promise<TenantMessageThread> {
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL ?? '/api'}/v1/tenant/messages/${encodeURIComponent(threadId)}/read`,
+    { method: 'PATCH', credentials: 'include' },
+  );
+  if (!res.ok) throw new Error('Failed to mark thread read');
+  return res.json() as Promise<TenantMessageThread>;
+}
+
 /** Notifications for the signed-in tenant (`GET /api/v1/tenant/notifications`). */
 export async function fetchTenantNotifications(): Promise<TenantNotificationDto[]> {
   const { data, error } = await crossub.GET('/tenant/notifications');

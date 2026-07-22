@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Mail, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -16,7 +16,7 @@ import { cn, formatDateTime } from '@/lib/utils';
 
 export default function MessageDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { messages, getThreadMessages, sendThreadMessage } = useTenantData();
+  const { messages, getThreadMessages, sendThreadMessage, markThreadRead } = useTenantData();
   const thread = messages.find((m) => m.id === id);
   const threadMessages = useMemo(
     () => (id ? getThreadMessages(id) : []),
@@ -24,6 +24,12 @@ export default function MessageDetailPage() {
   );
 
   const [reply, setReply] = useState('');
+
+  useEffect(() => {
+    if (thread && thread.unread > 0) {
+      markThreadRead(thread.id);
+    }
+  }, [thread, markThreadRead]);
 
   const composeBar = thread ? (
     <div className="flex gap-2">

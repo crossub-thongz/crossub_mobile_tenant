@@ -32,6 +32,7 @@ import {
   fetchTenantNotifications,
   fetchTenantRentReviews,
   fetchTenantVacatingCases,
+  markTenantMessageThreadRead,
   submitTenantRentReviewResponse,
   acceptTenantVacatingSettlement,
   declineTenantVacatingSettlement,
@@ -194,6 +195,7 @@ interface TenantDataContextValue {
   addMessageThread: (input: NewMessageInput) => MessageThread;
   getThreadMessages: (threadId: string) => ThreadMessage[];
   sendThreadMessage: (threadId: string, body: string, to: MessageParty) => void;
+  markThreadRead: (threadId: string) => void;
   recordRentPayment: (input: RecordRentPaymentInput) => RentReceipt;
   approveRepairCompletion: (id: string) => Promise<void>;
   respondMaintenanceResponsibilityAck: (
@@ -409,18 +411,24 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     await loadLeasingOnboarding();
   }, [loadLeasingOnboarding]);
 
-  /** Lightweight poll for dispatched rent-review notices and unread alerts. */
+  /** Lightweight poll for dispatched rent-review notices, messages, and unread alerts. */
   const syncLiveAttention = useCallback(async () => {
     if (status !== 'authed') return;
-    const [notifs, rentReviewsRes] = await Promise.allSettled([
+    const [notifs, rentReviewsRes, threadsRes] = await Promise.allSettled([
       fetchTenantNotifications(),
       fetchTenantRentReviews(),
+      fetchTenantMessages(),
     ]);
     if (notifs.status === 'fulfilled') {
       setNotifications(toTenantNotifications(notifs.value));
     }
     if (rentReviewsRes.status === 'fulfilled') {
       setRentReviews(toTenantRentReviews(rentReviewsRes.value));
+    }
+    if (threadsRes.status === 'fulfilled') {
+      const { threads: mapped, messagesById } = toMessageThreads(threadsRes.value);
+      setMessages(mapped);
+      setThreadMessagesById(messagesById);
     }
   }, [status]);
 
@@ -828,6 +836,22 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
         });
     },
     [messages],
+  );
+
+  const markThreadRead = useCallback(
+    (threadId: string) => {
+      const thread = messages.find((m) => m.id === threadId);
+      const realId = thread?.serverThreadId ?? threadId;
+
+      setMessages((prev) =>
+        prev.map((t) => (t.id === threadId ? { ...t, unread: 0 } : t)),
+      );
+
+      if (apiConnected && realId) {
+        void markTenantMessageThreadRead(realId).catch(() => {});
+      }
+    },
+    [messages, apiConnected],
   );
 
   const addMessageThread = useCallback(
@@ -1456,6 +1480,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       addMessageThread,
       getThreadMessages,
       sendThreadMessage,
+      markThreadRead,
       recordRentPayment,
       approveRepairCompletion,
       respondMaintenanceResponsibilityAck: respondMaintenanceResponsibilityAckHandler,
@@ -1513,6 +1538,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       addMessageThread,
       getThreadMessages,
       sendThreadMessage,
+      markThreadRead,
       recordRentPayment,
       markNotificationRead,
       confirmIngoingSection,
