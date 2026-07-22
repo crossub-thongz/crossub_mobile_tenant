@@ -34,6 +34,7 @@ import {
   fetchTenantVacatingCases,
   markTenantMessageThreadRead,
   submitTenantRentReviewResponse,
+  signTenantRentReviewLeaseAgreement,
   acceptTenantVacatingSettlement,
   declineTenantVacatingSettlement,
   createTenantVacatingCase,
@@ -222,6 +223,7 @@ interface TenantDataContextValue {
     action: 'accept' | 'reject' | 'counter',
     payload?: { amount?: number; moveOutDate?: string; reason?: string },
   ) => Promise<void>;
+  signLeaseAgreement: (reviewId: string) => Promise<void>;
 }
 
 type ListingProperty = import('@/lib/types').ListingProperty;
@@ -1393,6 +1395,40 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     [status, startVacating],
   );
 
+  const signLeaseAgreement = useCallback(
+    async (reviewId: string) => {
+      if (status !== 'authed') {
+        setRentReviews((prev) => {
+          const next = prev.map((r) =>
+            r.id === reviewId && r.noticeTerms
+              ? {
+                  ...r,
+                  noticeTerms: {
+                    ...r.noticeTerms,
+                    leaseAgreementSigned: true,
+                    requiresLeaseAgreementSign: false,
+                  },
+                }
+              : r,
+          );
+          patchTenantStore({ rentReviews: next });
+          return next;
+        });
+        return;
+      }
+
+      const updated = await signTenantRentReviewLeaseAgreement(reviewId);
+      setRentReviews((prev) => {
+        const mapped = toTenantRentReviews([updated])[0];
+        if (!mapped) return prev;
+        const next = prev.map((r) => (r.id === reviewId ? mapped : r));
+        patchTenantStore({ rentReviews: next });
+        return next;
+      });
+    },
+    [status],
+  );
+
   const phase: TenantLifecyclePhase = lease ? 'active' : 'searching';
 
   const storedDocuments = useMemo(() => {
@@ -1501,6 +1537,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       rejectIngoingReport,
       confirmOutgoingSection,
       respondRentReview,
+      signLeaseAgreement,
     }),
     [
       loading,
@@ -1554,6 +1591,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       acceptVacatingSettlement,
       declineVacatingSettlement,
       respondRentReview,
+      signLeaseAgreement,
       finalStatement,
       arrears,
       paymentProofs,

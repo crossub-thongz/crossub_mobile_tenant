@@ -699,6 +699,9 @@ export function toTenantRentReviews(
           rentIncreaseOn: asString(rawNoticeTerms.rentIncreaseOn),
           newLeaseStart: asString(rawNoticeTerms.newLeaseStart),
           noticePdfAvailable: rawNoticeTerms.noticePdfAvailable === true,
+          leaseAgreementPdfAvailable: rawNoticeTerms.leaseAgreementPdfAvailable === true,
+          leaseAgreementSigned: rawNoticeTerms.leaseAgreementSigned === true,
+          requiresLeaseAgreementSign: rawNoticeTerms.requiresLeaseAgreementSign === true,
         }
       : null;
     return {
@@ -727,8 +730,26 @@ export function toTenantRentReviews(
         body: asString(email.body) ?? '',
         from: asString(email.from) ?? 'Managing Agent',
         to: asString(email.to) ?? 'Tenant',
+        fromEmail: asString(email.fromEmail) ?? undefined,
+        toEmail: asString(email.toEmail) ?? undefined,
         sentAt: asString(email.sentAt) ?? createdAt,
         kind: email.kind === 'reminder' ? ('reminder' as const) : ('notice' as const),
+        attachments: Array.isArray(email.attachments)
+          ? email.attachments
+              .map((attachment) => {
+                if (!attachment || typeof attachment !== 'object') return null;
+                const record = attachment as Record<string, unknown>;
+                const name = asString(record.name);
+                const url = asString(record.url);
+                if (!name || !url) return null;
+                return {
+                  name,
+                  url,
+                  mimeType: asString(record.mimeType) ?? 'application/octet-stream',
+                };
+              })
+              .filter((attachment): attachment is NonNullable<typeof attachment> => attachment != null)
+          : undefined,
       })),
     };
   });

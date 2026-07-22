@@ -7,7 +7,7 @@ import {
   EmailPreviewDialog,
   type EmailPreviewContent,
 } from '@/components/tenant/email-preview-dialog';
-import { tenantRentReviewNoticePdfUrl } from '@/lib/crossub-api/tenant-account-client';
+import { resolveTenantRentReviewAttachmentUrl } from '@/lib/crossub-api/tenant-account-client';
 import type { RentReviewCase, RentReviewEmail } from '@/lib/types';
 import { formatDateTime } from '@/lib/utils';
 
@@ -15,25 +15,31 @@ function emailKindLabel(kind: RentReviewEmail['kind']): string {
   return kind === 'notice' ? 'Formal notice' : 'Automated reminder';
 }
 
-function toPreviewContent(email: RentReviewEmail, review: RentReviewCase): EmailPreviewContent {
-  const attachments =
-    email.kind === 'notice' && review.noticeTerms?.noticePdfAvailable
-      ? [
-          {
-            name: 'NSW-Fair-Trading-Notice.pdf',
-            url: tenantRentReviewNoticePdfUrl(review.id),
-          },
-        ]
-      : undefined;
+function formatEmailParty(name: string, email?: string): string {
+  const trimmedName = name.trim();
+  const trimmedEmail = email?.trim();
+  if (trimmedEmail && trimmedEmail.includes('@')) {
+    if (trimmedName && trimmedName.toLowerCase() !== trimmedEmail.toLowerCase()) {
+      return `${trimmedName} (${trimmedEmail})`;
+    }
+    return trimmedEmail;
+  }
+  return trimmedName || '—';
+}
 
+function toPreviewContent(email: RentReviewEmail): EmailPreviewContent {
   return {
     subject: email.subject,
     body: email.body,
-    from: email.from,
-    to: email.to,
+    from: formatEmailParty(email.from, email.fromEmail),
+    to: formatEmailParty(email.to, email.toEmail),
     sentAt: email.sentAt,
     kindLabel: emailKindLabel(email.kind),
-    attachments,
+    attachments: email.attachments?.map((attachment) => ({
+      name: attachment.name,
+      url: resolveTenantRentReviewAttachmentUrl(attachment.url),
+      mimeType: attachment.mimeType,
+    })),
   };
 }
 
@@ -91,7 +97,7 @@ export function RentReviewEmailsSection({ review }: { review: RentReviewCase }) 
       </section>
 
       <EmailPreviewDialog
-        email={selected ? toPreviewContent(selected, review) : null}
+        email={selected ? toPreviewContent(selected) : null}
         open={selected != null}
         onOpenChange={(open) => {
           if (!open) setSelected(null);

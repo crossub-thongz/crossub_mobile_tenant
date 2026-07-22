@@ -11,6 +11,25 @@ export function tenantRentReviewNoticePdfUrl(reviewId: string): string {
   return `${API_BASE}/tenant/rent-reviews/${reviewId}/notice-of-rent-increase.pdf`;
 }
 
+/** Fixed-term residential tenancy agreement PDF (tenant session required). */
+export function tenantRentReviewLeaseAgreementPdfUrl(reviewId: string): string {
+  return `${API_BASE}/tenant/rent-reviews/${reviewId}/residential-tenancy-agreement.pdf`;
+}
+
+/** CROSSUB notice of rent review summary for a dispatched rent review. */
+export function tenantRentReviewNoticeOfRentReviewUrl(reviewId: string): string {
+  return `${API_BASE}/tenant/rent-reviews/${reviewId}/notice-of-rent-review.html`;
+}
+
+export function resolveTenantRentReviewAttachmentUrl(url: string): string {
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith('/api/v1/')) {
+    const base = process.env.NEXT_PUBLIC_API_URL ?? '/api';
+    return `${base}${url.slice('/api'.length)}`;
+  }
+  return url;
+}
+
 export type TenantTenancy = components['schemas']['TenantTenancyResponseDto'];
 export type TenantLedgerEntry = components['schemas']['TenantLedgerEntryResponseDto'];
 export type TenantProperty = components['schemas']['TenantPropertyResponseDto'];
@@ -295,6 +314,22 @@ export async function submitTenantRentReviewResponse(
   });
   if (error || !data) throw new Error('Failed to submit rent review response');
   return data;
+}
+
+/** Virtually sign the residential tenancy agreement before accepting a fixed-term increase. */
+export async function signTenantRentReviewLeaseAgreement(
+  reviewId: string,
+): Promise<TenantRentReview> {
+  const res = await fetch(
+    `${API_BASE}/tenant/rent-reviews/${reviewId}/sign-lease-agreement`,
+    {
+      method: 'POST',
+      credentials: 'include',
+      headers: { Accept: 'application/json' },
+    },
+  );
+  if (!res.ok) throw new Error('Failed to sign lease agreement');
+  return (await res.json()) as TenantRentReview;
 }
 
 /** Agent-opened end-leasing cases on the tenant's leased property (`GET /api/v1/tenant/vacating-cases`). */

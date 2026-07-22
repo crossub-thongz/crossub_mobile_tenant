@@ -18,7 +18,7 @@ import { formatCurrency, formatDateTime } from '@/lib/utils';
 export default function RentReviewDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { rentReviews, respondRentReview, notifications, markNotificationRead } =
+  const { rentReviews, respondRentReview, signLeaseAgreement, notifications, markNotificationRead } =
     useTenantData();
   const review = rentReviews.find((r) => r.id === id);
   const [busy, setBusy] = useState(false);
@@ -89,6 +89,11 @@ export default function RentReviewDetailPage() {
           <RentReviewResponsePanel
             review={review}
             busy={busy}
+            onSignLeaseAgreement={
+              review.noticeTerms?.leaseAgreementPdfAvailable
+                ? () => signLeaseAgreement(review.id)
+                : undefined
+            }
             onAccept={async () => {
               setBusy(true);
               try {

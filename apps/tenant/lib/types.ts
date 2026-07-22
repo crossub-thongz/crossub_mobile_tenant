@@ -364,13 +364,22 @@ export interface RentReceipt {
   pdfAvailable: boolean;
 }
 
+export interface RentReviewEmailAttachment {
+  name: string;
+  mimeType: string;
+  url: string;
+}
+
 export interface RentReviewEmail {
   subject: string;
   body: string;
   from: string;
   to: string;
+  fromEmail?: string;
+  toEmail?: string;
   sentAt: string;
   kind: 'notice' | 'reminder';
+  attachments?: RentReviewEmailAttachment[];
 }
 
 export interface RentReviewNoticeTerms {
@@ -380,6 +389,9 @@ export interface RentReviewNoticeTerms {
   rentIncreaseOn: string | null;
   newLeaseStart: string | null;
   noticePdfAvailable: boolean;
+  leaseAgreementPdfAvailable?: boolean;
+  leaseAgreementSigned?: boolean;
+  requiresLeaseAgreementSign?: boolean;
 }
 
 export interface RentReviewCase {
