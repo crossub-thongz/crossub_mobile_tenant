@@ -2,6 +2,7 @@ import type { components } from '@crossub-thongz/api-contract';
 
 import { fileToBase64 } from '@/lib/utils';
 
+import { fetchAuthenticatedBlob } from '@/lib/api';
 import { crossub } from './client';
 
 const API_BASE = `${process.env.NEXT_PUBLIC_API_URL ?? '/api'}/v1`;
@@ -19,6 +20,26 @@ export function tenantRentReviewLeaseAgreementPdfUrl(
   const base = `${API_BASE}/tenant/rent-reviews/${reviewId}/residential-tenancy-agreement.pdf`;
   if (options?.cacheBuster == null) return base;
   return `${base}?v=${encodeURIComponent(String(options.cacheBuster))}`;
+}
+
+/** Download the lease agreement PDF with the tenant session (handles refresh on 401). */
+export async function downloadTenantRentReviewLeaseAgreementPdf(
+  reviewId: string,
+  fileName: string,
+  options?: { cacheBuster?: string | number },
+): Promise<void> {
+  const blob = await fetchAuthenticatedBlob(
+    tenantRentReviewLeaseAgreementPdfUrl(reviewId, options),
+  );
+  const url = URL.createObjectURL(blob);
+  try {
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = fileName;
+    anchor.click();
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 /** CROSSUB notice of rent review summary for a dispatched rent review. */

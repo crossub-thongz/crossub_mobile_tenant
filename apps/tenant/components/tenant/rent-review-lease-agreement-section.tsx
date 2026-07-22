@@ -5,10 +5,11 @@ import { CheckCircle2, Download, FileText, PenLine } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
-import { tenantRentReviewLeaseAgreementPdfUrl } from '@/lib/crossub-api/tenant-account-client';
+import { tenantRentReviewLeaseAgreementPdfUrl, downloadTenantRentReviewLeaseAgreementPdf } from '@/lib/crossub-api/tenant-account-client';
 import type { RentReviewCase } from '@/lib/types';
 
 import { RentReviewLeaseAgreementPdfDialog } from './rent-review-lease-agreement-pdf-dialog';
+import { RentReviewResponsePanel } from './rent-review-response-panel';
 
 function isFixedTermLeaseReview(review: RentReviewCase): boolean {
   const terms = review.noticeTerms;
@@ -47,14 +48,21 @@ export function RentReviewLeaseAgreementSection({
   review,
   busy = false,
   onSignLeaseAgreement,
+  onAccept,
+  onReject,
+  onCounter,
 }: {
   review: RentReviewCase;
   busy?: boolean;
   onSignLeaseAgreement?: () => Promise<void>;
+  onAccept?: () => Promise<void>;
+  onReject?: (moveOutDate: string) => Promise<void>;
+  onCounter?: (amount: number) => Promise<void>;
 }) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [signedOpen, setSignedOpen] = useState(false);
   const [signing, setSigning] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [signedRevision, setSignedRevision] = useState<number | null>(null);
 
   if (!isFixedTermLeaseReview(review)) return null;
@@ -69,6 +77,27 @@ export function RentReviewLeaseAgreementSection({
   const signedPdfUrl = tenantRentReviewLeaseAgreementPdfUrl(review.id, {
     cacheBuster: signedRevision ?? 'signed',
   });
+  const showResponse =
+    review.status === 'pending' &&
+    Boolean(onAccept && onReject && onCounter);
+  const responseStep = leaseSigned ? 4 : 3;
+
+  const handleDownload = async (signed: boolean) => {
+    setDownloading(true);
+    try {
+      await downloadTenantRentReviewLeaseAgreementPdf(
+        review.id,
+        signed
+          ? `lease-agreement-signed-${reviewShortId}.pdf`
+          : `lease-agreement-presigned-${reviewShortId}.pdf`,
+        signed ? { cacheBuster: signedRevision ?? 'signed' } : undefined,
+      );
+    } catch {
+      toast.error('Could not download the agreement');
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const handleSign = async () => {
     if (!onSignLeaseAgreement) return;
@@ -124,16 +153,15 @@ export function RentReviewLeaseAgreementSection({
                 <FileText className="size-4" />
                 Preview agreement
               </Button>
-              <Button asChild variant="outline" className="w-full gap-2 sm:flex-1" disabled={busy}>
-                <a
-                  href={unsignedPdfUrl}
-                  download={`lease-agreement-presigned-${reviewShortId}.pdf`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Download className="size-4" />
-                  Download
-                </a>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full gap-2 sm:flex-1"
+                disabled={busy || downloading}
+                onClick={() => void handleDownload(false)}
+              >
+                <Download className="size-4" />
+                Download
               </Button>
             </div>
           ) : null}
@@ -200,18 +228,33 @@ export function RentReviewLeaseAgreementSection({
                 <FileText className="size-4" />
                 View signed agreement
               </Button>
-              <Button asChild variant="outline" className="w-full gap-2 sm:flex-1" disabled={busy}>
-                <a
-                  href={signedPdfUrl}
-                  download={`lease-agreement-signed-${reviewShortId}.pdf`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Download className="size-4" />
-                  Download signed PDF
-                </a>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full gap-2 border-emerald-500/40 sm:flex-1"
+                disabled={busy || downloading}
+                onClick={() => void handleDownload(true)}
+              >
+                <Download className="size-4" />
+                Download signed PDF
               </Button>
             </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showResponse ? (
+        <div className="flex gap-3 rounded-xl border border-dashed border-primary/40 bg-background/80 p-3">
+          <StepBadge step={responseStep} active={leaseSigned || !terms?.requiresLeaseAgreementSign} />
+          <div className="min-w-0 flex-1">
+            <RentReviewResponsePanel
+              review={review}
+              busy={busy}
+              embedded
+              onAccept={onAccept!}
+              onReject={onReject!}
+              onCounter={onCounter!}
+            />
           </div>
         </div>
       ) : null}

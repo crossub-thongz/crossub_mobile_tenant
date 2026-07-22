@@ -8,7 +8,7 @@ import {
   useState,
 } from 'react';
 
-import { api, ApiError } from '@/lib/api';
+import { api, ApiError, clearSessionAndRedirectToLogin } from '@/lib/api';
 import type { AuthUser } from '@/lib/auth-types';
 import {
   clearForeignPortalSession,
@@ -56,6 +56,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (err instanceof ApiError && err.status === 401) {
         setUser(null);
         setStatus('guest');
+        if (
+          typeof window !== 'undefined' &&
+          !isPublicRoute(window.location.pathname)
+        ) {
+          await clearSessionAndRedirectToLogin();
+        }
         return;
       }
       setUser(null);

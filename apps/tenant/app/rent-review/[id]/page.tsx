@@ -6,6 +6,7 @@ import { Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { TenantShell } from '@/components/layout/tenant-shell';
+import { useAuth } from '@/components/providers/auth-provider';
 import { InfoCard } from '@/components/tenant/info-card';
 import { RentReviewEmailsSection } from '@/components/tenant/rent-review-emails-section';
 import { RentReviewLeaseAgreementSection } from '@/components/tenant/rent-review-lease-agreement-section';
@@ -19,6 +20,7 @@ import { formatCurrency, formatDateTime } from '@/lib/utils';
 export default function RentReviewDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const { status } = useAuth();
   const { rentReviews, respondRentReview, signLeaseAgreement, notifications, markNotificationRead } =
     useTenantData();
   const review = rentReviews.find((r) => r.id === id);
@@ -30,6 +32,24 @@ export default function RentReviewDetailPage() {
     );
     if (match) markNotificationRead(match.id);
   }, [id, notifications, markNotificationRead]);
+
+  if (status === 'loading') {
+    return (
+      <TenantShell title="Rent review notice" backHref={ROUTES.RENT_REVIEW}>
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      </TenantShell>
+    );
+  }
+
+  if (status !== 'authed') {
+    return (
+      <TenantShell title="Rent review notice" backHref={ROUTES.LOGIN}>
+        <p className="text-sm text-muted-foreground">
+          Sign in to view this rent review notice and lease agreement.
+        </p>
+      </TenantShell>
+    );
+  }
 
   if (!review) {
     return (
@@ -43,6 +63,56 @@ export default function RentReviewDetailPage() {
     review.noticeTerms?.leaseAgreementPdfAvailable ||
     review.noticeTerms?.requiresLeaseAgreementSign;
   const signLease = leaseAgreementEnabled ? () => signLeaseAgreement(review.id) : undefined;
+
+  const handleAccept = async () => {
+    setBusy(true);
+    try {
+      await respondRentReview(review.id, 'accept');
+      toast.success('Rent increase accepted', {
+        description: 'Your property manager has been notified.',
+      });
+    } catch {
+      toast.error('Could not record acceptance');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleReject = async (moveOutDate: string) => {
+    setBusy(true);
+    try {
+      await respondRentReview(review.id, 'reject', { moveOutDate });
+      toast.success('Rejection recorded', {
+        description: 'Your property manager will open an end-leasing case',
+      });
+      router.push(ROUTES.VACATING);
+    } catch {
+      toast.error('Could not record rejection');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleCounter = async (amount: number) => {
+    setBusy(true);
+    try {
+      await respondRentReview(review.id, 'counter', { amount });
+      toast.success('Counter-offer submitted');
+    } catch {
+      toast.error('Could not submit counter offer');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const responseHandlers =
+    review.status === 'pending'
+      ? {
+          onAccept: handleAccept,
+          onReject: handleReject,
+          onCounter: handleCounter,
+        }
+      : undefined;
 
   return (
     <TenantShell title="Notice of rent review" backHref={ROUTES.RENT_REVIEW}>
@@ -62,10 +132,11 @@ export default function RentReviewDetailPage() {
             review={review}
             busy={busy}
             onSignLeaseAgreement={signLease}
+            {...responseHandlers}
           />
+        ) : responseHandlers ? (
+          <RentReviewResponsePanel review={review} busy={busy} {...responseHandlers} />
         ) : null}
-
-        <RentReviewEmailsSection review={review} />
 
         {review.status === 'countered' ? (
           <div className="flex items-start gap-3 rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4">
@@ -99,50 +170,7 @@ export default function RentReviewDetailPage() {
           </section>
         ) : null}
 
-        {review.status === 'pending' ? (
-          <RentReviewResponsePanel
-            review={review}
-            busy={busy}
-            onAccept={async () => {
-              setBusy(true);
-              try {
-                await respondRentReview(review.id, 'accept');
-                toast.success('Rent increase accepted', {
-                  description: 'Your property manager has been notified.',
-                });
-              } catch {
-                toast.error('Could not record acceptance');
-              } finally {
-                setBusy(false);
-              }
-            }}
-            onReject={async (moveOutDate) => {
-              setBusy(true);
-              try {
-                await respondRentReview(review.id, 'reject', { moveOutDate });
-                toast.success('Rejection recorded', {
-                  description: 'Your property manager will open an end-leasing case',
-                });
-                router.push(ROUTES.VACATING);
-              } catch {
-                toast.error('Could not record rejection');
-              } finally {
-                setBusy(false);
-              }
-            }}
-            onCounter={async (amount) => {
-              setBusy(true);
-              try {
-                await respondRentReview(review.id, 'counter', { amount });
-                toast.success('Counter offer submitted');
-              } catch {
-                toast.error('Could not submit counter offer');
-              } finally {
-                setBusy(false);
-              }
-            }}
-          />
-        ) : null}
+        <RentReviewEmailsSection review={review} />
       </div>
     </TenantShell>
   );

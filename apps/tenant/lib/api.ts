@@ -33,7 +33,7 @@ const tryRefreshSession = (): Promise<boolean> => {
 };
 
 /** Clears stale httpOnly cookies so route middleware does not bounce /login away. */
-const clearSessionAndRedirectToLogin = async (): Promise<never> => {
+export const clearSessionAndRedirectToLogin = async (): Promise<never> => {
   if (typeof window === 'undefined') {
     throw new ApiError(401, 'Session expired');
   }
@@ -114,3 +114,40 @@ export const api = {
     request<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
   delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
 };
+
+/** Same-origin fetch for PDFs and other binary responses (iframe `src` cannot refresh sessions). */
+export async function fetchAuthenticatedBlob(url: string): Promise<Blob> {
+  const absolute =
+    url.startsWith('http://') || url.startsWith('https://')
+      ? url
+      : `${API_URL}${url.startsWith('/') ? url : `/${url}`}`;
+
+  const load = () =>
+    fetch(absolute, {
+      credentials: 'include',
+      cache: 'no-store',
+    });
+
+  let res = await load();
+  if (res.status === 401 && typeof window !== 'undefined') {
+    if (await tryRefreshSession()) {
+      res = await load();
+    } else {
+      return clearSessionAndRedirectToLogin();
+    }
+  }
+
+  if (!res.ok) {
+    const body = await res.text();
+    let message = `Failed to load document (${res.status})`;
+    try {
+      const parsed = JSON.parse(body) as { message?: string };
+      if (parsed.message) message = parsed.message;
+    } catch {
+      /* non-JSON error body */
+    }
+    throw new ApiError(res.status, message);
+  }
+
+  return res.blob();
+}

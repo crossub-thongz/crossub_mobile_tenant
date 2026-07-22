@@ -14,12 +14,15 @@ export function RentReviewResponsePanel({
   onAccept,
   onReject,
   onCounter,
+  embedded = false,
 }: {
   review: RentReviewCase;
   busy: boolean;
   onAccept: () => Promise<void>;
   onReject: (moveOutDate: string) => Promise<void>;
   onCounter: (amount: number) => Promise<void>;
+  /** Render inside the lease agreement card (no outer border). */
+  embedded?: boolean;
 }) {
   const [moveOutDate, setMoveOutDate] = useState(review.moveOutDate ?? '');
   const [counterWeekly, setCounterWeekly] = useState('');
@@ -30,17 +33,30 @@ export function RentReviewResponsePanel({
   const leaseSigned = leaseTerms?.leaseAgreementSigned === true;
   const canAccept = !mustSignBeforeAccept || leaseSigned;
 
+  const helperText =
+    mustSignBeforeAccept && !leaseSigned
+      ? 'Review and sign the lease agreement above before accepting the rent increase.'
+      : mustSignBeforeAccept && leaseSigned
+        ? 'Your signed agreement is ready — accept the rent increase to confirm.'
+        : 'Submit your response to the proposed rent increase. Your property manager will be notified immediately.';
+
   return (
-    <div className="space-y-3 rounded-2xl border border-primary/30 bg-primary/5 p-4">
+    <div
+      className={
+        embedded ? 'space-y-3' : 'space-y-3 rounded-2xl border border-primary/30 bg-primary/5 p-4'
+      }
+    >
       <div>
-        <p className="text-primary text-xs font-semibold uppercase">Your response</p>
-        <p className="text-muted-foreground mt-1 text-xs">
-          {mustSignBeforeAccept && !leaseSigned
-            ? 'Review and sign the lease agreement above before accepting the rent increase.'
-            : mustSignBeforeAccept && leaseSigned
-              ? 'Your signed agreement is ready — accept the rent increase to confirm.'
-              : 'Submit your response to the proposed rent increase. Your property manager will be notified immediately.'}
+        <p
+          className={
+            embedded
+              ? 'text-sm font-medium'
+              : 'text-primary text-xs font-semibold uppercase'
+          }
+        >
+          Your response
         </p>
+        <p className="text-muted-foreground mt-1 text-xs">{helperText}</p>
       </div>
 
       {canAccept ? (
