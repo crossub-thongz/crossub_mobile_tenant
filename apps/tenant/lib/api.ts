@@ -7,7 +7,7 @@ export class ApiError extends Error {
     public status: number,
     public body: unknown,
   ) {
-    super(`API ${status}`);
+    super(typeof body === 'string' && body.trim() ? body : `API ${status}`);
   }
 }
 
@@ -115,12 +115,17 @@ export const api = {
   delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
 };
 
+/** Resolve same-origin API paths for authenticated binary fetches. */
+function resolveAuthenticatedFetchUrl(url: string): string {
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith('/api/')) return url;
+  if (url.startsWith('/v1/')) return `${API_URL}${url}`;
+  return `${API_URL}${url.startsWith('/') ? url : `/${url}`}`;
+}
+
 /** Same-origin fetch for PDFs and other binary responses (iframe `src` cannot refresh sessions). */
 export async function fetchAuthenticatedBlob(url: string): Promise<Blob> {
-  const absolute =
-    url.startsWith('http://') || url.startsWith('https://')
-      ? url
-      : `${API_URL}${url.startsWith('/') ? url : `/${url}`}`;
+  const absolute = resolveAuthenticatedFetchUrl(url);
 
   const load = () =>
     fetch(absolute, {
