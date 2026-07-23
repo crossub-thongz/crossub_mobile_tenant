@@ -254,6 +254,8 @@ export interface MaintenanceRequest {
   completionEvidenceUrls: string[];
   completionEvidenceUploaded: boolean;
   completionApprovalPending: boolean;
+  scheduleApprovalPending?: boolean;
+  scheduleProposedTimes?: string | null;
   tenantCompletionApproved: boolean;
   buildingName?: string | null;
   strataPlanNumber?: string | null;

@@ -272,6 +272,8 @@ export function toTenantMaintenanceRequests(
       completionEvidenceUrls,
       completionEvidenceUploaded: s.completionEvidenceUploaded ?? completionEvidenceUrls.length > 0,
       completionApprovalPending: s.completionApprovalPending ?? false,
+      scheduleApprovalPending: s.scheduleApprovalPending ?? false,
+      scheduleProposedTimes: asString(s.scheduleProposedTimes) ?? null,
       tenantCompletionApproved: s.tenantCompletionApproved ?? false,
       buildingName: asString(s.buildingName),
       strataPlanNumber: asString(s.strataPlanNumber),

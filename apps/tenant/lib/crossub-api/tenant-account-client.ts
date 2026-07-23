@@ -510,6 +510,27 @@ export async function approveMaintenanceCompletion(
   return data;
 }
 
+/** Approve or decline contractor-proposed visit times (`PATCH .../schedule-response`). */
+export async function respondToMaintenanceSchedule(
+  requestId: string,
+  body: { decision: 'approved' | 'declined'; declineReason?: string },
+): Promise<TenantMaintenanceRequestSummary> {
+  const base = `${process.env.NEXT_PUBLIC_API_URL ?? '/api'}/v1`;
+  const res = await fetch(
+    `${base}/tenant/maintenance-requests/${requestId}/schedule-response`,
+    {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+  );
+  if (!res.ok) {
+    throw new Error('Failed to record schedule response');
+  }
+  return res.json() as Promise<TenantMaintenanceRequestSummary>;
+}
+
 /** Raise a maintenance request (`POST /api/v1/tenant/maintenance-requests`). */
 export async function submitMaintenanceRequest(
   body: CreateTenantMaintenanceRequest,
