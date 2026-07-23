@@ -522,11 +522,23 @@ export async function respondToMaintenanceSchedule(
       method: 'PATCH',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        requestId,
+        decision: body.decision,
+        ...(body.declineReason?.trim() ? { declineReason: body.declineReason.trim() } : {}),
+      }),
     },
   );
   if (!res.ok) {
-    throw new Error('Failed to record schedule response');
+    let detail = '';
+    try {
+      const body = (await res.json()) as { message?: string | string[] };
+      const msg = body?.message;
+      detail = Array.isArray(msg) ? msg.join(', ') : typeof msg === 'string' ? msg : '';
+    } catch {
+      // ignore non-JSON error bodies
+    }
+    throw new Error(detail.trim() || 'Failed to record schedule response');
   }
   return res.json() as Promise<TenantMaintenanceRequestSummary>;
 }
