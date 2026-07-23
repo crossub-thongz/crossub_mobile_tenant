@@ -1418,6 +1418,90 @@
         ]
       }
     },
+    "/tenant/routine-inspections/{id}/start-self": {
+      "post": {
+        "operationId": "TenantAccountController_startRoutineSelfInspection",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantRoutineInspectionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Start a tenant self-inspection (spawns checklist areas when needed).",
+        "tags": [
+          "tenant"
+        ]
+      }
+    },
+    "/tenant/routine-inspections/{id}/submit-self": {
+      "post": {
+        "operationId": "TenantAccountController_submitRoutineSelfInspection",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitTenantRoutineSelfInspectionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantRoutineInspectionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Submit a completed tenant self-inspection for agent review.",
+        "tags": [
+          "tenant"
+        ]
+      }
+    },
     "/tenant/rent-reviews": {
       "get": {
         "description": "Rent reviews on the property the tenant leases (read via property scope), newest first, with the proposed/current weekly rent, effective date, and workflow state. Only reviews the agent has dispatched to the tenant (or post-response history) are returned.",
@@ -1549,6 +1633,135 @@
           }
         ],
         "summary": "Download the NSW Notice of Rent Increase PDF for a dispatched rent review.",
+        "tags": [
+          "tenant"
+        ]
+      }
+    },
+    "/tenant/rent-reviews/{reviewId}/notice-of-rent-review.html": {
+      "get": {
+        "operationId": "TenantAccountController_getRentReviewNoticeOfRentReviewHtml",
+        "parameters": [
+          {
+            "name": "reviewId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller is not a TENANT, or has no tenant profile anchor."
+          },
+          "404": {
+            "description": "Rent review not found or formal notice has not been dispatched."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Download the CROSSUB notice of rent review summary for a dispatched rent review.",
+        "tags": [
+          "tenant"
+        ]
+      }
+    },
+    "/tenant/rent-reviews/{reviewId}/sign-lease-agreement": {
+      "post": {
+        "description": "Required before the tenant can accept a fixed-term rent increase. The system stamps the tenant signature block on the agreement PDF.",
+        "operationId": "TenantAccountController_signRentReviewLeaseAgreement",
+        "parameters": [
+          {
+            "name": "reviewId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantRentReviewResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Not a fixed-term renewal or agreement not yet available."
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller is not a TENANT, or the review is not on their leased property."
+          },
+          "404": {
+            "description": "Rent review not found."
+          },
+          "409": {
+            "description": "The rent review is not awaiting tenant response, or the agreement is unavailable."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Virtually sign the residential tenancy agreement for a fixed-term rent review.",
+        "tags": [
+          "tenant"
+        ]
+      }
+    },
+    "/tenant/rent-reviews/{reviewId}/residential-tenancy-agreement.pdf": {
+      "get": {
+        "description": "Landlord and managing agent blocks are pre-filled and virtually signed. Tenant signature appears after sign-lease-agreement.",
+        "operationId": "TenantAccountController_getRentReviewLeaseAgreementPdf",
+        "parameters": [
+          {
+            "name": "reviewId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller is not a TENANT, or has no tenant profile anchor."
+          },
+          "404": {
+            "description": "Rent review not found or formal notice has not been dispatched."
+          },
+          "409": {
+            "description": "Residential tenancy agreement is not yet available."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Download the residential tenancy agreement PDF for a fixed-term rent review.",
         "tags": [
           "tenant"
         ]
@@ -2012,6 +2225,55 @@
           }
         ],
         "summary": "Reply to one of the tenant’s existing message threads.",
+        "tags": [
+          "tenant"
+        ]
+      }
+    },
+    "/tenant/messages/{threadId}/read": {
+      "patch": {
+        "operationId": "TenantAccountController_markMessageThreadRead",
+        "parameters": [
+          {
+            "name": "threadId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantMessageThreadResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "threadId is not a valid UUID."
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller is not a TENANT, or has no tenant profile anchor."
+          },
+          "404": {
+            "description": "threadId does not exist or is not a thread this tenant can see."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark one of the tenant’s message threads as read.",
         "tags": [
           "tenant"
         ]
@@ -7753,6 +8015,104 @@
         ]
       }
     },
+    "/agent/properties/{propertyId}/workflows/rent-review/{reviewId}/notice-payable-from": {
+      "patch": {
+        "operationId": "AgentPortalController_setRentReviewNoticePayableFrom",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "reviewId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateNoticePayableFromDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Set the NSW notice payable-from date (manual override).",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/agent/properties/{propertyId}/workflows/rent-review/{reviewId}/lease-agreement-terms": {
+      "patch": {
+        "operationId": "AgentPortalController_setRentReviewLeaseAgreementTerms",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "reviewId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateLeaseAgreementTermsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Set optional NSW RTA page-15 clauses before sending the lease agreement.",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
     "/agent/properties/{propertyId}/workflows/rent-review/{reviewId}/approve-ai": {
       "patch": {
         "operationId": "AgentPortalController_approveRentReviewAi",
@@ -7919,6 +8279,117 @@
         ]
       }
     },
+    "/agent/properties/{propertyId}/workflows/rent-review/{reviewId}/research-report.html": {
+      "get": {
+        "operationId": "AgentPortalController_downloadRentReviewResearchReport",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "reviewId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Preview the CROSSUB rent review research report (HTML).",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/agent/properties/{propertyId}/workflows/rent-review/{reviewId}/notice-of-rent-increase.pdf": {
+      "get": {
+        "operationId": "AgentPortalController_downloadRentReviewNoticePdf",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "reviewId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Preview or download the NSW notice of rent increase PDF.",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/agent/properties/{propertyId}/workflows/rent-review/{reviewId}/lease-extension-agreement.pdf": {
+      "get": {
+        "operationId": "AgentPortalController_downloadRentReviewLeaseExtensionAgreementPdf",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "reviewId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Preview or download the NSW residential tenancy agreement PDF.",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
     "/agent/properties/{propertyId}/workflows/rent-review/{reviewId}/communications/{auditId}/attachments/{filename}": {
       "get": {
         "operationId": "AgentPortalController_downloadRentReviewEmailAttachment",
@@ -8023,6 +8494,100 @@
         ]
       }
     },
+    "/agent/properties/{propertyId}/workflows/accounting/rent-reconciliation": {
+      "post": {
+        "operationId": "AgentPortalController_recordRentReconciliation",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentRecordRentReconciliationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentWorkflowCreateResultDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Record a manual rent reconciliation on the property ledger.",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/agent/properties/{propertyId}/workflows/accounting/arrears": {
+      "post": {
+        "operationId": "AgentPortalController_addPropertyArrears",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentCreateTribunalRentChasingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentWorkflowCreateResultDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Record rent, bill, or bond arrears for a managed property.",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
     "/agent/properties/{propertyId}/workflows/tribunal/rent-chasing": {
       "post": {
         "operationId": "AgentPortalController_createTribunalRentChasing",
@@ -8065,6 +8630,43 @@
           }
         ],
         "summary": "Open a Rent Chasing tribunal case (rent / bill / bond arrears) and sync profile fields.",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/agent/properties/{propertyId}/workflows/tribunal/rent-chasing/prefill": {
+      "get": {
+        "operationId": "AgentPortalController_getTribunalRentChasingPrefill",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentTribunalRentChasingPrefillDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Accounting arrears available for a Rent Chasing tribunal case on this property.",
         "tags": [
           "agent"
         ]
@@ -11473,6 +12075,14 @@
             "example": "Benchtop has minor wear."
           },
           "photos": {
+            "description": "Photos from the outgoing / current inspection.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "referencePhotos": {
+            "description": "Photos from the latest completed ingoing inspection for the same section (side-by-side baseline).",
             "type": "array",
             "items": {
               "type": "string"
@@ -11492,6 +12102,7 @@
           "room",
           "description",
           "photos",
+          "referencePhotos",
           "disputed",
           "disputeComment"
         ]
@@ -11587,6 +12198,44 @@
           "description"
         ]
       },
+      "TenantRoutineInspectionSectionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "room": {
+            "type": "string",
+            "example": "Kitchen · Walls / Picture Hooks"
+          },
+          "description": {
+            "type": "string",
+            "example": "No issues noted."
+          },
+          "photos": {
+            "description": "Photos from the routine inspection.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "referencePhotos": {
+            "description": "Photos from the latest completed ingoing inspection for the same section.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "room",
+          "description",
+          "photos",
+          "referencePhotos"
+        ]
+      },
       "TenantRoutineInspectionResponseDto": {
         "type": "object",
         "properties": {
@@ -11642,6 +12291,12 @@
           "tenantActionRequired": {
             "type": "boolean",
             "description": "Whether the tenant must take action (e.g. self-inspection submission)."
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenantRoutineInspectionSectionDto"
+            }
           }
         },
         "required": [
@@ -11655,6 +12310,44 @@
           "reportUrl",
           "status",
           "tenantActionRequired"
+        ]
+      },
+      "SubmitTenantRoutineSelfInspectionSectionDto": {
+        "type": "object",
+        "properties": {
+          "areaId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "comment": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "photoUrls": {
+            "description": "Hosted photo URLs staged via tenant upload.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "areaId",
+          "photoUrls"
+        ]
+      },
+      "SubmitTenantRoutineSelfInspectionDto": {
+        "type": "object",
+        "properties": {
+          "sections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubmitTenantRoutineSelfInspectionSectionDto"
+            }
+          }
+        },
+        "required": [
+          "sections"
         ]
       },
       "TenantRentReviewNoticeTermsDto": {
@@ -11693,6 +12386,18 @@
           "noticePdfAvailable": {
             "type": "boolean",
             "description": "True when the formal notice PDF can be downloaded."
+          },
+          "leaseAgreementPdfAvailable": {
+            "type": "boolean",
+            "description": "True when the fixed-term residential tenancy agreement PDF can be viewed (after notice dispatch)."
+          },
+          "leaseAgreementSigned": {
+            "type": "boolean",
+            "description": "True when the tenant has virtually signed the residential tenancy agreement."
+          },
+          "requiresLeaseAgreementSign": {
+            "type": "boolean",
+            "description": "True when the tenant must sign the residential tenancy agreement before accepting the increase."
           }
         },
         "required": [
@@ -11701,7 +12406,32 @@
           "leaseTerm",
           "rentIncreaseOn",
           "newLeaseStart",
-          "noticePdfAvailable"
+          "noticePdfAvailable",
+          "leaseAgreementPdfAvailable",
+          "leaseAgreementSigned",
+          "requiresLeaseAgreementSign"
+        ]
+      },
+      "TenantRentReviewEmailAttachmentDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "notice-of-rent-increase-a1b2c3d4.pdf"
+          },
+          "mimeType": {
+            "type": "string",
+            "example": "application/pdf"
+          },
+          "url": {
+            "type": "string",
+            "example": "/api/v1/tenant/rent-reviews/{reviewId}/notice-of-rent-increase.pdf"
+          }
+        },
+        "required": [
+          "name",
+          "mimeType",
+          "url"
         ]
       },
       "TenantRentReviewEmailDto": {
@@ -11722,6 +12452,14 @@
             "type": "string",
             "example": "Jane Tenant"
           },
+          "fromEmail": {
+            "type": "string",
+            "example": "agent@property.com.au"
+          },
+          "toEmail": {
+            "type": "string",
+            "example": "tenant@example.com"
+          },
           "sentAt": {
             "type": "string",
             "format": "date-time"
@@ -11733,6 +12471,12 @@
               "reminder"
             ],
             "description": "Whether this is the formal notice or an automated reminder."
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenantRentReviewEmailAttachmentDto"
+            }
           }
         },
         "required": [
@@ -15485,7 +16229,7 @@
           },
           "referenceIngoing": {
             "nullable": true,
-            "description": "For OUTGOING jobs only: latest completed/published INGOING report for the same property (null when none).",
+            "description": "For OUTGOING and ROUTINE jobs: latest completed/published INGOING report for the same property (null when none).",
             "allOf": [
               {
                 "$ref": "#/components/schemas/InspectorReferenceIngoingDto"
@@ -16818,6 +17562,63 @@
           "createdAt"
         ]
       },
+      "AgentTribunalRentChasingPrefillDto": {
+        "type": "object",
+        "properties": {
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyAddress": {
+            "type": "string",
+            "example": "8 Crown Street, Rosebery NSW 2018"
+          },
+          "tenantName": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasAccountingArrears": {
+            "type": "boolean",
+            "description": "True when the property has open Accounting arrears (rent, invoice/bill, or bond)."
+          },
+          "arrears": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentTribunalArrearRowDto"
+            }
+          },
+          "rentArrears": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AgentTribunalRentArrearsDto"
+              }
+            ]
+          },
+          "billArrears": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentTribunalBillArrearsRowDto"
+            }
+          },
+          "bondArrears": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AgentTribunalBondArrearsDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "propertyId",
+          "propertyAddress",
+          "tenantName",
+          "hasAccountingArrears",
+          "arrears",
+          "billArrears"
+        ]
+      },
       "AgentUpdateTribunalRentChasingDto": {
         "type": "object",
         "properties": {
@@ -18096,6 +18897,14 @@
         "type": "object",
         "properties": {}
       },
+      "UpdateNoticePayableFromDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateLeaseAgreementTermsDto": {
+        "type": "object",
+        "properties": {}
+      },
       "SendRentReviewEmailDto": {
         "type": "object",
         "properties": {}
@@ -18103,6 +18912,50 @@
       "AgentCreateTerminationCaseDto": {
         "type": "object",
         "properties": {}
+      },
+      "AgentRecordRentReconciliationDto": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number",
+            "example": 450
+          },
+          "paymentDate": {
+            "type": "string",
+            "example": "2026-07-22"
+          },
+          "paymentMethod": {
+            "type": "string",
+            "enum": [
+              "cash",
+              "cheque",
+              "card",
+              "eft"
+            ]
+          },
+          "rentAllocation": {
+            "type": "number",
+            "example": 450
+          },
+          "bondAllocation": {
+            "type": "number",
+            "example": 0
+          },
+          "rentDescription": {
+            "type": "string"
+          },
+          "bondDescription": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "paymentDate",
+          "paymentMethod"
+        ]
       },
       "CancelAgentTerminationCaseDto": {
         "type": "object",
@@ -19088,6 +19941,16 @@
             "type": "number",
             "description": "Days in arrears (0 when not in arrears).",
             "example": 0
+          },
+          "arrearsOpenedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the oldest open arrears case was opened."
+          },
+          "arrearsKeyDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Rent paid-to or earliest bill due date for open arrears."
           }
         },
         "required": [
@@ -19189,6 +20052,12 @@
             "type": "number",
             "nullable": true,
             "description": "Calendar days overdue for bond (from agreement end, once vacated)."
+          },
+          "hearingDate": {
+            "type": "string",
+            "nullable": true,
+            "description": "Scheduled hearing date (ISO date), when set.",
+            "example": "2026-08-15"
           },
           "createdAt": {
             "type": "string",
@@ -19743,6 +20612,24 @@
             "type": "string",
             "format": "uuid",
             "description": "A managed property the thread is about. Omit for a general enquiry."
+          },
+          "caseType": {
+            "type": "string",
+            "enum": [
+              "PROPERTY",
+              "MAINTENANCE",
+              "INSPECTION",
+              "LEASING",
+              "RENT_REVIEW",
+              "TRIBUNAL",
+              "ACCOUNTING"
+            ],
+            "description": "Optional workflow case tag so staff can open the job in the admin portal from Communication Hub."
+          },
+          "caseId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The workflow case id paired with `caseType`."
           }
         },
         "required": [

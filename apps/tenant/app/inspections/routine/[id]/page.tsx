@@ -5,6 +5,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 import { TenantShell } from '@/components/layout/tenant-shell';
+import { RoutineSelfInspectionChecklist } from '@/components/tenant/routine-self-inspection-checklist';
 import { ReportSectionCard } from '@/components/tenant/report-section-card';
 import { StatusBadge } from '@/components/tenant/status-badge';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
@@ -82,6 +83,16 @@ export default function RoutineInspectionPage() {
     tenantConfirmed: false,
   }));
 
+  const showSelfChecklist =
+    inspection.flow === 'self' &&
+    needsRoutineInspectionAction(inspection) &&
+    inspection.status !== 'completed';
+
+  const showSubmittedSections =
+    inspection.flow === 'self' &&
+    !needsRoutineInspectionAction(inspection) &&
+    sections.length > 0;
+
   return (
     <TenantShell title="Routine inspection" backHref={backHref}>
       <p className="text-muted-foreground mb-2 text-sm">{inspection.propertyAddress}</p>
@@ -103,23 +114,36 @@ export default function RoutineInspectionPage() {
           Scheduled {formatDateTime(inspection.scheduledAt)}
         </p>
       )}
-      {needsRoutineInspectionAction(inspection) && (
-        <div className="mb-4 rounded-xl border border-amber-500/40 bg-amber-500/5 p-4 text-sm">
-          <p className="font-medium">Action required</p>
+
+      {inspection.flow === 'in_person' && needsRoutineInspectionAction(inspection) ? (
+        <div className="mb-4 rounded-xl border border-sky-500/40 bg-sky-500/5 p-4 text-sm">
+          <p className="font-medium">In-person visit scheduled</p>
           <p className="text-muted-foreground mt-1 text-xs">
-            {inspection.flow === 'self'
-              ? 'Complete your self-inspection checklist when you are ready.'
-              : 'Please be available for the scheduled in-person visit.'}
+            An inspector will attend at the scheduled time. Please ensure the property is
+            accessible — you do not need to complete a checklist in the app.
           </p>
         </div>
-      )}
+      ) : null}
 
-      {sections.length > 0 ? (
-        <div className="mb-4 space-y-4">
-          <p className="text-muted-foreground text-xs">
-            Latest move-in (ingoing) photos are shown beside routine evidence for each
-            section.
+      {inspection.flow === 'self' && inspection.status === 'under_review' ? (
+        <div className="mb-4 rounded-xl border bg-muted/30 p-4 text-sm">
+          <p className="font-medium">Submitted for review</p>
+          <p className="text-muted-foreground mt-1 text-xs">
+            Your property manager is reviewing your self-inspection. You will be notified when
+            the report is available.
           </p>
+        </div>
+      ) : null}
+
+      {showSelfChecklist ? (
+        <RoutineSelfInspectionChecklist
+          inspection={inspection}
+          onUpdated={(next) => setLoaded(next)}
+        />
+      ) : null}
+
+      {showSubmittedSections ? (
+        <div className="mb-4 space-y-4">
           {sections.map((section) => (
             <ReportSectionCard
               key={section.id}

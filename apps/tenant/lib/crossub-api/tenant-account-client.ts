@@ -118,6 +118,8 @@ export type TenantOutgoingDispute =
   components['schemas']['TenantOutgoingDisputeDto'];
 export type TenantRoutineInspection =
   components['schemas']['TenantRoutineInspectionResponseDto'];
+export type TenantRoutineSelfInspectionSectionSubmission =
+  components['schemas']['SubmitTenantRoutineSelfInspectionSectionDto'];
 export type TenantDeclineVacatingSettlement =
   components['schemas']['TenantDeclineVacatingSettlementDto'];
 
@@ -312,6 +314,30 @@ export async function fetchTenantRoutineInspection(
     params: { path: { id } },
   });
   if (error || !data) throw new Error('Failed to load routine inspection');
+  return data;
+}
+
+/** Start tenant self-inspection checklist (`POST .../start-self`). */
+export async function startTenantRoutineSelfInspection(
+  id: string,
+): Promise<TenantRoutineInspection> {
+  const { data, error } = await crossub.POST('/tenant/routine-inspections/{id}/start-self', {
+    params: { path: { id } },
+  });
+  if (error || !data) throw new Error('Failed to start self-inspection');
+  return data;
+}
+
+/** Submit tenant self-inspection (`POST .../submit-self`). */
+export async function submitTenantRoutineSelfInspection(
+  id: string,
+  sections: TenantRoutineSelfInspectionSectionSubmission[],
+): Promise<TenantRoutineInspection> {
+  const { data, error } = await crossub.POST('/tenant/routine-inspections/{id}/submit-self', {
+    params: { path: { id } },
+    body: { sections },
+  });
+  if (error || !data) throw new Error('Failed to submit self-inspection');
   return data;
 }
 

@@ -557,6 +557,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/tenant/routine-inspections/{id}/start-self": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start a tenant self-inspection (spawns checklist areas when needed). */
+        post: operations["TenantAccountController_startRoutineSelfInspection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenant/routine-inspections/{id}/submit-self": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit a completed tenant self-inspection for agent review. */
+        post: operations["TenantAccountController_submitRoutineSelfInspection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/tenant/rent-reviews": {
         parameters: {
             query?: never;
@@ -606,6 +640,63 @@ export interface paths {
         };
         /** Download the NSW Notice of Rent Increase PDF for a dispatched rent review. */
         get: operations["TenantAccountController_getRentReviewNoticePdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenant/rent-reviews/{reviewId}/notice-of-rent-review.html": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download the CROSSUB notice of rent review summary for a dispatched rent review. */
+        get: operations["TenantAccountController_getRentReviewNoticeOfRentReviewHtml"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenant/rent-reviews/{reviewId}/sign-lease-agreement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Virtually sign the residential tenancy agreement for a fixed-term rent review.
+         * @description Required before the tenant can accept a fixed-term rent increase. The system stamps the tenant signature block on the agreement PDF.
+         */
+        post: operations["TenantAccountController_signRentReviewLeaseAgreement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenant/rent-reviews/{reviewId}/residential-tenancy-agreement.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download the residential tenancy agreement PDF for a fixed-term rent review.
+         * @description Landlord and managing agent blocks are pre-filled and virtually signed. Tenant signature appears after sign-lease-agreement.
+         */
+        get: operations["TenantAccountController_getRentReviewLeaseAgreementPdf"];
         put?: never;
         post?: never;
         delete?: never;
@@ -742,6 +833,23 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/tenant/messages/{threadId}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Mark one of the tenant’s message threads as read. */
+        patch: operations["TenantAccountController_markMessageThreadRead"];
         trace?: never;
     };
     "/tenant/notifications": {
@@ -2686,6 +2794,40 @@ export interface paths {
         patch: operations["AgentPortalController_setRentReviewProposedRent"];
         trace?: never;
     };
+    "/agent/properties/{propertyId}/workflows/rent-review/{reviewId}/notice-payable-from": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Set the NSW notice payable-from date (manual override). */
+        patch: operations["AgentPortalController_setRentReviewNoticePayableFrom"];
+        trace?: never;
+    };
+    "/agent/properties/{propertyId}/workflows/rent-review/{reviewId}/lease-agreement-terms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Set optional NSW RTA page-15 clauses before sending the lease agreement. */
+        patch: operations["AgentPortalController_setRentReviewLeaseAgreementTerms"];
+        trace?: never;
+    };
     "/agent/properties/{propertyId}/workflows/rent-review/{reviewId}/approve-ai": {
         parameters: {
             query?: never;
@@ -2754,6 +2896,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent/properties/{propertyId}/workflows/rent-review/{reviewId}/research-report.html": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Preview the CROSSUB rent review research report (HTML). */
+        get: operations["AgentPortalController_downloadRentReviewResearchReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/properties/{propertyId}/workflows/rent-review/{reviewId}/notice-of-rent-increase.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Preview or download the NSW notice of rent increase PDF. */
+        get: operations["AgentPortalController_downloadRentReviewNoticePdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/properties/{propertyId}/workflows/rent-review/{reviewId}/lease-extension-agreement.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Preview or download the NSW residential tenancy agreement PDF. */
+        get: operations["AgentPortalController_downloadRentReviewLeaseExtensionAgreementPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent/properties/{propertyId}/workflows/rent-review/{reviewId}/communications/{auditId}/attachments/{filename}": {
         parameters: {
             query?: never;
@@ -2788,6 +2981,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent/properties/{propertyId}/workflows/accounting/rent-reconciliation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record a manual rent reconciliation on the property ledger. */
+        post: operations["AgentPortalController_recordRentReconciliation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/properties/{propertyId}/workflows/accounting/arrears": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record rent, bill, or bond arrears for a managed property. */
+        post: operations["AgentPortalController_addPropertyArrears"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent/properties/{propertyId}/workflows/tribunal/rent-chasing": {
         parameters: {
             query?: never;
@@ -2799,6 +3026,23 @@ export interface paths {
         put?: never;
         /** Open a Rent Chasing tribunal case (rent / bill / bond arrears) and sync profile fields. */
         post: operations["AgentPortalController_createTribunalRentChasing"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/properties/{propertyId}/workflows/tribunal/rent-chasing/prefill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Accounting arrears available for a Rent Chasing tribunal case on this property. */
+        get: operations["AgentPortalController_getTribunalRentChasingPrefill"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4168,7 +4412,10 @@ export interface components {
             room: string;
             /** @example Benchtop has minor wear. */
             description: string;
+            /** @description Photos from the outgoing / current inspection. */
             photos: string[];
+            /** @description Photos from the latest completed ingoing inspection for the same section (side-by-side baseline). */
+            referencePhotos: string[];
             /** @description Whether the tenant has disputed this section. */
             disputed: boolean;
             disputeComment: string | null;
@@ -4204,6 +4451,18 @@ export interface components {
              */
             sectionId?: string;
         };
+        TenantRoutineInspectionSectionDto: {
+            /** Format: uuid */
+            id: string;
+            /** @example Kitchen · Walls / Picture Hooks */
+            room: string;
+            /** @example No issues noted. */
+            description: string;
+            /** @description Photos from the routine inspection. */
+            photos: string[];
+            /** @description Photos from the latest completed ingoing inspection for the same section. */
+            referencePhotos: string[];
+        };
         TenantRoutineInspectionResponseDto: {
             /**
              * Format: uuid
@@ -4227,6 +4486,17 @@ export interface components {
             status: "scheduled" | "awaiting_tenant" | "in_progress" | "under_review" | "completed";
             /** @description Whether the tenant must take action (e.g. self-inspection submission). */
             tenantActionRequired: boolean;
+            sections?: components["schemas"]["TenantRoutineInspectionSectionDto"][];
+        };
+        SubmitTenantRoutineSelfInspectionSectionDto: {
+            /** Format: uuid */
+            areaId: string;
+            comment?: string;
+            /** @description Hosted photo URLs staged via tenant upload. */
+            photoUrls: string[];
+        };
+        SubmitTenantRoutineSelfInspectionDto: {
+            sections: components["schemas"]["SubmitTenantRoutineSelfInspectionSectionDto"][];
         };
         TenantRentReviewNoticeTermsDto: {
             /** @example 890 */
@@ -4253,6 +4523,20 @@ export interface components {
             newLeaseStart: string | null;
             /** @description True when the formal notice PDF can be downloaded. */
             noticePdfAvailable: boolean;
+            /** @description True when the fixed-term residential tenancy agreement PDF can be viewed (after notice dispatch). */
+            leaseAgreementPdfAvailable: boolean;
+            /** @description True when the tenant has virtually signed the residential tenancy agreement. */
+            leaseAgreementSigned: boolean;
+            /** @description True when the tenant must sign the residential tenancy agreement before accepting the increase. */
+            requiresLeaseAgreementSign: boolean;
+        };
+        TenantRentReviewEmailAttachmentDto: {
+            /** @example notice-of-rent-increase-a1b2c3d4.pdf */
+            name: string;
+            /** @example application/pdf */
+            mimeType: string;
+            /** @example /api/v1/tenant/rent-reviews/{reviewId}/notice-of-rent-increase.pdf */
+            url: string;
         };
         TenantRentReviewEmailDto: {
             /** @example Notice of rent increase — 1 Example St */
@@ -4262,6 +4546,10 @@ export interface components {
             from: string;
             /** @example Jane Tenant */
             to: string;
+            /** @example agent@property.com.au */
+            fromEmail?: string;
+            /** @example tenant@example.com */
+            toEmail?: string;
             /** Format: date-time */
             sentAt: string;
             /**
@@ -4269,6 +4557,7 @@ export interface components {
              * @enum {string}
              */
             kind: "notice" | "reminder";
+            attachments?: components["schemas"]["TenantRentReviewEmailAttachmentDto"][];
         };
         TenantRentReviewResponseDto: {
             /** Format: uuid */
@@ -5966,7 +6255,7 @@ export interface components {
             areas: components["schemas"]["InspectorAreaDto"][];
             /** @description Photos attached to the inspection itself (not to any area or item). */
             photos: components["schemas"]["InspectorPhotoDto"][];
-            /** @description For OUTGOING jobs only: latest completed/published INGOING report for the same property (null when none). */
+            /** @description For OUTGOING and ROUTINE jobs: latest completed/published INGOING report for the same property (null when none). */
             referenceIngoing: components["schemas"]["InspectorReferenceIngoingDto"] | null;
         };
         CompleteInspectorInspectionDto: {
@@ -6457,6 +6746,19 @@ export interface components {
             membersOrderName?: string | null;
             /** Format: date-time */
             createdAt: string;
+        };
+        AgentTribunalRentChasingPrefillDto: {
+            /** Format: uuid */
+            propertyId: string;
+            /** @example 8 Crown Street, Rosebery NSW 2018 */
+            propertyAddress: string;
+            tenantName: string | null;
+            /** @description True when the property has open Accounting arrears (rent, invoice/bill, or bond). */
+            hasAccountingArrears: boolean;
+            arrears: components["schemas"]["AgentTribunalArrearRowDto"][];
+            rentArrears?: components["schemas"]["AgentTribunalRentArrearsDto"] | null;
+            billArrears: components["schemas"]["AgentTribunalBillArrearsRowDto"][];
+            bondArrears?: components["schemas"]["AgentTribunalBondArrearsDto"] | null;
         };
         AgentUpdateTribunalRentChasingDto: {
             /** @description Agent working notes on the case. */
@@ -6961,8 +7263,25 @@ export interface components {
             reason: string;
         };
         SetProposedRentDto: Record<string, never>;
+        UpdateNoticePayableFromDto: Record<string, never>;
+        UpdateLeaseAgreementTermsDto: Record<string, never>;
         SendRentReviewEmailDto: Record<string, never>;
         AgentCreateTerminationCaseDto: Record<string, never>;
+        AgentRecordRentReconciliationDto: {
+            /** @example 450 */
+            amount: number;
+            /** @example 2026-07-22 */
+            paymentDate: string;
+            /** @enum {string} */
+            paymentMethod: "cash" | "cheque" | "card" | "eft";
+            /** @example 450 */
+            rentAllocation?: number;
+            /** @example 0 */
+            bondAllocation?: number;
+            rentDescription?: string;
+            bondDescription?: string;
+            note?: string;
+        };
         CancelAgentTerminationCaseDto: {
             /** @example Tenant decided to stay — case no longer required */
             reason: string;
@@ -7327,6 +7646,16 @@ export interface components {
              * @example 0
              */
             daysInArrears: number;
+            /**
+             * Format: date-time
+             * @description When the oldest open arrears case was opened.
+             */
+            arrearsOpenedAt?: string;
+            /**
+             * Format: date
+             * @description Rent paid-to or earliest bill due date for open arrears.
+             */
+            arrearsKeyDate?: string;
         };
         AgentTribunalDto: {
             /** Format: uuid */
@@ -7361,6 +7690,11 @@ export interface components {
             bondArrearsAmount?: number | null;
             /** @description Calendar days overdue for bond (from agreement end, once vacated). */
             bondArrearsDaysOverdue?: number | null;
+            /**
+             * @description Scheduled hearing date (ISO date), when set.
+             * @example 2026-08-15
+             */
+            hearingDate?: string | null;
             /** Format: date-time */
             createdAt: string;
         };
@@ -7545,6 +7879,16 @@ export interface components {
              * @description A managed property the thread is about. Omit for a general enquiry.
              */
             propertyId?: string;
+            /**
+             * @description Optional workflow case tag so staff can open the job in the admin portal from Communication Hub.
+             * @enum {string}
+             */
+            caseType?: "PROPERTY" | "MAINTENANCE" | "INSPECTION" | "LEASING" | "RENT_REVIEW" | "TRIBUNAL" | "ACCOUNTING";
+            /**
+             * Format: uuid
+             * @description The workflow case id paired with `caseType`.
+             */
+            caseId?: string;
         };
         SendAgentMessageDto: {
             /** @example Confirmed — booked for next Tuesday. */
@@ -9074,6 +9418,52 @@ export interface operations {
             };
         };
     };
+    TenantAccountController_startRoutineSelfInspection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantRoutineInspectionResponseDto"];
+                };
+            };
+        };
+    };
+    TenantAccountController_submitRoutineSelfInspection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitTenantRoutineSelfInspectionDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantRoutineInspectionResponseDto"];
+                };
+            };
+        };
+    };
     TenantAccountController_listRentReviews: {
         parameters: {
             query?: never;
@@ -9194,6 +9584,137 @@ export interface operations {
             };
             /** @description Rent review not found or formal notice has not been dispatched. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    TenantAccountController_getRentReviewNoticeOfRentReviewHtml: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reviewId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Missing/invalid/expired token, or the user is not active. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Caller is not a TENANT, or has no tenant profile anchor. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rent review not found or formal notice has not been dispatched. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    TenantAccountController_signRentReviewLeaseAgreement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reviewId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantRentReviewResponseDto"];
+                };
+            };
+            /** @description Not a fixed-term renewal or agreement not yet available. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing/invalid/expired token, or the user is not active. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Caller is not a TENANT, or the review is not on their leased property. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rent review not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The rent review is not awaiting tenant response, or the agreement is unavailable. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    TenantAccountController_getRentReviewLeaseAgreementPdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reviewId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Missing/invalid/expired token, or the user is not active. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Caller is not a TENANT, or has no tenant profile anchor. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rent review not found or formal notice has not been dispatched. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Residential tenancy agreement is not yet available. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -9622,6 +10143,55 @@ export interface operations {
                 };
             };
             /** @description threadId is not a valid UUID, or the body is empty. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing/invalid/expired token, or the user is not active. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Caller is not a TENANT, or has no tenant profile anchor. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description threadId does not exist or is not a thread this tenant can see. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    TenantAccountController_markMessageThreadRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                threadId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantMessageThreadResponseDto"];
+                };
+            };
+            /** @description threadId is not a valid UUID. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -14623,6 +15193,54 @@ export interface operations {
             };
         };
     };
+    AgentPortalController_setRentReviewNoticePayableFrom: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                propertyId: string;
+                reviewId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateNoticePayableFromDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AgentPortalController_setRentReviewLeaseAgreementTerms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                propertyId: string;
+                reviewId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateLeaseAgreementTermsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     AgentPortalController_approveRentReviewAi: {
         parameters: {
             query?: never;
@@ -14707,6 +15325,66 @@ export interface operations {
             };
         };
     };
+    AgentPortalController_downloadRentReviewResearchReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                propertyId: string;
+                reviewId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AgentPortalController_downloadRentReviewNoticePdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                propertyId: string;
+                reviewId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AgentPortalController_downloadRentReviewLeaseExtensionAgreementPdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                propertyId: string;
+                reviewId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     AgentPortalController_downloadRentReviewEmailAttachment: {
         parameters: {
             query?: never;
@@ -14755,6 +15433,56 @@ export interface operations {
             };
         };
     };
+    AgentPortalController_recordRentReconciliation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                propertyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentRecordRentReconciliationDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentWorkflowCreateResultDto"];
+                };
+            };
+        };
+    };
+    AgentPortalController_addPropertyArrears: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                propertyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentCreateTribunalRentChasingDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentWorkflowCreateResultDto"];
+                };
+            };
+        };
+    };
     AgentPortalController_createTribunalRentChasing: {
         parameters: {
             query?: never;
@@ -14776,6 +15504,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AgentWorkflowCreateResultDto"];
+                };
+            };
+        };
+    };
+    AgentPortalController_getTribunalRentChasingPrefill: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                propertyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentTribunalRentChasingPrefillDto"];
                 };
             };
         };
