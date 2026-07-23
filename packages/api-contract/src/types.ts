@@ -4488,6 +4488,11 @@ export interface components {
             tenantActionRequired: boolean;
             /** @description When staff declined the submission, the reason the tenant must address. */
             declineReason?: string | null;
+            previousSubmission?: {
+                submittedAt: string;
+                reportUrl: string | null;
+                sections: components["schemas"]["TenantRoutineInspectionSectionDto"][];
+            };
             sections?: components["schemas"]["TenantRoutineInspectionSectionDto"][];
         };
         SubmitTenantRoutineSelfInspectionSectionDto: {

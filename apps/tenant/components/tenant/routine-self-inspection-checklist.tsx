@@ -42,6 +42,7 @@ export function RoutineSelfInspectionChecklist({
   );
 
   const initialDrafts = useMemo(() => {
+    if (inspection.previousSubmission) return {};
     const placeholder = 'Upload photos and note the current condition.';
     const submitted = 'Tenant self-inspection submitted.';
     const next: Record<string, SectionDraft> = {};
@@ -60,7 +61,7 @@ export function RoutineSelfInspectionChecklist({
       }
     }
     return next;
-  }, [inspection.sections]);
+  }, [inspection.previousSubmission, inspection.sections]);
 
   const [drafts, setDrafts] = useState<Record<string, SectionDraft>>(initialDrafts);
   const [starting, setStarting] = useState(false);
@@ -178,6 +179,14 @@ export function RoutineSelfInspectionChecklist({
 
   return (
     <div className="space-y-4">
+      {inspection.previousSubmission ? (
+        <div className="rounded-xl border border-sky-500/30 bg-sky-500/5 p-4 text-sm">
+          <p className="font-medium">Revised self-inspection</p>
+          <p className="text-muted-foreground mt-1 text-xs">
+            Upload new photos and notes for each area, then submit for review again.
+          </p>
+        </div>
+      ) : null}
       {sections.map((section) => {
         const draft = getDraft(section.id);
         return (

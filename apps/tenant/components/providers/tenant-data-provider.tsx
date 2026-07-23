@@ -448,6 +448,17 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     }
   }, [status, apiConnected, lease?.propertyAddress]);
 
+  /** Poll routine self-inspections (decline, approval, action required). */
+  const syncRoutineInspections = useCallback(async () => {
+    if (status !== 'authed' || !apiConnected) return;
+    try {
+      const rows = await fetchTenantRoutineInspections();
+      setRoutineInspections(rows);
+    } catch {
+      // keep last good snapshot
+    }
+  }, [status, apiConnected]);
+
   const refresh = useCallback(async (options?: { force?: boolean }) => {
     const isInitialLoad = !hasLoadedOnceRef.current;
     const force = options?.force === true;
@@ -689,11 +700,12 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     const tick = () => {
       void syncLiveAttention();
       void syncMaintenanceRequests();
+      void syncRoutineInspections();
     };
     void tick();
     const id = window.setInterval(tick, LIVE_POLL_MS);
     return () => window.clearInterval(id);
-  }, [status, apiConnected, syncLiveAttention, syncMaintenanceRequests]);
+  }, [status, apiConnected, syncLiveAttention, syncMaintenanceRequests, syncRoutineInspections]);
 
   const onboardingPendingAgent = useMemo(
     () => onboardingSteps.some((s) => s.status === 'uploaded'),
@@ -724,11 +736,12 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       if (document.visibilityState === 'visible') {
         void syncLiveAttention();
         void syncMaintenanceRequests();
+        void syncRoutineInspections();
       }
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
-  }, [status, apiConnected, syncLiveAttention, syncMaintenanceRequests]);
+  }, [status, apiConnected, syncLiveAttention, syncMaintenanceRequests, syncRoutineInspections]);
 
   const propertyAddress = lease?.propertyAddress ?? 'Your property';
   const leaseId = lease?.id;

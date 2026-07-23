@@ -7,6 +7,23 @@ export function needsRoutineInspectionAction(
   return inspection.tenantActionRequired;
 }
 
+/** Poll while the routine may change without tenant action (review, decline, approval). */
+export function shouldLivePollRoutineInspection(
+  inspection: TenantRoutineInspection | null | undefined,
+): boolean {
+  if (!inspection) return false;
+  if (inspection.flow !== 'self') {
+    return inspection.status !== 'completed';
+  }
+  return (
+    inspection.status === 'under_review' ||
+    inspection.status === 'awaiting_tenant' ||
+    inspection.status === 'in_progress' ||
+    inspection.tenantActionRequired ||
+    Boolean(inspection.declineReason)
+  );
+}
+
 /** First agent-created routine inspection requiring tenant action. */
 export function findUrgentRoutineInspection(
   inspections: TenantRoutineInspection[],

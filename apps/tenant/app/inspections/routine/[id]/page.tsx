@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 import { TenantShell } from '@/components/layout/tenant-shell';
 import { RoutineSelfInspectionChecklist } from '@/components/tenant/routine-self-inspection-checklist';
+import { RoutinePreviousSubmissionPanel } from '@/components/tenant/routine-previous-submission-panel';
 import { ReportSectionCard } from '@/components/tenant/report-section-card';
 import { StatusBadge } from '@/components/tenant/status-badge';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
@@ -16,7 +17,9 @@ import type { TenantRoutineInspection } from '@/lib/crossub-api/tenant-account-c
 import {
   needsRoutineInspectionAction,
   routineInspectionStatusLabel,
+  shouldLivePollRoutineInspection,
 } from '@/lib/routine-inspection';
+import { useLivePoll } from '@/lib/use-live-poll';
 import type { ReportSection } from '@/lib/types';
 import { formatDateTime } from '@/lib/utils';
 
@@ -37,17 +40,35 @@ export default function RoutineInspectionPage() {
   const [loading, setLoading] = useState(false);
 
   const summary =
-    routineInspections.find((r) => r.id === id || r.inspectionId === id) ?? null;
+    routineInspections.find((r) => r.id === id || r.inspectionId === id || r.scheduleId === id) ??
+    null;
   const inspection = loaded ?? summary;
+
+  const loadInspection = useCallback(async () => {
+    if (!apiConnected) return;
+    try {
+      const next = await fetchTenantRoutineInspection(id);
+      setLoaded(next);
+    } catch {
+      // keep last good snapshot on transient poll errors
+    }
+  }, [apiConnected, id]);
 
   useEffect(() => {
     if (!apiConnected) return;
     setLoading(true);
     void fetchTenantRoutineInspection(id)
       .then(setLoaded)
-      .catch(() => setLoaded(summary))
+      .catch(() => {
+        if (summary) setLoaded(summary);
+      })
       .finally(() => setLoading(false));
   }, [apiConnected, id, summary]);
+
+  useLivePoll(
+    loadInspection,
+    apiConnected && shouldLivePollRoutineInspection(inspection),
+  );
 
   if (loading && !inspection) {
     return (
@@ -91,6 +112,7 @@ export default function RoutineInspectionPage() {
   const showSubmittedSections =
     inspection.flow === 'self' &&
     !needsRoutineInspectionAction(inspection) &&
+    !inspection.previousSubmission &&
     sections.length > 0;
 
   return (
@@ -130,9 +152,17 @@ export default function RoutineInspectionPage() {
           <p className="font-medium text-amber-900 dark:text-amber-100">Changes requested</p>
           <p className="text-muted-foreground mt-1 text-xs">{inspection.declineReason}</p>
           <p className="text-muted-foreground mt-2 text-xs">
-            Please update your photos and notes, then submit again.
+            Upload a revised routine self-inspection below. Your first submission is kept in the
+            collapsed section for reference.
           </p>
         </div>
+      ) : null}
+
+      {inspection.flow === 'self' && inspection.previousSubmission ? (
+        <RoutinePreviousSubmissionPanel
+          submission={inspection.previousSubmission}
+          declineReason={inspection.declineReason}
+        />
       ) : null}
 
       {inspection.flow === 'self' && inspection.status === 'under_review' ? (
