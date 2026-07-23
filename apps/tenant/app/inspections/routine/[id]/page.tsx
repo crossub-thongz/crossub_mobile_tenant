@@ -125,6 +125,16 @@ export default function RoutineInspectionPage() {
         </div>
       ) : null}
 
+      {inspection.flow === 'self' && inspection.declineReason ? (
+        <div className="mb-4 rounded-xl border border-amber-500/40 bg-amber-500/5 p-4 text-sm">
+          <p className="font-medium text-amber-900 dark:text-amber-100">Changes requested</p>
+          <p className="text-muted-foreground mt-1 text-xs">{inspection.declineReason}</p>
+          <p className="text-muted-foreground mt-2 text-xs">
+            Please update your photos and notes, then submit again.
+          </p>
+        </div>
+      ) : null}
+
       {inspection.flow === 'self' && inspection.status === 'under_review' ? (
         <div className="mb-4 rounded-xl border bg-muted/30 p-4 text-sm">
           <p className="font-medium">Submitted for review</p>

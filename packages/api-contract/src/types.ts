@@ -4486,6 +4486,8 @@ export interface components {
             status: "scheduled" | "awaiting_tenant" | "in_progress" | "under_review" | "completed";
             /** @description Whether the tenant must take action (e.g. self-inspection submission). */
             tenantActionRequired: boolean;
+            /** @description When staff declined the submission, the reason the tenant must address. */
+            declineReason?: string | null;
             sections?: components["schemas"]["TenantRoutineInspectionSectionDto"][];
         };
         SubmitTenantRoutineSelfInspectionSectionDto: {
