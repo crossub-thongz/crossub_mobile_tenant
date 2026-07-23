@@ -46,7 +46,7 @@ export function TenantMaintenanceCompletionPopup({
         role="dialog"
         aria-modal="true"
         aria-labelledby="completion-uploaded-title"
-        className="from-primary/10 to-card relative z-10 w-full max-w-sm rounded-2xl border border-primary/25 bg-gradient-to-br p-4 shadow-lg"
+        className="bg-card relative z-10 w-full max-w-sm rounded-2xl border p-4 shadow-lg"
       >
         <div className="flex items-start gap-3">
           <div className="bg-primary/15 text-primary flex size-10 shrink-0 items-center justify-center rounded-xl">
