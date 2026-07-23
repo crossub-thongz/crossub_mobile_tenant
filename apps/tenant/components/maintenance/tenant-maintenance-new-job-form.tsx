@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import {
   formatMaintenanceIssueType,
   isMaintenanceIssueTypeValid,
+  isTenantUrgentEligibleMaintenanceIssueType,
 } from '@/constants/maintenance-issue-types';
 import {
   fetchTenantProperties,
@@ -90,13 +91,15 @@ export function TenantMaintenanceNewJobForm() {
       toast.error('Description must be at least 5 characters');
       return;
     }
+    const urgentAllowed = isTenantUrgentEligibleMaintenanceIssueType(issueTypeSelection);
+    const submitUrgent = urgentAllowed && priority === 'urgent';
 
     setSubmitting(true);
     try {
       const created = await apiSubmitMaintenanceRequest({
         category: issueType,
         description: `${issueType}: ${body}`,
-        urgent: priority === 'urgent',
+        urgent: submitUrgent,
         ...(propertyId ? { propertyId } : {}),
         ...(mediaUrls.length ? { photos: mediaUrls } : {}),
         clientRequestId: crypto.randomUUID(),
@@ -105,7 +108,7 @@ export function TenantMaintenanceNewJobForm() {
         category: issueType,
         description: body,
         area: '',
-        urgency: priority === 'urgent' ? 'urgent' : 'normal',
+        urgency: submitUrgent ? 'urgent' : 'normal',
         propertyAddress,
         id: created.id,
         trackingNumber:
@@ -157,7 +160,12 @@ export function TenantMaintenanceNewJobForm() {
         address={propertyAddress}
         issueTypeSelection={issueTypeSelection}
         issueTypeOther={issueTypeOther}
-        onIssueTypeSelectionChange={setIssueTypeSelection}
+        onIssueTypeSelectionChange={(value) => {
+          setIssueTypeSelection(value);
+          if (!isTenantUrgentEligibleMaintenanceIssueType(value)) {
+            setPriority('normal');
+          }
+        }}
         onIssueTypeOtherChange={setIssueTypeOther}
         description={description}
         onDescriptionChange={setDescription}

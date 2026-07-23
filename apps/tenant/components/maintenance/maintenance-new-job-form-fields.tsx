@@ -4,6 +4,7 @@ import { MaintenanceIssueTypeField } from '@/components/maintenance/maintenance-
 import { MaintenanceMediaUploadField } from '@/components/maintenance/maintenance-media-upload-field';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { isTenantUrgentEligibleMaintenanceIssueType } from '@/constants/maintenance-issue-types';
 import { cn } from '@/lib/utils';
 
 export type MaintenanceJobPriority = 'urgent' | 'normal';
@@ -35,6 +36,11 @@ export function MaintenanceNewJobFormFields({
   onMediaUrlsChange: (urls: string[]) => void;
   disabled?: boolean;
 }) {
+  const urgentAllowed = isTenantUrgentEligibleMaintenanceIssueType(issueTypeSelection);
+  const priorityOptions: MaintenanceJobPriority[] = urgentAllowed
+    ? ['urgent', 'normal']
+    : ['normal'];
+
   return (
     <div className="space-y-4">
       {address ? (
@@ -78,7 +84,7 @@ export function MaintenanceNewJobFormFields({
       <div>
         <Label className="text-xs">Urgency</Label>
         <div className="mt-2 flex gap-2">
-          {(['urgent', 'normal'] as MaintenanceJobPriority[]).map((level) => (
+          {priorityOptions.map((level) => (
             <button
               key={level}
               type="button"
@@ -98,6 +104,12 @@ export function MaintenanceNewJobFormFields({
             </button>
           ))}
         </div>
+        {issueTypeSelection && !urgentAllowed ? (
+          <p className="text-muted-foreground mt-1.5 text-[11px] leading-snug">
+            Urgent is only available for flooding and water damage, locksmith, electrical,
+            and hot water system repairs.
+          </p>
+        ) : null}
       </div>
     </div>
   );
