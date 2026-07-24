@@ -18,6 +18,7 @@ import {
 } from '@/lib/crossub-api/public-listings-client';
 import type { ListingProperty } from '@/lib/types';
 import { propertyApplySuccess, ROUTES } from '@/constants/routes';
+import { APPLICATION_FORM_ENABLED } from '@/constants/feature-flags';
 import { apiErrorMessage } from '@/lib/api-error-message';
 import { fileToBase64 } from '@/lib/utils';
 import {
@@ -171,6 +172,17 @@ export default function ApplyPage() {
       <TenantShell title="Apply" backHref={`/properties/${id}`}>
         <p className="text-muted-foreground text-sm">
           This property is not accepting applications right now.
+        </p>
+      </TenantShell>
+    );
+  }
+
+  // TESTING: application form disabled — remove this block when re-enabling.
+  if (!APPLICATION_FORM_ENABLED) {
+    return (
+      <TenantShell title="Apply" backHref={`/properties/${id}`}>
+        <p className="text-muted-foreground text-sm">
+          The rental application form is temporarily disabled for testing.
         </p>
       </TenantShell>
     );

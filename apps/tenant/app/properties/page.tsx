@@ -10,7 +10,7 @@ import { ListingOpenInspectionFacts } from '@/components/tenant/listing-open-ins
 import { StatusBadge } from '@/components/tenant/status-badge';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
 import { DEFAULT_PROPERTY_FILTERS, filterAndSortListings } from '@/lib/filter-listings';
-import { propertyApply, propertyDetail } from '@/constants/routes';
+import { propertyDetail } from '@/constants/routes';
 import { formatCurrency } from '@/lib/utils';
 
 export default function PropertiesPage() {

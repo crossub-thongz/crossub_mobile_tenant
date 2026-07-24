@@ -6,7 +6,11 @@ export interface OpenViewingCheckInInput {
   name: string;
   email: string;
   phone: string;
+  /** Visitor special request (open inspection report). */
   notes?: string;
+  leaseTerm?: string;
+  pets?: string;
+  comments?: string;
 }
 
 export interface OpenViewingCheckInResult {

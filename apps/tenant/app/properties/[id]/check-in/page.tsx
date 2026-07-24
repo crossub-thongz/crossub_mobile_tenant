@@ -33,7 +33,10 @@ export default function CheckInPage() {
     name: '',
     email: '',
     phone: '',
-    notes: '',
+    leaseTerm: '',
+    pets: '',
+    specialRequest: '',
+    comments: '',
   });
 
   useEffect(() => {
@@ -41,7 +44,15 @@ export default function CheckInPage() {
     setLoadingListing(true);
     void fetchPublicListing(id, sessionId || undefined)
       .then((listing) => {
-        if (!cancelled) setProperty(listing);
+        if (!cancelled) {
+          setProperty(listing);
+          const defaultLeaseTerm = listing.leaseTerm?.trim();
+          if (defaultLeaseTerm) {
+            setForm((current) =>
+              current.leaseTerm.trim() ? current : { ...current, leaseTerm: defaultLeaseTerm },
+            );
+          }
+        }
       })
       .catch(() => {
         if (!cancelled && cachedProperty) setProperty(cachedProperty);
@@ -72,7 +83,10 @@ export default function CheckInPage() {
         name: form.name.trim(),
         email: form.email.trim(),
         phone: form.phone.trim(),
-        notes: form.notes.trim() || undefined,
+        leaseTerm: form.leaseTerm.trim() || undefined,
+        pets: form.pets.trim() || undefined,
+        notes: form.specialRequest.trim() || undefined,
+        comments: form.comments.trim() || undefined,
       });
       toast.success('Check-in recorded — thank you for visiting.');
       setCheckedIn(true);
@@ -165,7 +179,7 @@ export default function CheckInPage() {
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="phone">Mobile phone</Label>
+          <Label htmlFor="phone">Mobile</Label>
           <Input
             id="phone"
             type="tel"
@@ -176,14 +190,43 @@ export default function CheckInPage() {
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="notes">Notes (optional)</Label>
+          <Label htmlFor="leaseTerm">Lease term</Label>
+          <Input
+            id="leaseTerm"
+            value={form.leaseTerm}
+            onChange={(e) => setForm((f) => ({ ...f, leaseTerm: e.target.value }))}
+            placeholder={property.leaseTerm?.trim() || 'e.g. 12 months'}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="pets">Pets</Label>
+          <Input
+            id="pets"
+            value={form.pets}
+            onChange={(e) => setForm((f) => ({ ...f, pets: e.target.value }))}
+            placeholder="e.g. 1 small dog, or leave blank if none"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="specialRequest">Visitor special request</Label>
           <textarea
-            id="notes"
-            value={form.notes}
-            onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-            placeholder="e.g. security lock PIN, arrival time, questions for the agent"
-            rows={4}
-            className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex min-h-[80px] w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+            id="specialRequest"
+            value={form.specialRequest}
+            onChange={(e) => setForm((f) => ({ ...f, specialRequest: e.target.value }))}
+            placeholder="e.g. ground-floor parking, accessibility needs, preferred move-in date"
+            rows={3}
+            className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex min-h-[72px] w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="comments">Comments</Label>
+          <textarea
+            id="comments"
+            value={form.comments}
+            onChange={(e) => setForm((f) => ({ ...f, comments: e.target.value }))}
+            placeholder="Anything else for the agent or inspection report"
+            rows={3}
+            className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex min-h-[72px] w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
           />
         </div>
 
