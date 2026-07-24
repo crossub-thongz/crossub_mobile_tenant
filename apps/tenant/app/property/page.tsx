@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Building2, Calendar, FileText, MapPin } from 'lucide-react';
+import { Building2, Calendar, FileText, MapPin, Repeat } from 'lucide-react';
 
 import { TenantShell } from '@/components/layout/tenant-shell';
 import { PropertyHubActions } from '@/components/tenant/property-hub-actions';
@@ -118,6 +118,20 @@ export default function PropertyPage() {
               </InfoCard>
               <InfoCard icon={Calendar} label="Lease end">
                 <p className="font-medium">{formatDate(lease.leaseEnd)}</p>
+              </InfoCard>
+              <InfoCard icon={Repeat} label="Annual visits">
+                <p className="font-medium">
+                  {lease.routineInspectionFrequency != null
+                    ? `${lease.routineInspectionFrequency}× per year`
+                    : '—'}
+                </p>
+              </InfoCard>
+              <InfoCard icon={Repeat} label="Cycle interval">
+                <p className="font-medium">
+                  {lease.routineInspectionFrequencyMonths != null
+                    ? `Every ${lease.routineInspectionFrequencyMonths} months`
+                    : '—'}
+                </p>
               </InfoCard>
             </div>
 

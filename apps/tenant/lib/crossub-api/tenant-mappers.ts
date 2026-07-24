@@ -149,6 +149,16 @@ export function toLeaseSummary(tenancies: TenantTenancy[]): LeaseSummary | null 
     nextRentReviewAt: asString(
       (lease as { nextRentReviewAt?: string | null }).nextRentReviewAt,
     ) ?? undefined,
+    routineInspectionFrequency:
+      asNumber(
+        (lease as { routineInspectionFrequency?: number | null })
+          .routineInspectionFrequency,
+      ) ?? undefined,
+    routineInspectionFrequencyMonths:
+      asNumber(
+        (lease as { routineInspectionFrequencyMonths?: number | null })
+          .routineInspectionFrequencyMonths,
+      ) ?? undefined,
   };
 }
 

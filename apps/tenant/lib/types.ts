@@ -195,6 +195,10 @@ export interface LeaseSummary {
   renewalDueInDays?: number;
   /** When the managing agent can next open a rent review (after an accepted increase). */
   nextRentReviewAt?: string;
+  /** Routine inspections per year (2 or 3). */
+  routineInspectionFrequency?: number;
+  /** Months between routine inspection cycles (4 or 6). */
+  routineInspectionFrequencyMonths?: number;
 }
 
 export interface ReportSection {
