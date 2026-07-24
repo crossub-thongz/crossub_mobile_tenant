@@ -19,6 +19,41 @@ type ChecklistSection = {
   description: string;
 };
 
+function hasRealAreaIds(sections: ChecklistSection[]): boolean {
+  return sections.length > 0 && sections.every((section) => !section.id.startsWith('template-'));
+}
+
+function remapTemplateDrafts(
+  sections: ChecklistSection[],
+  drafts: Record<string, SectionDraft>,
+): Record<string, SectionDraft> {
+  const next: Record<string, SectionDraft> = { ...drafts };
+  sections.forEach((section, index) => {
+    const templateKey = `template-${index}`;
+    if (drafts[templateKey] && !drafts[section.id]) {
+      next[section.id] = drafts[templateKey];
+    }
+  });
+  return next;
+}
+
+function mapDraftsToSections(
+  sections: ChecklistSection[],
+  drafts: Record<string, SectionDraft>,
+) {
+  return sections.map((section, index) => {
+    const draft =
+      drafts[section.id] ??
+      drafts[`template-${index}`] ??
+      { comment: '', photoUrls: [] };
+    return {
+      areaId: section.id,
+      comment: draft.comment.trim() || undefined,
+      photoUrls: draft.photoUrls,
+    };
+  });
+}
+
 type SectionDraft = {
   comment: string;
   photoUrls: string[];
@@ -66,18 +101,14 @@ export function RoutineSelfInspectionChecklist({
   const [drafts, setDrafts] = useState<Record<string, SectionDraft>>(initialDrafts);
   const [starting, setStarting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [started, setStarted] = useState(
-    sections.every((section) => !section.id.startsWith('template-')),
-  );
+  const [started, setStarted] = useState(() => hasRealAreaIds(sections));
 
   useEffect(() => {
     setDrafts((prev) => ({ ...initialDrafts, ...prev }));
   }, [initialDrafts]);
 
   useEffect(() => {
-    if (sections.every((section) => !section.id.startsWith('template-'))) {
-      setStarted(true);
-    }
+    setStarted(hasRealAreaIds(sections));
   }, [sections]);
 
   const scheduleKey = inspection.scheduleId ?? inspection.id;
@@ -97,6 +128,13 @@ export function RoutineSelfInspectionChecklist({
     try {
       const next = await startTenantRoutineSelfInspection(scheduleKey);
       onUpdated(next);
+      const nextSections =
+        next.sections?.map((section) => ({
+          id: section.id,
+          room: section.room,
+          description: section.description,
+        })) ?? [];
+      setDrafts((prev) => remapTemplateDrafts(nextSections, prev));
       setStarted(true);
       toast.success('Self-inspection started');
     } catch (err) {
@@ -107,25 +145,41 @@ export function RoutineSelfInspectionChecklist({
   };
 
   const handleSubmit = async () => {
-    const payloadSections = sections.map((section) => {
-      const draft = getDraft(section.id);
-      return {
-        areaId: section.id,
-        comment: draft.comment.trim() || undefined,
-        photoUrls: draft.photoUrls,
-      };
-    });
-
-    const incomplete = payloadSections.filter(
-      (section) => !section.comment && section.photoUrls.length === 0,
-    );
-    if (incomplete.length > 0) {
-      toast.error('Add a note or photo for every room before submitting');
-      return;
-    }
-
     setSubmitting(true);
     try {
+      let activeInspection = inspection;
+      let activeSections = sections;
+
+      if (!hasRealAreaIds(activeSections)) {
+        activeInspection = await startTenantRoutineSelfInspection(scheduleKey);
+        onUpdated(activeInspection);
+        activeSections =
+          activeInspection.sections?.map((section) => ({
+            id: section.id,
+            room: section.room,
+            description: section.description,
+          })) ?? [];
+        if (!hasRealAreaIds(activeSections)) {
+          throw new Error('Could not prepare the self-inspection checklist — try again');
+        }
+        setStarted(true);
+      }
+
+      const mergedDrafts =
+        hasRealAreaIds(activeSections) && !hasRealAreaIds(sections)
+          ? remapTemplateDrafts(activeSections, drafts)
+          : drafts;
+
+      const payloadSections = mapDraftsToSections(activeSections, mergedDrafts);
+
+      const incomplete = payloadSections.filter(
+        (section) => !section.comment && section.photoUrls.length === 0,
+      );
+      if (incomplete.length > 0) {
+        toast.error('Add a note or photo for every room before submitting');
+        return;
+      }
+
       const next = await submitTenantRoutineSelfInspection(scheduleKey, payloadSections);
       onUpdated(next);
       toast.success('Self-inspection submitted — your property manager will review it');
@@ -187,8 +241,11 @@ export function RoutineSelfInspectionChecklist({
           </p>
         </div>
       ) : null}
-      {sections.map((section) => {
-        const draft = getDraft(section.id);
+      {sections.map((section, index) => {
+        const draft =
+          drafts[section.id] ??
+          drafts[`template-${index}`] ??
+          { comment: '', photoUrls: [] };
         return (
           <section key={section.id} className="rounded-xl border bg-card p-4">
             <p className="font-semibold">{section.room}</p>

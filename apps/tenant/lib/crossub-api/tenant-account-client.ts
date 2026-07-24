@@ -4,8 +4,19 @@ import { fileToBase64 } from '@/lib/utils';
 
 import { fetchAuthenticatedBlob } from '@/lib/api';
 import { crossub } from './client';
+import { parseApiErrorMessage } from '@/lib/api-error-message';
 
 const API_BASE = `${process.env.NEXT_PUBLIC_API_URL ?? '/api'}/v1`;
+
+function throwTenantApiError(
+  error: unknown,
+  response: Response | undefined,
+  fallback: string,
+): never {
+  const body =
+    error && typeof error === 'object' && !Array.isArray(error) ? error : undefined;
+  throw new Error(parseApiErrorMessage(body, response?.status, fallback));
+}
 
 /** Inline PDF preview for a dispatched rent-review notice (tenant session required). */
 export function tenantRentReviewNoticePdfUrl(reviewId: string): string {
@@ -321,10 +332,12 @@ export async function fetchTenantRoutineInspection(
 export async function startTenantRoutineSelfInspection(
   id: string,
 ): Promise<TenantRoutineInspection> {
-  const { data, error } = await crossub.POST('/tenant/routine-inspections/{id}/start-self', {
+  const { data, error, response } = await crossub.POST('/tenant/routine-inspections/{id}/start-self', {
     params: { path: { id } },
   });
-  if (error || !data) throw new Error('Failed to start self-inspection');
+  if (error || !data) {
+    throwTenantApiError(error, response, 'Failed to start self-inspection');
+  }
   return data;
 }
 
@@ -333,11 +346,13 @@ export async function submitTenantRoutineSelfInspection(
   id: string,
   sections: TenantRoutineSelfInspectionSectionSubmission[],
 ): Promise<TenantRoutineInspection> {
-  const { data, error } = await crossub.POST('/tenant/routine-inspections/{id}/submit-self', {
+  const { data, error, response } = await crossub.POST('/tenant/routine-inspections/{id}/submit-self', {
     params: { path: { id } },
     body: { sections },
   });
-  if (error || !data) throw new Error('Failed to submit self-inspection');
+  if (error || !data) {
+    throwTenantApiError(error, response, 'Failed to submit self-inspection');
+  }
   return data;
 }
 
