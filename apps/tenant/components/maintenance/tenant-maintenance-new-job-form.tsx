@@ -77,7 +77,8 @@ export function TenantMaintenanceNewJobForm() {
     !submitting &&
     issueTypeValid &&
     description.trim().length >= 5 &&
-    Boolean(propertyAddress.trim());
+    Boolean(propertyAddress.trim()) &&
+    mediaUrls.length >= 1;
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,6 +92,10 @@ export function TenantMaintenanceNewJobForm() {
       toast.error('Description must be at least 5 characters');
       return;
     }
+    if (mediaUrls.length < 1) {
+      toast.error('At least one photo or video is required');
+      return;
+    }
     const urgentAllowed = isTenantUrgentEligibleMaintenanceIssueType(issueTypeSelection);
     const submitUrgent = urgentAllowed && priority === 'urgent';
 
@@ -101,7 +106,7 @@ export function TenantMaintenanceNewJobForm() {
         description: `${issueType}: ${body}`,
         urgent: submitUrgent,
         ...(propertyId ? { propertyId } : {}),
-        ...(mediaUrls.length ? { photos: mediaUrls } : {}),
+        photos: mediaUrls,
         clientRequestId: crypto.randomUUID(),
       });
       const item = addRepair({
