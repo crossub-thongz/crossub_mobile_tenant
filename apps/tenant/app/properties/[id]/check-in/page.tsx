@@ -15,6 +15,7 @@ import {
   fetchPublicListing,
 } from '@/lib/crossub-api/public-listings-client';
 import { submitOpenViewingCheckIn } from '@/lib/crossub-api/open-viewings-client';
+import { saveOpenInspectionCheckIn } from '@/lib/open-inspection-check-in-store';
 import type { ListingProperty } from '@/lib/types';
 import { propertyApply, propertyDetail, ROUTES } from '@/constants/routes';
 import { apiErrorMessage } from '@/lib/api-error-message';
@@ -79,7 +80,7 @@ export default function CheckInPage() {
 
     setSubmitting(true);
     try {
-      await submitOpenViewingCheckIn(sessionId, {
+      const result = await submitOpenViewingCheckIn(sessionId, {
         name: form.name.trim(),
         email: form.email.trim(),
         phone: form.phone.trim(),
@@ -87,6 +88,19 @@ export default function CheckInPage() {
         pets: form.pets.trim() || undefined,
         notes: form.specialRequest.trim() || undefined,
         comments: form.comments.trim() || undefined,
+      });
+      saveOpenInspectionCheckIn({
+        propertyId: property.id,
+        sessionId,
+        attendeeId: result.attendeeId,
+        name: form.name.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim(),
+        leaseTerm: form.leaseTerm.trim() || undefined,
+        pets: form.pets.trim() || undefined,
+        specialRequest: form.specialRequest.trim() || undefined,
+        comments: form.comments.trim() || undefined,
+        checkedInAt: new Date().toISOString(),
       });
       toast.success('Check-in recorded — thank you for visiting.');
       setCheckedIn(true);

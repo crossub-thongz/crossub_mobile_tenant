@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 
 import { ApplicationFormWizard } from '@/components/tenant/application-form-wizard';
 import { ApplicationRentalFacts } from '@/components/tenant/application-rental-facts';
+import { CheckInLinkedApplyPanel } from '@/components/tenant/check-in-linked-apply-panel';
 import { TenantShell } from '@/components/layout/tenant-shell';
 import { PageIntro } from '@/components/tenant/page-intro';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
@@ -177,13 +178,19 @@ export default function ApplyPage() {
     );
   }
 
-  // TESTING: application form disabled — remove this block when re-enabling.
+  // TESTING: NSW wizard disabled — one-tap apply from open inspection check-in.
   if (!APPLICATION_FORM_ENABLED) {
     return (
       <TenantShell title="Apply" backHref={`/properties/${id}`}>
-        <p className="text-muted-foreground text-sm">
-          The rental application form is temporarily disabled for testing.
-        </p>
+        <CheckInLinkedApplyPanel
+          property={property}
+          viewingSessionId={viewingSessionId}
+          onApplied={(reference) => {
+            router.push(
+              `${propertyApplySuccess(property.id)}?ref=${encodeURIComponent(reference)}`,
+            );
+          }}
+        />
       </TenantShell>
     );
   }
