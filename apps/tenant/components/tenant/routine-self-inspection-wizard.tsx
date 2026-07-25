@@ -5,7 +5,7 @@ import { ChevronLeft, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { AreaAvailablePrompt } from '@/components/tenant/area-available-prompt';
-import { InspectionAreaSetupPanel } from '@/components/tenant/inspection-area-setup-panel';
+import { ResetInspectionDialog } from '@/components/tenant/reset-inspection-dialog';
 import {
   RoutineSectionPhotoGrid,
   type SectionPhotos,
@@ -75,6 +75,7 @@ export function RoutineSelfInspectionWizard({
   const [customAreas, setCustomAreas] = useState<CustomAreaDefinition[]>([]);
   const [selectedAreaNames, setSelectedAreaNames] = useState<string[]>([]);
   const [areaSetupComplete, setAreaSetupComplete] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
   const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -205,14 +206,10 @@ export function RoutineSelfInspectionWizard({
       return;
     }
 
-    const photosBySection: Record<string, SectionPhotos> = {};
-    for (const section of areaDef?.defaultSections ?? []) {
-      photosBySection[section] = emptySectionPhotos();
-    }
     updateIssue({
       available: true,
-      activeSections: [...(areaDef?.defaultSections ?? [])],
-      photosBySection,
+      activeSections: [],
+      photosBySection: {},
     });
   };
 
@@ -308,6 +305,48 @@ export function RoutineSelfInspectionWizard({
     setAreaIndex(index);
   };
 
+  const goBackArea = () => {
+    if (safeAreaIndex > 0) {
+      goToArea(safeAreaIndex - 1);
+      return;
+    }
+    setAreaSetupComplete(false);
+    setAreaIndex(0);
+  };
+
+  const resetInspection = () => {
+    setResetOpen(false);
+    if (persistTimer.current) clearTimeout(persistTimer.current);
+    clearRoutineSelfInspectionDraft(scheduleKey);
+    setAreaIndex(0);
+    setIssues({});
+    setCustomAreas([]);
+    setSelectedAreaNames([]);
+    setAreaSetupComplete(false);
+    setResumingFromDraft(false);
+    toast.success('Self-inspection reset — start again from area setup');
+  };
+
+  const resetControls = (
+    <>
+      <Button
+        type="button"
+        variant="outline"
+        className="border-destructive/40 text-destructive hover:bg-destructive/10 w-full"
+        disabled={busy || starting}
+        onClick={() => setResetOpen(true)}
+      >
+        Reset self-inspection
+      </Button>
+      <ResetInspectionDialog
+        open={resetOpen}
+        busy={busy}
+        onClose={() => setResetOpen(false)}
+        onConfirm={resetInspection}
+      />
+    </>
+  );
+
   const progressTone = (index: number, areaName: string) => {
     const rec = issues[areaName];
     if (index === safeAreaIndex) return 'bg-primary';
@@ -330,7 +369,9 @@ export function RoutineSelfInspectionWizard({
 
   if (!areaSetupComplete) {
     return (
-      <InspectionAreaSetupPanel
+      <div className="space-y-4">
+        {resetControls}
+        <InspectionAreaSetupPanel
         selectedAreaNames={resolvedSelectedAreaNames}
         customAreas={customAreas}
         busy={busy}
@@ -342,6 +383,7 @@ export function RoutineSelfInspectionWizard({
           setAreaIndex(0);
         }}
       />
+      </div>
     );
   }
 
@@ -353,6 +395,7 @@ export function RoutineSelfInspectionWizard({
 
   return (
     <div className="space-y-4">
+      {resetControls}
       <p className="text-muted-foreground text-xs">
         Walk through each area and upload current condition photos for each section.
       </p>
@@ -399,8 +442,7 @@ export function RoutineSelfInspectionWizard({
                 type="button"
                 variant="outline"
                 className="flex-1"
-                disabled={safeAreaIndex === 0}
-                onClick={() => goToArea(safeAreaIndex - 1)}
+                onClick={goBackArea}
               >
                 <ChevronLeft className="size-4" />
                 Back
@@ -470,8 +512,8 @@ export function RoutineSelfInspectionWizard({
                 type="button"
                 variant="outline"
                 className="flex-1"
-                disabled={safeAreaIndex === 0 || busy}
-                onClick={() => goToArea(safeAreaIndex - 1)}
+                disabled={busy}
+                onClick={goBackArea}
               >
                 <ChevronLeft className="size-4" />
                 Back

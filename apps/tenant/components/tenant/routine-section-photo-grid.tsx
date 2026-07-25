@@ -6,7 +6,7 @@ import { useMemo } from 'react';
 import { AddSectionControl } from '@/components/tenant/add-section-control';
 import { RoutinePhotoColumn } from '@/components/tenant/routine-photo-column';
 import type { InspectionAreaDefinition } from '@/constants/inspection-areas';
-import { COMMON_DEFAULT_SECTIONS } from '@/constants/inspection-areas';
+import { buildSectionPickerOptions } from '@/lib/inspection-section-utils';
 
 export type SectionPhotos = {
   routinePhotoUrls: string[];
@@ -33,13 +33,10 @@ export function RoutineSectionPhotoGrid({
     () => new Set(definition.defaultSections),
     [definition.defaultSections],
   );
-  const sectionPickerOptions = useMemo(() => {
-    const merged = new Set<string>([
-      ...definition.optionalSections,
-      ...COMMON_DEFAULT_SECTIONS,
-    ]);
-    return [...merged];
-  }, [definition.optionalSections]);
+  const sectionPickerOptions = useMemo(
+    () => buildSectionPickerOptions(definition),
+    [definition],
+  );
 
   return (
     <div className="space-y-4">
