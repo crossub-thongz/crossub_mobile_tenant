@@ -31,6 +31,7 @@ import {
   fetchTenantMessages,
   fetchTenantNewLeasingCases,
   fetchTenantNotifications,
+  fetchTenantProperties,
   fetchTenantRentReviews,
   fetchTenantVacatingCases,
   markTenantMessageThreadRead,
@@ -70,8 +71,10 @@ import {
   pickActiveVacatingCase,
   pickDisplayVacatingCase,
   toTenantVacatingCases,
+  readTenantPropertyMessageContacts,
   type TenantDocumentView,
 } from '@/lib/crossub-api/tenant-mappers';
+import { resolveTenantPropertyContacts } from '@/lib/tenant-message-recipients';
 import { VACATING_STAGE } from '@/constants/vacating';
 import { fetchPublicListings } from '@/lib/crossub-api/public-listings-client';
 import {
@@ -95,6 +98,7 @@ import type {
   InspectionSummary,
   LeaseSummary,
   MaintenanceRequest,
+  MaintenancePropertyContact,
   MessageCategory,
   MessageParty,
   MessageThread,
@@ -178,6 +182,11 @@ interface TenantDataContextValue {
   routineInspections: TenantRoutineInspection[];
   maintenance: MaintenanceRequest[];
   messages: MessageThread[];
+  /** Strata / building manager contacts for the leased property (when on file). */
+  propertyContacts: {
+    strataContact?: MaintenancePropertyContact;
+    buildingManager?: MaintenancePropertyContact;
+  };
   rentReceipts: RentReceipt[];
   rentReviews: RentReviewCase[];
   renewal: RenewalDecision | null;
@@ -303,6 +312,10 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
   const [profileUnlinked, setProfileUnlinked] = useState(false);
   const [notifications, setNotifications] = useState<TenantNotification[]>([]);
   const [maintenance, setMaintenance] = useState<MaintenanceRequest[]>([]);
+  const [leasedPropertyContacts, setLeasedPropertyContacts] = useState<{
+    strataContact?: MaintenancePropertyContact;
+    buildingManager?: MaintenancePropertyContact;
+  }>({});
   const [applications, setApplications] = useState<RentalApplication[]>([]);
   const [newLeasingCases, setNewLeasingCases] = useState<NewLeasingCase[]>([]);
   const [messages, setMessages] = useState<MessageThread[]>([]);
@@ -505,6 +518,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       routineInspectionsRes,
       rentReviewsRes,
       vacatingCasesRes,
+      propertiesRes,
     ] = await Promise.allSettled([
       fetchTenancies(),
       fetchLedger(),
@@ -520,6 +534,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       fetchTenantRoutineInspections(),
       fetchTenantRentReviews(),
       fetchTenantVacatingCases(),
+      fetchTenantProperties(),
     ]);
 
     let connected = false;
@@ -563,6 +578,15 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       setMaintenance([...localOnly, ...fromApi]);
     } else {
       noteRejection(requests);
+    }
+
+    if (propertiesRes.status === 'fulfilled') {
+      connected = true;
+      setLeasedPropertyContacts(
+        readTenantPropertyMessageContacts(propertiesRes.value[0]),
+      );
+    } else {
+      noteRejection(propertiesRes);
     }
 
     if (threads.status === 'fulfilled') {
@@ -1528,6 +1552,15 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     return [...routineCards, ...nonRoutine];
   }, [inspections, routineInspections]);
 
+  const propertyContacts = useMemo(
+    () =>
+      resolveTenantPropertyContacts({
+        property: leasedPropertyContacts,
+        maintenance,
+      }),
+    [leasedPropertyContacts, maintenance],
+  );
+
   const value = useMemo<TenantDataContextValue>(
     () => ({
       loading,
@@ -1553,6 +1586,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       outgoingReport: outgoing,
       maintenance,
       messages,
+      propertyContacts,
       rentReceipts,
       rentReviews,
       renewal,
@@ -1613,6 +1647,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       outgoing,
       maintenance,
       messages,
+      propertyContacts,
       rentReceipts,
       rentReviews,
       renewal,

@@ -2,14 +2,24 @@ import type { MessageParty, MessageThread, ThreadMessage } from '@/lib/types';
 
 export const MESSAGE_RECIPIENTS: { value: MessageParty; label: string; description: string }[] = [
   {
+    value: 'agent',
+    label: 'Property manager',
+    description: 'CROSSUB — leasing, inspections, repairs, and accounting',
+  },
+  {
+    value: 'strata',
+    label: 'Strata',
+    description: 'Strata body for the building',
+  },
+  {
+    value: 'building_manager',
+    label: 'Building manager',
+    description: 'On-site building manager when one is recorded',
+  },
+  {
     value: 'landlord',
     label: 'Landlord',
     description: 'Property owner — lease, rent, and property decisions',
-  },
-  {
-    value: 'agent',
-    label: 'Agent',
-    description: 'CROSSUB / property manager — leasing, inspections, accounting',
   },
   {
     value: 'contractor',
@@ -20,7 +30,9 @@ export const MESSAGE_RECIPIENTS: { value: MessageParty; label: string; descripti
 
 export const MESSAGE_RECIPIENT_LABEL: Record<MessageParty, string> = {
   landlord: 'Landlord',
-  agent: 'Agent',
+  agent: 'Property manager',
+  strata: 'Strata',
+  building_manager: 'Building manager',
   contractor: 'Contractor',
 };
 
@@ -29,7 +41,9 @@ export function recipientDisplayName(
   contractorName?: string | null,
 ): string {
   if (party === 'landlord') return 'Landlord';
-  if (party === 'agent') return 'CROSSUB Agent';
+  if (party === 'agent') return 'CROSSUB';
+  if (party === 'strata') return 'Strata';
+  if (party === 'building_manager') return 'Building manager';
   return contractorName?.trim() || 'Contractor';
 }
 

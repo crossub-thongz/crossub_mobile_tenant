@@ -19,6 +19,7 @@ import {
   TENANT_NOTIFICATION_TYPE,
 } from '@/constants/api-enums';
 import { routineInspectionStatusLabel } from '@/lib/routine-inspection';
+import { recipientPartyFromSubject } from '@/lib/tenant-message-recipients';
 import { resolvePropertyAddress } from '@/lib/format-address';
 import {
   buildTenantMaintenanceTimeline,
@@ -100,6 +101,20 @@ function readMaintenancePropertyContact(
   const phone = asString(contact.phone) ?? undefined;
   if (!name && !email && !phone) return undefined;
   return { name, email, phone };
+}
+
+export function readTenantPropertyMessageContacts(property: unknown): {
+  strataContact?: MaintenancePropertyContact;
+  buildingManager?: MaintenancePropertyContact;
+} {
+  if (!property || typeof property !== 'object') return {};
+  const row = property as Record<string, unknown>;
+  const strataContact = readMaintenancePropertyContact(row.strataContact);
+  const buildingManager = readMaintenancePropertyContact(row.buildingManager);
+  return {
+    ...(strataContact ? { strataContact } : {}),
+    ...(buildingManager ? { buildingManager } : {}),
+  };
 }
 
 /** Whole days from now until `iso`, or undefined when it's missing/past/unparseable. */
@@ -401,8 +416,8 @@ export function toTenantNotifications(
 /**
  * Project the tenant's API message threads onto the app's MessageThread cards, returning
  * the threads plus a per-thread map of their nested messages (the list response carries
- * the full history, so a single fetch fills both the inbox and each thread detail). The
- * tenant always converses with CROSSUB staff, so every thread's `recipient` is `agent`.
+ * the full history, so a single fetch fills both the inbox and each thread detail). Delivery
+ * still routes through CROSSUB staff — `recipient` reflects who the tenant is addressing.
  */
 export function toMessageThreads(threads: TenantMessageThread[]): {
   threads: MessageThread[];
@@ -410,13 +425,14 @@ export function toMessageThreads(threads: TenantMessageThread[]): {
 } {
   const messagesById: Record<string, ThreadMessage[]> = {};
   const mapped: MessageThread[] = threads.map((t) => {
+    const subject = asString(t.subject) ?? 'Conversation';
     messagesById[t.id] = (t.messages ?? []).map(toThreadMessage);
     return {
       id: t.id,
-      subject: asString(t.subject) ?? 'Conversation',
+      subject,
       type: departmentToType(t.department),
       category: departmentToCategory(t.department),
-      recipient: 'agent',
+      recipient: recipientPartyFromSubject(subject),
       propertyAddress: asString(t.propertyAddress)
         ? mapPropertyAddress(t.propertyAddress)
         : undefined,

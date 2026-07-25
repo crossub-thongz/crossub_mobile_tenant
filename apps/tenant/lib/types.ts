@@ -285,8 +285,13 @@ export type MessageCategory =
   | 'accounting'
   | 'other';
 
-/** Who the tenant is messaging — landlord, agency, or repair contractor. */
-export type MessageParty = 'landlord' | 'agent' | 'contractor';
+/** Who the tenant is messaging — property manager, strata, building manager, landlord, or contractor. */
+export type MessageParty =
+  | 'landlord'
+  | 'agent'
+  | 'strata'
+  | 'building_manager'
+  | 'contractor';
 
 export interface TerminationNotice {
   id: string;

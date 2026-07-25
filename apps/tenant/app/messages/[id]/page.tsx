@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
 import { maintenanceDetail, rentReviewDetail, ROUTES } from '@/constants/routes';
 import { MESSAGE_CATEGORY_TAG, threadCategory } from '@/lib/message-categories';
+import { MESSAGE_RECIPIENT_LABEL } from '@/lib/message-parties';
 import { cn, formatDateTime } from '@/lib/utils';
 
 export default function MessageDetailPage() {
@@ -35,7 +36,7 @@ export default function MessageDetailPage() {
     <div className="flex gap-2">
       <Input
         className="flex-1"
-        placeholder="Write a reply to CROSSUB…"
+        placeholder={`Write a reply to ${MESSAGE_RECIPIENT_LABEL[thread.recipient]}…`}
         value={reply}
         onChange={(e) => setReply(e.target.value)}
       />
@@ -43,9 +44,9 @@ export default function MessageDetailPage() {
         className="shrink-0"
         onClick={() => {
           if (!reply.trim()) return;
-          sendThreadMessage(thread.id, reply, 'agent');
+          sendThreadMessage(thread.id, reply, thread.recipient);
           toast.success('Message sent', {
-            description: 'Sent to CROSSUB.',
+            description: `Sent to ${MESSAGE_RECIPIENT_LABEL[thread.recipient]} via CROSSUB.`,
           });
           setReply('');
         }}
@@ -80,6 +81,9 @@ export default function MessageDetailPage() {
         <div className="flex flex-wrap gap-2">
           <span className="bg-secondary text-foreground rounded px-2 py-0.5 text-[10px] font-bold tracking-wider">
             {MESSAGE_CATEGORY_TAG[threadCategory(thread)]}
+          </span>
+          <span className="bg-primary/10 text-primary rounded px-2 py-0.5 text-[10px] font-semibold">
+            To {MESSAGE_RECIPIENT_LABEL[thread.recipient]}
           </span>
         </div>
         {thread.propertyAddress && <p>{thread.propertyAddress}</p>}

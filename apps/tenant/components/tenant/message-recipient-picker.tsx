@@ -9,6 +9,8 @@ import { cn } from '@/lib/utils';
 const ICONS = {
   landlord: UserRound,
   agent: Building2,
+  strata: Building2,
+  building_manager: Building2,
   contractor: HardHat,
 } as const;
 
