@@ -43,7 +43,7 @@ export function routineInspectionStatusLabel(
     case 'under_review':
       return 'Under review';
     case 'completed':
-      return 'Completed';
+      return 'Done';
     default:
       return 'Scheduled';
   }

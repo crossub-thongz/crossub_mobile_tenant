@@ -141,7 +141,20 @@ export default function InspectionsPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <StatusBadge label={meta.label} variant="action" />
-                    <span className="text-muted-foreground text-xs">{i.status}</span>
+                    {i.type === 'routine' ? (
+                      <StatusBadge
+                        label={i.status}
+                        variant={
+                          i.status === 'Done'
+                            ? 'success'
+                            : i.status === 'Action required'
+                              ? 'action'
+                              : 'default'
+                        }
+                      />
+                    ) : (
+                      <span className="text-muted-foreground text-xs">{i.status}</span>
+                    )}
                   </div>
                   <p className="mt-1.5 font-semibold">{i.propertyAddress}</p>
                   <p className="text-muted-foreground mt-0.5 text-xs">{meta.description}</p>
