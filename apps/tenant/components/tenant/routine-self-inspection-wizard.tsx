@@ -5,6 +5,7 @@ import { ChevronLeft, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { AreaAvailablePrompt } from '@/components/tenant/area-available-prompt';
+import { InspectionAreaSetupPanel } from '@/components/tenant/inspection-area-setup-panel';
 import { ResetInspectionDialog } from '@/components/tenant/reset-inspection-dialog';
 import {
   RoutineSectionPhotoGrid,
@@ -98,6 +99,14 @@ export function RoutineSelfInspectionWizard({
     if (!started || !restoredDraft) return;
     if (persistTimer.current) clearTimeout(persistTimer.current);
     persistTimer.current = setTimeout(() => {
+      const hasProgress =
+        areaSetupComplete ||
+        selectedAreaNames.length > 0 ||
+        Object.keys(issues).length > 0;
+      if (!hasProgress) {
+        clearRoutineSelfInspectionDraft(scheduleKey);
+        return;
+      }
       persistRoutineSelfInspectionDraft({
         scheduleKey,
         areaIndex,
@@ -372,17 +381,17 @@ export function RoutineSelfInspectionWizard({
       <div className="space-y-4">
         {resetControls}
         <InspectionAreaSetupPanel
-        selectedAreaNames={resolvedSelectedAreaNames}
-        customAreas={customAreas}
-        busy={busy}
-        onAddBuiltInArea={handleAddBuiltInArea}
-        onAddCustomArea={handleAddCustomArea}
-        onRemoveArea={handleRemoveSetupArea}
-        onComplete={() => {
-          setAreaSetupComplete(true);
-          setAreaIndex(0);
-        }}
-      />
+          selectedAreaNames={resolvedSelectedAreaNames}
+          customAreas={customAreas}
+          busy={busy}
+          onAddBuiltInArea={handleAddBuiltInArea}
+          onAddCustomArea={handleAddCustomArea}
+          onRemoveArea={handleRemoveSetupArea}
+          onComplete={() => {
+            setAreaSetupComplete(true);
+            setAreaIndex(0);
+          }}
+        />
       </div>
     );
   }
