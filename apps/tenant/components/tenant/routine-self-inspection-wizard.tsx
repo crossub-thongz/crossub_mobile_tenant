@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChevronLeft, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { AreaAvailablePrompt } from '@/components/tenant/area-available-prompt';
 import {
   RoutineSectionPhotoGrid,
-  type SectionBeforeAfter,
+  type SectionPhotos,
 } from '@/components/tenant/routine-section-photo-grid';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,22 +21,16 @@ import {
   startTenantRoutineSelfInspection,
   submitTenantRoutineSelfInspection,
 } from '@/lib/crossub-api/tenant-account-client';
-import { matchReferenceSectionPhotos } from '@/lib/outgoing-reference-photos';
 import { cn } from '@/lib/utils';
 
 type AreaIssue = {
   available: boolean | null;
   notes: string;
   activeSections: string[];
-  photosBySection: Record<string, SectionBeforeAfter>;
+  photosBySection: Record<string, SectionPhotos>;
 };
 
-type TenantRoutineInspectionWithReference = TenantRoutineInspection & {
-  referenceIngoingAreas?: Array<{ name: string; photos: string[] }>;
-};
-
-const emptySectionPhotos = (): SectionBeforeAfter => ({
-  ingoingPhotoUrls: [],
+const emptySectionPhotos = (): SectionPhotos => ({
   routinePhotoUrls: [],
 });
 
@@ -53,15 +47,10 @@ export function RoutineSelfInspectionWizard({
   inspection,
   onUpdated,
 }: {
-  inspection: TenantRoutineInspectionWithReference;
+  inspection: TenantRoutineInspection;
   onUpdated: (next: TenantRoutineInspection) => void;
 }) {
   const scheduleKey = inspection.scheduleId ?? inspection.id;
-  const referenceAreas = useMemo(
-    () => inspection.referenceIngoingAreas ?? [],
-    [inspection.referenceIngoingAreas],
-  );
-  const hasReference = referenceAreas.length > 0;
 
   const [starting, setStarting] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -105,11 +94,6 @@ export function RoutineSelfInspectionWizard({
     }));
   };
 
-  const seedSectionIngoing = (section: string): string[] => {
-    if (!hasReference) return [];
-    return matchReferenceSectionPhotos(area, section, referenceAreas);
-  };
-
   const markAvailable = (available: boolean) => {
     if (!available) {
       setIssues((prev) => ({
@@ -120,12 +104,9 @@ export function RoutineSelfInspectionWizard({
       return;
     }
 
-    const photosBySection: Record<string, SectionBeforeAfter> = {};
+    const photosBySection: Record<string, SectionPhotos> = {};
     for (const section of areaDef.defaultSections) {
-      photosBySection[section] = {
-        ...emptySectionPhotos(),
-        ingoingPhotoUrls: seedSectionIngoing(section),
-      };
+      photosBySection[section] = emptySectionPhotos();
     }
     updateIssue({
       available: true,
@@ -141,10 +122,7 @@ export function RoutineSelfInspectionWizard({
       activeSections: [...current.activeSections, section],
       photosBySection: {
         ...current.photosBySection,
-        [section]: {
-          ...emptySectionPhotos(),
-          ingoingPhotoUrls: seedSectionIngoing(section),
-        },
+        [section]: emptySectionPhotos(),
       },
     });
   };
@@ -244,19 +222,8 @@ export function RoutineSelfInspectionWizard({
   return (
     <div className="space-y-4">
       <p className="text-muted-foreground text-xs">
-        Walk through each area and upload routine photos beside your ingoing baseline. This matches
-        the professional inspector checklist.
+        Walk through each area and upload current condition photos for each section.
       </p>
-
-      {hasReference ? (
-        <p className="rounded-lg border border-sky-500/30 bg-sky-500/5 px-3 py-2 text-xs">
-          Ingoing baseline photos loaded for comparison.
-        </p>
-      ) : (
-        <p className="rounded-lg border bg-muted/30 px-3 py-2 text-xs">
-          No ingoing report found — upload current condition photos for each section.
-        </p>
-      )}
 
       <div className="flex gap-1">
         {INSPECTION_AREA_CATALOG.map((item, index) => (
@@ -340,7 +307,6 @@ export function RoutineSelfInspectionWizard({
               activeSections={issue.activeSections}
               photosBySection={issue.photosBySection}
               busy={busy}
-              ingoingReadOnly={hasReference}
               onAddSection={addSection}
               onRemoveSection={removeSection}
               onRoutinePhotosChange={(section, urls) => {

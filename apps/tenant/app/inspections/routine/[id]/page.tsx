@@ -100,7 +100,7 @@ export default function RoutineInspectionPage() {
     room: section.room,
     description: section.description,
     photos: section.photos ?? [],
-    referencePhotos: section.referencePhotos ?? [],
+    referencePhotos: [],
     tenantConfirmed: false,
   }));
 

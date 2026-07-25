@@ -8,8 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import type { InspectionAreaDefinition } from '@/constants/inspection-areas';
 
-export type SectionBeforeAfter = {
-  ingoingPhotoUrls: string[];
+export type SectionPhotos = {
   routinePhotoUrls: string[];
 };
 
@@ -18,16 +17,14 @@ export function RoutineSectionPhotoGrid({
   activeSections,
   photosBySection,
   busy = false,
-  ingoingReadOnly = false,
   onAddSection,
   onRemoveSection,
   onRoutinePhotosChange,
 }: {
   definition: InspectionAreaDefinition;
   activeSections: string[];
-  photosBySection: Record<string, SectionBeforeAfter>;
+  photosBySection: Record<string, SectionPhotos>;
   busy?: boolean;
-  ingoingReadOnly?: boolean;
   onAddSection: (section: string) => void;
   onRemoveSection: (section: string) => void;
   onRoutinePhotosChange: (section: string, urls: string[]) => void;
@@ -53,7 +50,6 @@ export function RoutineSectionPhotoGrid({
         activeSections.map((section) => {
           const isDefault = defaultSet.has(section);
           const photos = photosBySection[section] ?? {
-            ingoingPhotoUrls: [],
             routinePhotoUrls: [],
           };
           return (
@@ -71,20 +67,13 @@ export function RoutineSectionPhotoGrid({
                   </button>
                 ) : null}
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <RoutinePhotoColumn
-                  title="Ingoing"
-                  photoUrls={photos.ingoingPhotoUrls}
-                  disabled={busy || (ingoingReadOnly && photos.ingoingPhotoUrls.length > 0)}
-                />
-                <RoutinePhotoColumn
-                  title="Routine"
-                  photoUrls={photos.routinePhotoUrls}
-                  uploading={busy}
-                  disabled={busy}
-                  onPhotosChange={(urls) => onRoutinePhotosChange(section, urls)}
-                />
-              </div>
+              <RoutinePhotoColumn
+                title="Routine"
+                photoUrls={photos.routinePhotoUrls}
+                uploading={busy}
+                disabled={busy}
+                onPhotosChange={(urls) => onRoutinePhotosChange(section, urls)}
+              />
             </div>
           );
         })
