@@ -130,7 +130,9 @@ export type TenantOutgoingDispute =
 export type TenantRoutineInspection =
   components['schemas']['TenantRoutineInspectionResponseDto'];
 export type TenantRoutineSelfInspectionSectionSubmission =
-  components['schemas']['SubmitTenantRoutineSelfInspectionSectionDto'];
+  components['schemas']['SubmitTenantRoutineSelfInspectionSectionDto'] & {
+    areaName?: string;
+  };
 export type TenantDeclineVacatingSettlement =
   components['schemas']['TenantDeclineVacatingSettlementDto'];
 
@@ -538,7 +540,6 @@ export async function respondToMaintenanceSchedule(
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        requestId,
         decision: body.decision,
         ...(body.declineReason?.trim() ? { declineReason: body.declineReason.trim() } : {}),
       }),
@@ -547,8 +548,8 @@ export async function respondToMaintenanceSchedule(
   if (!res.ok) {
     let detail = '';
     try {
-      const body = (await res.json()) as { message?: string | string[] };
-      const msg = body?.message;
+      const payload = (await res.json()) as { message?: string | string[] };
+      const msg = payload?.message;
       detail = Array.isArray(msg) ? msg.join(', ') : typeof msg === 'string' ? msg : '';
     } catch {
       // ignore non-JSON error bodies

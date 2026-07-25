@@ -5,7 +5,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 import { TenantShell } from '@/components/layout/tenant-shell';
-import { RoutineSelfInspectionChecklist } from '@/components/tenant/routine-self-inspection-checklist';
+import { RoutineSelfInspectionWizard } from '@/components/tenant/routine-self-inspection-wizard';
 import { RoutinePreviousSubmissionPanel } from '@/components/tenant/routine-previous-submission-panel';
 import { ReportSectionCard } from '@/components/tenant/report-section-card';
 import { StatusBadge } from '@/components/tenant/status-badge';
@@ -137,13 +137,18 @@ export default function RoutineInspectionPage() {
         </p>
       )}
 
-      {inspection.flow === 'in_person' && needsRoutineInspectionAction(inspection) ? (
+      {inspection.flow === 'in_person' ? (
         <div className="mb-4 rounded-xl border border-sky-500/40 bg-sky-500/5 p-4 text-sm">
-          <p className="font-medium">In-person visit scheduled</p>
+          <p className="font-medium">In-person inspector visit</p>
           <p className="text-muted-foreground mt-1 text-xs">
-            An inspector will attend at the scheduled time. Please ensure the property is
-            accessible — you do not need to complete a checklist in the app.
+            This routine inspection is scheduled as an in-person visit. An inspector will attend
+            at the scheduled time — you do not need to upload photos in the tenant app.
           </p>
+          {inspection.scheduledAt ? (
+            <p className="text-muted-foreground mt-2 text-xs">
+              Please ensure the property is accessible for the inspector.
+            </p>
+          ) : null}
         </div>
       ) : null}
 
@@ -176,7 +181,7 @@ export default function RoutineInspectionPage() {
       ) : null}
 
       {showSelfChecklist ? (
-        <RoutineSelfInspectionChecklist
+        <RoutineSelfInspectionWizard
           inspection={inspection}
           onUpdated={(next) => setLoaded(next)}
         />

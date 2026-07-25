@@ -1194,7 +1194,18 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       });
       const [mapped] = toTenantMaintenanceRequests([summary], propertyAddress);
       setMaintenance((prev) => {
-        const next = prev.map((m) => (m.id === id ? { ...m, ...mapped } : m));
+        const next = prev.map((m) =>
+          m.id === id
+            ? {
+                ...m,
+                ...mapped,
+                scheduleApprovalPending:
+                  decision === 'approved' ? false : mapped.scheduleApprovalPending,
+                scheduleProposedTimes:
+                  decision === 'approved' ? null : mapped.scheduleProposedTimes,
+              }
+            : m,
+        );
         persistMaintenance(next);
         return next;
       });

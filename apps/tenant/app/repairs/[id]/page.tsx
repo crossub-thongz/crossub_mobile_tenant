@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 import {
   Building2,
   CalendarClock,
@@ -37,7 +37,6 @@ import { cn, formatDateTime } from '@/lib/utils';
 type Tab = 'overview' | 'status' | 'message';
 
 export default function RepairDetailPage() {
-  const router = useRouter();
   const { id } = useParams<{ id: string }>();
   const { maintenance, messages, approveRepairCompletion, respondToMaintenanceSchedule, respondMaintenanceResponsibilityAck, refresh } =
     useTenantData();
@@ -47,12 +46,19 @@ export default function RepairDetailPage() {
   const [submittingAck, setSubmittingAck] = useState(false);
   const [submittingCompletion, setSubmittingCompletion] = useState(false);
   const [submittingSchedule, setSubmittingSchedule] = useState(false);
+  const scheduleActionInFlight = useRef(false);
+  const [scheduleDecision, setScheduleDecision] = useState<'approved' | 'declined' | null>(null);
   const [scheduleDeclineReason, setScheduleDeclineReason] = useState('');
   const [completionPopupOpen, setCompletionPopupOpen] = useState(false);
 
   const needsCompletionApproval =
     request?.completionApprovalPending && !request.tenantCompletionApproved;
   const needsScheduleApproval = request?.scheduleApprovalPending === true;
+  const showScheduleApprovalCard =
+    Boolean(request?.scheduleProposedTimes) &&
+    (needsScheduleApproval || scheduleDecision === 'approved');
+  const scheduleActionsLocked =
+    submittingSchedule || scheduleDecision !== null;
   const needsResponsibilityAck = request?.responsibilityAckRequired === true;
   const responsibilityText = responsibilityLabel(request?.responsibility);
 
@@ -74,7 +80,6 @@ export default function RepairDetailPage() {
           ? 'You acknowledged this repair is your responsibility.'
           : 'Your disagreement was recorded.',
       );
-      router.refresh();
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : 'Could not record your response. Try again.',
@@ -90,7 +95,6 @@ export default function RepairDetailPage() {
     try {
       await approveRepairCompletion(request.id);
       toast.success('Repair completion confirmed');
-      router.refresh();
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : 'Could not record your approval. Try again.',
@@ -101,13 +105,16 @@ export default function RepairDetailPage() {
   };
 
   const handleScheduleApproval = async () => {
-    if (!request) return;
+    if (!request || scheduleActionInFlight.current || scheduleDecision) return;
+    scheduleActionInFlight.current = true;
     setSubmittingSchedule(true);
+    setScheduleDecision('approved');
     try {
       await respondToMaintenanceSchedule(request.id, 'approved');
       toast.success('Visit time approved — contractor has been notified');
-      router.refresh();
     } catch (err) {
+      setScheduleDecision(null);
+      scheduleActionInFlight.current = false;
       toast.error(err instanceof Error ? err.message : 'Could not approve visit time');
     } finally {
       setSubmittingSchedule(false);
@@ -115,18 +122,21 @@ export default function RepairDetailPage() {
   };
 
   const handleScheduleDecline = async () => {
-    if (!request) return;
+    if (!request || scheduleActionInFlight.current || scheduleDecision) return;
     if (!scheduleDeclineReason.trim()) {
       toast.error('Please tell us why this time does not work');
       return;
     }
+    scheduleActionInFlight.current = true;
     setSubmittingSchedule(true);
+    setScheduleDecision('declined');
     try {
       await respondToMaintenanceSchedule(request.id, 'declined', scheduleDeclineReason.trim());
       toast.success('Visit time declined — contractor will propose new times');
       setScheduleDeclineReason('');
-      router.refresh();
     } catch (err) {
+      setScheduleDecision(null);
+      scheduleActionInFlight.current = false;
       toast.error(err instanceof Error ? err.message : 'Could not decline visit time');
     } finally {
       setSubmittingSchedule(false);
@@ -242,30 +252,44 @@ export default function RepairDetailPage() {
           </InfoCard>
         )}
 
-        {needsScheduleApproval && request.scheduleProposedTimes && (
+        {showScheduleApprovalCard && (
           <InfoCard icon={CalendarClock} label="Approve visit time" accent="primary">
             <p className="text-muted-foreground text-xs leading-relaxed">
               The contractor proposed the following times to attend your property:
             </p>
             <p className="mt-3 whitespace-pre-wrap text-sm font-medium">{request.scheduleProposedTimes}</p>
-            <div className="mt-4 grid gap-2">
-              <Button disabled={submittingSchedule} onClick={() => void handleScheduleApproval()}>
-                Approve visit time
-              </Button>
-              <textarea
-                className="border-input bg-background flex min-h-[72px] w-full rounded-md border px-3 py-2 text-sm"
-                placeholder="Reason if declining (required to decline)"
-                value={scheduleDeclineReason}
-                onChange={(e) => setScheduleDeclineReason(e.target.value)}
-              />
-              <Button
-                variant="outline"
-                disabled={submittingSchedule}
-                onClick={() => void handleScheduleDecline()}
-              >
-                Decline proposed time
-              </Button>
-            </div>
+            {scheduleDecision === 'approved' ? (
+              <p className="text-primary mt-4 text-sm font-medium">
+                You approved this visit time. The contractor has been notified.
+              </p>
+            ) : scheduleDecision === 'declined' ? (
+              <p className="text-muted-foreground mt-4 text-sm font-medium">
+                You declined this time. The contractor will propose new availability.
+              </p>
+            ) : (
+              <div className="mt-4 grid gap-2">
+                <Button
+                  disabled={scheduleActionsLocked}
+                  onClick={() => void handleScheduleApproval()}
+                >
+                  Approve visit time
+                </Button>
+                <textarea
+                  className="border-input bg-background flex min-h-[72px] w-full rounded-md border px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+                  placeholder="Reason if declining (required to decline)"
+                  value={scheduleDeclineReason}
+                  disabled={scheduleActionsLocked}
+                  onChange={(e) => setScheduleDeclineReason(e.target.value)}
+                />
+                <Button
+                  variant="outline"
+                  disabled={scheduleActionsLocked}
+                  onClick={() => void handleScheduleDecline()}
+                >
+                  Decline proposed time
+                </Button>
+              </div>
+            )}
           </InfoCard>
         )}
 
