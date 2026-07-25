@@ -5,6 +5,7 @@ import { ChevronLeft, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { AreaAvailablePrompt } from '@/components/tenant/area-available-prompt';
+import { InspectionAreaNav } from '@/components/tenant/inspection-area-nav';
 import { InspectionAreaSetupPanel } from '@/components/tenant/inspection-area-setup-panel';
 import { ResetInspectionDialog } from '@/components/tenant/reset-inspection-dialog';
 import {
@@ -35,7 +36,13 @@ import {
   loadRoutineSelfInspectionDraft,
   persistRoutineSelfInspectionDraft,
 } from '@/lib/routine-self-inspection-draft';
-import { cn } from '@/lib/utils';
+import {
+  existingAreaNamesFromPlan,
+  findIngoingPlanRoom,
+  resolveIngoingAreaPlan,
+  sectionsForAvailableArea,
+  type IngoingAreaPlan,
+} from '@/lib/inspection-area-workflow';
 
 type AreaIssue = {
   available: boolean | null;
@@ -77,7 +84,22 @@ export function RoutineSelfInspectionWizard({
   const [selectedAreaNames, setSelectedAreaNames] = useState<string[]>([]);
   const [areaSetupComplete, setAreaSetupComplete] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
+  const [ingoingAreaPlan, setIngoingAreaPlan] = useState<IngoingAreaPlan | null>(null);
   const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const referenceIngoingAreas = (
+      inspection as {
+        referenceIngoingAreas?: Array<{ name: string; photos: string[] }>;
+      }
+    ).referenceIngoingAreas;
+    const refAreas =
+      referenceIngoingAreas?.map((area) => ({
+        name: area.name,
+        photos: area.photos.map((url: string) => ({ url })),
+      })) ?? [];
+    setIngoingAreaPlan(resolveIngoingAreaPlan(refAreas));
+  }, [inspection]);
 
   useEffect(() => {
     const saved = loadRoutineSelfInspectionDraft(scheduleKey);
@@ -176,6 +198,27 @@ export function RoutineSelfInspectionWizard({
   const issue = issues[area] ?? emptyAreaIssue();
   const isLast = safeAreaIndex === areaCatalog.length - 1;
 
+  const ingoingExistingAreas = existingAreaNamesFromPlan(ingoingAreaPlan);
+
+  const addAllFromIngoing = () => {
+    const names = ingoingExistingAreas.filter(
+      (name) =>
+        !resolvedSelectedAreaNames.some(
+          (selected) => selected.toLowerCase() === name.toLowerCase(),
+        ),
+    );
+    if (names.length === 0) return;
+    setSelectedAreaNames((prev) => [...prev, ...names]);
+    setIssues((prev) => {
+      const next = { ...prev };
+      for (const name of names) {
+        if (!next[name]) next[name] = emptyAreaIssue();
+      }
+      return next;
+    });
+    toast.success(`Added ${names.length} area(s) from the ingoing report`);
+  };
+
   const handleAddBuiltInArea = (name: string) => {
     setSelectedAreaNames((prev) => [...prev, name]);
     setIssues((prev) => ({ ...prev, [name]: emptyAreaIssue() }));
@@ -215,10 +258,19 @@ export function RoutineSelfInspectionWizard({
       return;
     }
 
+    const sections = sectionsForAvailableArea(area, customAreas, ingoingAreaPlan);
+    const photosBySection: Record<string, SectionPhotos> = {
+      ...(issue.photosBySection ?? {}),
+    };
+    for (const section of sections) {
+      if (!photosBySection[section]) {
+        photosBySection[section] = { routinePhotoUrls: [] };
+      }
+    }
     updateIssue({
       available: true,
-      activeSections: [],
-      photosBySection: {},
+      activeSections: sections,
+      photosBySection,
     });
   };
 
@@ -235,6 +287,8 @@ export function RoutineSelfInspectionWizard({
   };
 
   const removeSection = (section: string) => {
+    const planSections = findIngoingPlanRoom(ingoingAreaPlan, area)?.sections ?? [];
+    if (planSections.includes(section)) return;
     if (areaDef?.defaultSections.includes(section)) return;
     const current = issues[area] ?? emptyAreaIssue();
     const nextPhotos = { ...current.photosBySection };
@@ -383,10 +437,13 @@ export function RoutineSelfInspectionWizard({
         <InspectionAreaSetupPanel
           selectedAreaNames={resolvedSelectedAreaNames}
           customAreas={customAreas}
-          busy={busy}
+          existingAreaNames={ingoingExistingAreas}
+          continuing={resumingFromDraft || resolvedSelectedAreaNames.length > 0}
+          busy={busy || starting}
           onAddBuiltInArea={handleAddBuiltInArea}
           onAddCustomArea={handleAddCustomArea}
           onRemoveArea={handleRemoveSetupArea}
+          onAddAllExisting={ingoingExistingAreas.length > 0 ? addAllFromIngoing : undefined}
           onComplete={() => {
             setAreaSetupComplete(true);
             setAreaIndex(0);
@@ -409,18 +466,12 @@ export function RoutineSelfInspectionWizard({
         Walk through each area and upload current condition photos for each section.
       </p>
 
-      <div className="flex gap-1">
-        {areaCatalog.map((item, index) => (
-          <button
-            key={item.name}
-            type="button"
-            title={item.name}
-            aria-label={`Go to ${item.name}`}
-            className={cn('h-1.5 flex-1 rounded-full', progressTone(index, item.name))}
-            onClick={() => goToArea(index)}
-          />
-        ))}
-      </div>
+      <InspectionAreaNav
+        areaCatalog={areaCatalog}
+        areaIndex={safeAreaIndex}
+        progressTone={progressTone}
+        onGoToArea={goToArea}
+      />
 
       {issue.available == null ? (
         <AreaAvailablePrompt
@@ -463,7 +514,7 @@ export function RoutineSelfInspectionWizard({
                   disabled={busy}
                   onClick={() => void submitAll(issues)}
                 >
-                  Submit self-inspection
+                  {busy ? 'Submitting…' : 'Complete inspection'}
                 </Button>
               ) : (
                 <Button
@@ -536,7 +587,7 @@ export function RoutineSelfInspectionWizard({
                 {busy ? (
                   <Loader2 className="size-4 animate-spin" />
                 ) : isLast ? (
-                  'Submit self-inspection'
+                  'Complete inspection'
                 ) : (
                   'Next area'
                 )}
