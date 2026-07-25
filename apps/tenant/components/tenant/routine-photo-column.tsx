@@ -1,12 +1,17 @@
 'use client';
 
-import { useId, useState } from 'react';
-import { ImagePlus, Loader2, X } from 'lucide-react';
+import { useId, useRef, useState } from 'react';
+import { Camera, ImagePlus, Loader2, X } from 'lucide-react';
+import { toast } from 'sonner';
 
+import { RoutineCameraCapture } from '@/components/tenant/routine-camera-capture';
 import { Button } from '@/components/ui/button';
 import { uploadMaintenancePhoto } from '@/lib/crossub-api/tenant-account-client';
-import { fileToBase64 } from '@/lib/utils';
-import { cn } from '@/lib/utils';
+import {
+  compressImageForUpload,
+  dataUrlToUploadParts,
+} from '@/lib/compress-image';
+import { cn, fileToBase64 } from '@/lib/utils';
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 
@@ -24,33 +29,92 @@ export function RoutinePhotoColumn({
   onPhotosChange?: (urls: string[]) => void;
 }) {
   const uploadId = useId();
+  const nativeCameraId = useId();
+  const nativeCameraRef = useRef<HTMLInputElement>(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
   const [localUploading, setLocalUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const blocked = disabled || uploading || localUploading;
   const primaryUrl = photoUrls[0];
 
-  const handleFiles = async (files: FileList | null) => {
-    if (!files?.length || blocked) return;
+  const uploadDataUrl = async (dataUrl: string) => {
+    const parts = dataUrlToUploadParts(dataUrl);
+    if (!parts) {
+      toast.error('Could not process photo');
+      return null;
+    }
+    return uploadMaintenancePhoto({
+      fileName: `routine-${Date.now()}.jpg`,
+      mimeType: parts.mimeType,
+      sizeBytes: parts.sizeBytes,
+      contentBase64: parts.contentBase64,
+    });
+  };
+
+  const uploadFile = async (file: File) => {
+    const mime = file.type || 'image/jpeg';
+    if (!mime.startsWith('image/') && !mime.startsWith('video/')) return null;
+    if (file.size > MAX_FILE_BYTES) {
+      toast.error('Photo is too large. Please choose a smaller image.');
+      return null;
+    }
+
+    if (mime.startsWith('image/')) {
+      const dataUrl = await compressImageForUpload(file);
+      return uploadDataUrl(dataUrl);
+    }
+
+    const contentBase64 = await fileToBase64(file);
+    return uploadMaintenancePhoto({
+      fileName: file.name,
+      mimeType: mime,
+      sizeBytes: file.size,
+      contentBase64,
+    });
+  };
+
+  const addFiles = async (files: File[]) => {
+    if (!files.length || blocked || !onPhotosChange) return;
     setLocalUploading(true);
     try {
       const urls: string[] = [];
-      for (const file of Array.from(files)) {
-        const mime = file.type || 'image/jpeg';
-        if (!mime.startsWith('image/') && !mime.startsWith('video/')) continue;
-        if (file.size > MAX_FILE_BYTES) continue;
-        const contentBase64 = await fileToBase64(file);
-        const url = await uploadMaintenancePhoto({
-          fileName: file.name,
-          mimeType: mime,
-          sizeBytes: file.size,
-          contentBase64,
-        });
-        urls.push(url);
+      for (const file of files) {
+        const url = await uploadFile(file);
+        if (url) urls.push(url);
       }
-      if (urls.length && onPhotosChange) onPhotosChange([...photoUrls, ...urls]);
+      if (urls.length) onPhotosChange([...photoUrls, ...urls]);
+    } catch {
+      toast.error('Could not upload photo');
     } finally {
       setLocalUploading(false);
     }
+  };
+
+  const addDataUrl = async (dataUrl: string) => {
+    if (blocked || !onPhotosChange) return;
+    setLocalUploading(true);
+    try {
+      const url = await uploadDataUrl(dataUrl);
+      if (url) onPhotosChange([...photoUrls, url]);
+    } catch {
+      toast.error('Could not upload photo');
+    } finally {
+      setLocalUploading(false);
+    }
+  };
+
+  const openSnap = () => {
+    if (blocked) return;
+    if (typeof navigator.mediaDevices?.getUserMedia === 'function') {
+      setCameraOpen(true);
+      return;
+    }
+    nativeCameraRef.current?.click();
+  };
+
+  const handleFiles = (files: FileList | null) => {
+    if (!files?.length || blocked) return;
+    void addFiles(Array.from(files));
   };
 
   return (
@@ -88,7 +152,7 @@ export function RoutinePhotoColumn({
 
       {photoUrls.length > 1 ? (
         <div className="grid grid-cols-3 gap-1">
-          {photoUrls.slice(1).map((url, index) => (
+          {photoUrls.slice(1).map((url) => (
             <button
               key={url}
               type="button"
@@ -103,33 +167,75 @@ export function RoutinePhotoColumn({
       ) : null}
 
       {!disabled && onPhotosChange ? (
-        <>
-          <input
-            id={uploadId}
-            type="file"
-            accept="image/*,video/*"
-            multiple
-            className="sr-only"
-            disabled={blocked}
-            onChange={(event) => void handleFiles(event.target.files)}
-          />
+        <div className="flex flex-col gap-1.5">
           <Button
             type="button"
-            size="sm"
             variant="outline"
+            size="sm"
             className="w-full gap-1.5 text-xs"
             disabled={blocked}
-            onClick={() => document.getElementById(uploadId)?.click()}
+            onClick={openSnap}
           >
             {blocked ? (
               <Loader2 className="size-3.5 animate-spin" />
             ) : (
-              <ImagePlus className="size-3.5" />
+              <Camera className="size-3.5" />
             )}
-            Add photo
+            {blocked ? 'Uploading…' : 'Snap photo'}
           </Button>
-        </>
+          <label
+            htmlFor={uploadId}
+            className={cn(
+              'inline-flex w-full cursor-pointer items-center justify-center gap-1.5',
+              'rounded-md border border-input bg-background px-3 text-xs font-medium',
+              'shadow-xs hover:bg-accent hover:text-accent-foreground',
+              'h-8',
+              blocked && 'pointer-events-none opacity-60',
+            )}
+          >
+            <ImagePlus className="size-3.5" />
+            Upload
+          </label>
+        </div>
       ) : null}
+
+      <input
+        id={nativeCameraId}
+        ref={nativeCameraRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="sr-only"
+        tabIndex={-1}
+        disabled={blocked}
+        onChange={(event) => {
+          handleFiles(event.target.files);
+          event.target.value = '';
+        }}
+      />
+      <input
+        id={uploadId}
+        type="file"
+        accept="image/*"
+        multiple
+        className="sr-only"
+        tabIndex={-1}
+        disabled={blocked}
+        onChange={(event) => {
+          handleFiles(event.target.files);
+          event.target.value = '';
+        }}
+      />
+
+      <RoutineCameraCapture
+        open={cameraOpen}
+        onClose={() => setCameraOpen(false)}
+        onCapture={(dataUrl) => {
+          if (blocked) return;
+          void addDataUrl(dataUrl);
+        }}
+        nativeInputId={nativeCameraId}
+      />
 
       {previewUrl ? (
         <div
