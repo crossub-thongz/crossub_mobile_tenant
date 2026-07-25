@@ -56,9 +56,9 @@ export default function RepairDetailPage() {
   const needsScheduleApproval = request?.scheduleApprovalPending === true;
   const showScheduleApprovalCard =
     Boolean(request?.scheduleProposedTimes) &&
-    (needsScheduleApproval || scheduleDecision === 'approved');
+    (needsScheduleApproval || scheduleDecision === 'approved' || scheduleDecision === 'declined');
   const scheduleActionsLocked =
-    submittingSchedule || scheduleDecision !== null;
+    submittingSchedule || (!needsScheduleApproval && scheduleDecision !== null);
   const needsResponsibilityAck = request?.responsibilityAckRequired === true;
   const responsibilityText = responsibilityLabel(request?.responsibility);
 
@@ -69,6 +69,14 @@ export default function RepairDetailPage() {
       setCompletionPopupOpen(false);
     }
   }, [needsCompletionApproval, request?.completionEvidenceUploaded, request?.id]);
+
+  useEffect(() => {
+    if (needsScheduleApproval) {
+      setScheduleDecision(null);
+      setScheduleDeclineReason('');
+      scheduleActionInFlight.current = false;
+    }
+  }, [needsScheduleApproval, request?.id, request?.scheduleProposedTimes]);
 
   const handleResponsibilityAck = async (agreed: boolean) => {
     if (!request) return;
@@ -258,15 +266,7 @@ export default function RepairDetailPage() {
               The contractor proposed the following times to attend your property:
             </p>
             <p className="mt-3 whitespace-pre-wrap text-sm font-medium">{request.scheduleProposedTimes}</p>
-            {scheduleDecision === 'approved' ? (
-              <p className="text-primary mt-4 text-sm font-medium">
-                You approved this visit time. The contractor has been notified.
-              </p>
-            ) : scheduleDecision === 'declined' ? (
-              <p className="text-muted-foreground mt-4 text-sm font-medium">
-                You declined this time. The contractor will propose new availability.
-              </p>
-            ) : (
+            {needsScheduleApproval ? (
               <div className="mt-4 grid gap-2">
                 <Button
                   disabled={scheduleActionsLocked}
@@ -289,7 +289,15 @@ export default function RepairDetailPage() {
                   Decline proposed time
                 </Button>
               </div>
-            )}
+            ) : scheduleDecision === 'approved' ? (
+              <p className="text-primary mt-4 text-sm font-medium">
+                You approved this visit time. The contractor has been notified.
+              </p>
+            ) : scheduleDecision === 'declined' ? (
+              <p className="text-muted-foreground mt-4 text-sm font-medium">
+                You declined this time. The contractor will propose new availability.
+              </p>
+            ) : null}
           </InfoCard>
         )}
 

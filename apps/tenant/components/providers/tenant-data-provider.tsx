@@ -1223,8 +1223,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
             ? {
                 ...m,
                 ...mapped,
-                scheduleApprovalPending:
-                  decision === 'approved' ? false : mapped.scheduleApprovalPending,
+                scheduleApprovalPending: false,
                 scheduleProposedTimes:
                   decision === 'approved' ? null : mapped.scheduleProposedTimes,
               }
