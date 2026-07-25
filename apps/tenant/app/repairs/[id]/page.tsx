@@ -55,10 +55,8 @@ export default function RepairDetailPage() {
     request?.completionApprovalPending && !request.tenantCompletionApproved;
   const needsScheduleApproval = request?.scheduleApprovalPending === true;
   const showScheduleApprovalCard =
-    Boolean(request?.scheduleProposedTimes) &&
-    (needsScheduleApproval || scheduleDecision === 'approved' || scheduleDecision === 'declined');
-  const scheduleActionsLocked =
-    submittingSchedule || (!needsScheduleApproval && scheduleDecision !== null);
+    needsScheduleApproval && Boolean(request?.scheduleProposedTimes?.trim());
+  const scheduleActionsLocked = submittingSchedule;
   const needsResponsibilityAck = request?.responsibilityAckRequired === true;
   const responsibilityText = responsibilityLabel(request?.responsibility);
 
@@ -76,7 +74,7 @@ export default function RepairDetailPage() {
       setScheduleDeclineReason('');
       scheduleActionInFlight.current = false;
     }
-  }, [needsScheduleApproval, request?.id, request?.scheduleProposedTimes]);
+  }, [request?.id, request?.scheduleProposedTimes]);
 
   const handleResponsibilityAck = async (agreed: boolean) => {
     if (!request) return;
@@ -266,38 +264,28 @@ export default function RepairDetailPage() {
               The contractor proposed the following times to attend your property:
             </p>
             <p className="mt-3 whitespace-pre-wrap text-sm font-medium">{request.scheduleProposedTimes}</p>
-            {needsScheduleApproval ? (
-              <div className="mt-4 grid gap-2">
-                <Button
-                  disabled={scheduleActionsLocked}
-                  onClick={() => void handleScheduleApproval()}
-                >
-                  Approve visit time
-                </Button>
-                <textarea
-                  className="border-input bg-background flex min-h-[72px] w-full rounded-md border px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
-                  placeholder="Reason if declining (required to decline)"
-                  value={scheduleDeclineReason}
-                  disabled={scheduleActionsLocked}
-                  onChange={(e) => setScheduleDeclineReason(e.target.value)}
-                />
-                <Button
-                  variant="outline"
-                  disabled={scheduleActionsLocked}
-                  onClick={() => void handleScheduleDecline()}
-                >
-                  Decline proposed time
-                </Button>
-              </div>
-            ) : scheduleDecision === 'approved' ? (
-              <p className="text-primary mt-4 text-sm font-medium">
-                You approved this visit time. The contractor has been notified.
-              </p>
-            ) : scheduleDecision === 'declined' ? (
-              <p className="text-muted-foreground mt-4 text-sm font-medium">
-                You declined this time. The contractor will propose new availability.
-              </p>
-            ) : null}
+            <div className="mt-4 grid gap-2">
+              <Button
+                disabled={scheduleActionsLocked}
+                onClick={() => void handleScheduleApproval()}
+              >
+                Approve visit time
+              </Button>
+              <textarea
+                className="border-input bg-background flex min-h-[72px] w-full rounded-md border px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+                placeholder="Reason if declining (required to decline)"
+                value={scheduleDeclineReason}
+                disabled={scheduleActionsLocked}
+                onChange={(e) => setScheduleDeclineReason(e.target.value)}
+              />
+              <Button
+                variant="outline"
+                disabled={scheduleActionsLocked}
+                onClick={() => void handleScheduleDecline()}
+              >
+                Decline proposed time
+              </Button>
+            </div>
           </InfoCard>
         )}
 
