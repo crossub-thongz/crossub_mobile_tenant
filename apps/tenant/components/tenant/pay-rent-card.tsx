@@ -10,6 +10,7 @@ import { useTenantData } from '@/components/providers/tenant-data-provider';
 import {
   DEMO_BANK_DETAILS,
   computeRentAmountDue,
+  rentPaymentCycleHint,
   rentPaymentReference,
 } from '@/lib/rent-payment';
 import { formatCurrency } from '@/lib/utils';
@@ -61,7 +62,7 @@ export function PayRentCard() {
       <p className="text-muted-foreground mt-1 text-xs">
         {arrears || outstandingBalance
           ? 'Outstanding amount due'
-          : 'Suggested payment — 4 weeks rent at current rate'}
+          : rentPaymentCycleHint(lease)}
       </p>
 
       <div className="bg-muted/50 mt-4 space-y-2 rounded-lg p-3 text-sm">

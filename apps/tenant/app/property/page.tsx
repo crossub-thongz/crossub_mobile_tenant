@@ -9,17 +9,15 @@ import { OnboardingPendingAlert } from '@/components/tenant/onboarding-pending-a
 import { EmptyState } from '@/components/tenant/empty-state';
 import { InfoCard } from '@/components/tenant/info-card';
 import { StatusBadge } from '@/components/tenant/status-badge';
+import { TenancyUpcomingTimers } from '@/components/tenant/tenancy-upcoming-timers';
+import { RentCycleAmount, RentCycleSummary } from '@/components/tenant/rent-cycle-amount';
 import { UpcomingRentHint } from '@/components/tenant/upcoming-rent-hint';
 import { Button } from '@/components/ui/button';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
 import { ROUTES } from '@/constants/routes';
 import { findActiveNewLeasingCase } from '@/lib/new-leasing';
-import {
-  resolveNextRentReviewDate,
-  resolveUpcomingRentHint,
-  shouldShowNextRentReviewDate,
-} from '@/lib/rent-review';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { resolveUpcomingRentHint } from '@/lib/rent-review';
+import { formatDate } from '@/lib/utils';
 
 export default function PropertyPage() {
   const {
@@ -28,6 +26,7 @@ export default function PropertyPage() {
     newLeasingCases,
     rentReviews,
     vacatingCase,
+    routineInspections,
     loading,
     apiConnected,
     profileUnlinked,
@@ -74,8 +73,6 @@ export default function PropertyPage() {
     leasingOnboarding?.propertyAddress ??
     activeNewLeasing!.propertyAddress;
   const inOnboarding = Boolean(leasingOnboarding || activeNewLeasing?.onboardingActive);
-  const nextRentReviewDate = resolveNextRentReviewDate(lease, rentReviews);
-  const showNextRentReview = shouldShowNextRentReviewDate(lease, rentReviews);
   const upcomingRentHint = resolveUpcomingRentHint(rentReviews, lease, vacatingCase);
 
   return (
@@ -87,10 +84,19 @@ export default function PropertyPage() {
           <p className="text-lg font-semibold leading-snug">{address}</p>
           {lease ? (
             <>
-              <p className="text-primary mt-3 text-2xl font-bold tracking-tight">
-                {formatCurrency(lease.rentWeekly)}
-                <span className="text-muted-foreground text-base font-normal">/week</span>
-              </p>
+              <RentCycleAmount
+                lease={lease}
+                className="text-primary mt-3 text-2xl font-bold tracking-tight"
+              />
+              <RentCycleSummary lease={lease} />
+              {lease.rentPaidTo ? (
+                <p className="text-muted-foreground mt-3 text-sm">
+                  Rent paid to{' '}
+                  <span className="text-foreground font-medium">
+                    {formatDate(lease.rentPaidTo)}
+                  </span>
+                </p>
+              ) : null}
               <UpcomingRentHint hint={upcomingRentHint} />
             </>
           ) : (
@@ -135,19 +141,11 @@ export default function PropertyPage() {
               </InfoCard>
             </div>
 
-            {showNextRentReview && nextRentReviewDate ? (
-              <div className="rounded-2xl border border-primary/25 bg-primary/5 p-4">
-                <p className="text-sm font-medium">Next rent review</p>
-                <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-                  You accepted the recent rent increase. Your property manager can begin the
-                  next rent review from{' '}
-                  <span className="text-foreground font-medium">
-                    {formatDate(nextRentReviewDate)}
-                  </span>
-                  .
-                </p>
-              </div>
-            ) : null}
+            <TenancyUpcomingTimers
+              lease={lease}
+              routineInspections={routineInspections}
+              rentReviews={rentReviews}
+            />
 
             {lease.renewalDueInDays != null && lease.renewalDueInDays <= 90 && (
               <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4">

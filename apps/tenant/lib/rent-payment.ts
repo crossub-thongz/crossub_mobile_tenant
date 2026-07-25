@@ -1,6 +1,11 @@
 import type { ArrearsNotice, LeaseSummary, OutstandingBalance } from '@/lib/types';
+import {
+  amountFromWeeklyRent,
+  paymentCycleUnitLabel,
+  resolveLeaseRentCycle,
+} from '@/lib/rent-calculations';
 
-/** Amount the tenant should pay next (outstanding → arrears → ~4 weeks rent). */
+/** Amount the tenant should pay next (outstanding → arrears → one payment cycle). */
 export function computeRentAmountDue(
   lease: LeaseSummary | null,
   arrears: ArrearsNotice | null,
@@ -8,8 +13,17 @@ export function computeRentAmountDue(
 ): number | null {
   if (outstanding) return outstanding.amount;
   if (arrears && arrears.stage !== 'resolved') return arrears.outstandingAmount;
-  if (lease) return Math.round(lease.rentWeekly * 4 * 100) / 100;
+  if (lease) {
+    const cycle = resolveLeaseRentCycle(lease);
+    return amountFromWeeklyRent(lease.rentWeekly, cycle);
+  }
   return null;
+}
+
+export function rentPaymentCycleHint(lease: LeaseSummary | null): string {
+  if (!lease) return 'Suggested payment at current rate';
+  const cycle = resolveLeaseRentCycle(lease);
+  return `Suggested payment — one ${paymentCycleUnitLabel(cycle)} at current rate`;
 }
 
 export const DEMO_BANK_DETAILS = {

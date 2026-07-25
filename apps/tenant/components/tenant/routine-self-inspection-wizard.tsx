@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { AreaAvailablePrompt } from '@/components/tenant/area-available-prompt';
+import { InspectionAreaSetupPanel } from '@/components/tenant/inspection-area-setup-panel';
 import {
   RoutineSectionPhotoGrid,
   type SectionPhotos,
@@ -16,11 +17,23 @@ import {
   INSPECTION_AREA_CATALOG,
   sectionAreaName,
 } from '@/constants/inspection-areas';
+import {
+  buildExecutionAreaCatalog,
+  inferSelectedAreaNamesFromDraft,
+  normalizeCustomAreaName,
+  type CustomAreaDefinition,
+  type CustomAreaSectionMode,
+} from '@/lib/custom-inspection-areas';
 import type { TenantRoutineInspection } from '@/lib/crossub-api/tenant-account-client';
 import {
   startTenantRoutineSelfInspection,
   submitTenantRoutineSelfInspection,
 } from '@/lib/crossub-api/tenant-account-client';
+import {
+  clearRoutineSelfInspectionDraft,
+  loadRoutineSelfInspectionDraft,
+  persistRoutineSelfInspectionDraft,
+} from '@/lib/routine-self-inspection-draft';
 import { cn } from '@/lib/utils';
 
 type AreaIssue = {
@@ -55,10 +68,61 @@ export function RoutineSelfInspectionWizard({
   const [starting, setStarting] = useState(false);
   const [busy, setBusy] = useState(false);
   const [started, setStarted] = useState(false);
+  const [restoredDraft, setRestoredDraft] = useState(false);
+  const [resumingFromDraft, setResumingFromDraft] = useState(false);
   const [areaIndex, setAreaIndex] = useState(0);
   const [issues, setIssues] = useState<Record<string, AreaIssue>>({});
+  const [customAreas, setCustomAreas] = useState<CustomAreaDefinition[]>([]);
+  const [selectedAreaNames, setSelectedAreaNames] = useState<string[]>([]);
+  const [areaSetupComplete, setAreaSetupComplete] = useState(false);
+  const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    const saved = loadRoutineSelfInspectionDraft(scheduleKey);
+    if (!saved) {
+      setRestoredDraft(true);
+      return;
+    }
+    setResumingFromDraft(true);
+    setAreaIndex(saved.areaIndex);
+    setIssues(saved.issues);
+    setCustomAreas(saved.customAreas);
+    setSelectedAreaNames(saved.selectedAreaNames);
+    setAreaSetupComplete(saved.areaSetupComplete);
+    setStarted(saved.started);
+    setRestoredDraft(true);
+  }, [scheduleKey]);
+
+  useEffect(() => {
+    if (!started || !restoredDraft) return;
+    if (persistTimer.current) clearTimeout(persistTimer.current);
+    persistTimer.current = setTimeout(() => {
+      persistRoutineSelfInspectionDraft({
+        scheduleKey,
+        areaIndex,
+        issues,
+        customAreas,
+        selectedAreaNames,
+        areaSetupComplete,
+        started: true,
+      });
+    }, 350);
+    return () => {
+      if (persistTimer.current) clearTimeout(persistTimer.current);
+    };
+  }, [
+    started,
+    restoredDraft,
+    scheduleKey,
+    areaIndex,
+    issues,
+    customAreas,
+    selectedAreaNames,
+    areaSetupComplete,
+  ]);
+
+  useEffect(() => {
+    if (!restoredDraft) return;
     let cancelled = false;
     void (async () => {
       setStarting(true);
@@ -79,13 +143,50 @@ export function RoutineSelfInspectionWizard({
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- start once per schedule
-  }, [scheduleKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- start once per schedule after draft restore
+  }, [scheduleKey, restoredDraft]);
 
-  const areaDef = INSPECTION_AREA_CATALOG[areaIndex];
-  const area = areaDef.name;
+  const resolvedSelectedAreaNames =
+    selectedAreaNames.length > 0
+      ? selectedAreaNames
+      : inferSelectedAreaNamesFromDraft(issues, customAreas);
+  const areaCatalog = useMemo(
+    () =>
+      areaSetupComplete
+        ? buildExecutionAreaCatalog(resolvedSelectedAreaNames, customAreas)
+        : [],
+    [areaSetupComplete, resolvedSelectedAreaNames, customAreas],
+  );
+  const safeAreaIndex = Math.min(
+    Math.max(areaIndex, 0),
+    Math.max(areaCatalog.length - 1, 0),
+  );
+  const areaDef = areaCatalog[safeAreaIndex];
+  const area = areaDef?.name ?? areaCatalog[0]?.name ?? 'Area';
   const issue = issues[area] ?? emptyAreaIssue();
-  const isLast = areaIndex === INSPECTION_AREA_CATALOG.length - 1;
+  const isLast = safeAreaIndex === areaCatalog.length - 1;
+
+  const handleAddBuiltInArea = (name: string) => {
+    setSelectedAreaNames((prev) => [...prev, name]);
+    setIssues((prev) => ({ ...prev, [name]: emptyAreaIssue() }));
+  };
+
+  const handleAddCustomArea = (name: string, sectionMode: CustomAreaSectionMode) => {
+    const normalized = normalizeCustomAreaName(name);
+    setCustomAreas((prev) => [...prev, { name: normalized, sectionMode }]);
+    setSelectedAreaNames((prev) => [...prev, normalized]);
+    setIssues((prev) => ({ ...prev, [normalized]: emptyAreaIssue() }));
+  };
+
+  const handleRemoveSetupArea = (name: string) => {
+    setSelectedAreaNames((prev) => prev.filter((item) => item !== name));
+    setCustomAreas((prev) => prev.filter((item) => item.name !== name));
+    setIssues((prev) => {
+      const next = { ...prev };
+      delete next[name];
+      return next;
+    });
+  };
 
   const updateIssue = (patch: Partial<AreaIssue>) => {
     setIssues((prev) => ({
@@ -100,17 +201,17 @@ export function RoutineSelfInspectionWizard({
         ...prev,
         [area]: { ...emptyAreaIssue(), available: false },
       }));
-      if (!isLast) setAreaIndex((index) => index + 1);
+      if (!isLast) setAreaIndex(safeAreaIndex + 1);
       return;
     }
 
     const photosBySection: Record<string, SectionPhotos> = {};
-    for (const section of areaDef.defaultSections) {
+    for (const section of areaDef?.defaultSections ?? []) {
       photosBySection[section] = emptySectionPhotos();
     }
     updateIssue({
       available: true,
-      activeSections: [...areaDef.defaultSections],
+      activeSections: [...(areaDef?.defaultSections ?? [])],
       photosBySection,
     });
   };
@@ -128,7 +229,7 @@ export function RoutineSelfInspectionWizard({
   };
 
   const removeSection = (section: string) => {
-    if (areaDef.defaultSections.includes(section)) return;
+    if (areaDef?.defaultSections.includes(section)) return;
     const current = issues[area] ?? emptyAreaIssue();
     const nextPhotos = { ...current.photosBySection };
     delete nextPhotos[section];
@@ -140,7 +241,7 @@ export function RoutineSelfInspectionWizard({
 
   const buildSubmission = (finalIssues: Record<string, AreaIssue>) => {
     const sections: Array<{ areaName: string; comment?: string; photoUrls: string[] }> = [];
-    for (const def of INSPECTION_AREA_CATALOG) {
+    for (const def of areaCatalog) {
       const rec = finalIssues[def.name];
       if (rec?.available !== true) continue;
       let notesUsed = false;
@@ -168,6 +269,7 @@ export function RoutineSelfInspectionWizard({
     setBusy(true);
     try {
       const next = await submitTenantRoutineSelfInspection(scheduleKey, sections);
+      clearRoutineSelfInspectionDraft(scheduleKey);
       onUpdated(next);
       toast.success('Self-inspection submitted — your property manager will review it');
     } catch (err) {
@@ -201,21 +303,51 @@ export function RoutineSelfInspectionWizard({
     setAreaIndex((index) => index + 1);
   };
 
+  const goToArea = (index: number) => {
+    if (index < 0 || index >= areaCatalog.length) return;
+    setAreaIndex(index);
+  };
+
   const progressTone = (index: number, areaName: string) => {
     const rec = issues[areaName];
-    if (index === areaIndex) return 'bg-primary';
+    if (index === safeAreaIndex) return 'bg-primary';
     if (rec?.available === false) return 'bg-muted-foreground/40';
     if (rec?.available === true) return 'bg-primary/70';
-    if (index < areaIndex) return 'bg-primary/40';
+    if (index < safeAreaIndex) return 'bg-primary/40';
     return 'bg-secondary';
   };
 
-  if (starting || !started) {
+  if (starting || !started || !restoredDraft) {
     return (
       <div className="flex items-center gap-2 rounded-xl border bg-card p-4 text-sm">
         <Loader2 className="size-4 animate-spin" />
-        Preparing your self-inspection checklist…
+        {resumingFromDraft
+          ? 'Restoring your self-inspection progress…'
+          : 'Preparing your self-inspection checklist…'}
       </div>
+    );
+  }
+
+  if (!areaSetupComplete) {
+    return (
+      <InspectionAreaSetupPanel
+        selectedAreaNames={resolvedSelectedAreaNames}
+        customAreas={customAreas}
+        busy={busy}
+        onAddBuiltInArea={handleAddBuiltInArea}
+        onAddCustomArea={handleAddCustomArea}
+        onRemoveArea={handleRemoveSetupArea}
+        onComplete={() => {
+          setAreaSetupComplete(true);
+          setAreaIndex(0);
+        }}
+      />
+    );
+  }
+
+  if (areaCatalog.length === 0) {
+    return (
+      <p className="text-muted-foreground text-sm">No areas selected for this self-inspection.</p>
     );
   }
 
@@ -226,14 +358,14 @@ export function RoutineSelfInspectionWizard({
       </p>
 
       <div className="flex gap-1">
-        {INSPECTION_AREA_CATALOG.map((item, index) => (
+        {areaCatalog.map((item, index) => (
           <button
             key={item.name}
             type="button"
             title={item.name}
             aria-label={`Go to ${item.name}`}
             className={cn('h-1.5 flex-1 rounded-full', progressTone(index, item.name))}
-            onClick={() => setAreaIndex(index)}
+            onClick={() => goToArea(index)}
           />
         ))}
       </div>
@@ -241,8 +373,8 @@ export function RoutineSelfInspectionWizard({
       {issue.available == null ? (
         <AreaAvailablePrompt
           areaName={area}
-          areaIndex={areaIndex}
-          totalAreas={INSPECTION_AREA_CATALOG.length}
+          areaIndex={safeAreaIndex}
+          totalAreas={areaCatalog.length}
           onYes={() => markAvailable(true)}
           onNo={() => markAvailable(false)}
         />
@@ -250,7 +382,7 @@ export function RoutineSelfInspectionWizard({
         <Card>
           <CardHeader>
             <CardTitle>
-              {area} — skipped ({areaIndex + 1}/{INSPECTION_AREA_CATALOG.length})
+              {area} — skipped ({safeAreaIndex + 1}/{areaCatalog.length})
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -267,8 +399,8 @@ export function RoutineSelfInspectionWizard({
                 type="button"
                 variant="outline"
                 className="flex-1"
-                disabled={areaIndex === 0}
-                onClick={() => setAreaIndex((index) => index - 1)}
+                disabled={safeAreaIndex === 0}
+                onClick={() => goToArea(safeAreaIndex - 1)}
               >
                 <ChevronLeft className="size-4" />
                 Back
@@ -286,7 +418,7 @@ export function RoutineSelfInspectionWizard({
                 <Button
                   type="button"
                   className="flex-1"
-                  onClick={() => setAreaIndex((index) => index + 1)}
+                  onClick={() => goToArea(safeAreaIndex + 1)}
                 >
                   Next area
                 </Button>
@@ -298,7 +430,7 @@ export function RoutineSelfInspectionWizard({
         <Card>
           <CardHeader>
             <CardTitle>
-              {area} ({areaIndex + 1}/{INSPECTION_AREA_CATALOG.length})
+              {area} ({safeAreaIndex + 1}/{areaCatalog.length})
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -338,8 +470,8 @@ export function RoutineSelfInspectionWizard({
                 type="button"
                 variant="outline"
                 className="flex-1"
-                disabled={areaIndex === 0 || busy}
-                onClick={() => setAreaIndex((index) => index - 1)}
+                disabled={safeAreaIndex === 0 || busy}
+                onClick={() => goToArea(safeAreaIndex - 1)}
               >
                 <ChevronLeft className="size-4" />
                 Back

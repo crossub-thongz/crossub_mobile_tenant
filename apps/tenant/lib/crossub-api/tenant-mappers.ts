@@ -19,6 +19,7 @@ import {
   TENANT_NOTIFICATION_TYPE,
 } from '@/constants/api-enums';
 import { routineInspectionStatusLabel } from '@/lib/routine-inspection';
+import { normalizePaymentCycle } from '@/lib/rent-calculations';
 import { recipientPartyFromSubject } from '@/lib/tenant-message-recipients';
 import { resolvePropertyAddress } from '@/lib/format-address';
 import {
@@ -174,6 +175,16 @@ export function toLeaseSummary(tenancies: TenantTenancy[]): LeaseSummary | null 
         (lease as { routineInspectionFrequencyMonths?: number | null })
           .routineInspectionFrequencyMonths,
       ) ?? undefined,
+    nextRoutineInspectionAt:
+      asString(
+        (lease as { nextRoutineInspectionAt?: string | null }).nextRoutineInspectionAt,
+      ) ?? undefined,
+    paymentCycle:
+      normalizePaymentCycle(
+        asString((lease as { paymentCycle?: string | null }).paymentCycle),
+      ),
+    rentPaidTo:
+      asString((lease as { rentPaidTo?: string | null }).rentPaidTo) ?? undefined,
   };
 }
 

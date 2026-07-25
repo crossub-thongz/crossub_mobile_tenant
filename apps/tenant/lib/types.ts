@@ -199,6 +199,12 @@ export interface LeaseSummary {
   routineInspectionFrequency?: number;
   /** Months between routine inspection cycles (4 or 6). */
   routineInspectionFrequencyMonths?: number;
+  /** Next scheduled routine inspection (from property routine schedule). */
+  nextRoutineInspectionAt?: string;
+  /** Rent payment frequency from the property registry. */
+  paymentCycle?: 'weekly' | 'fortnightly' | 'monthly';
+  /** Rent paid-to date from the property registry. */
+  rentPaidTo?: string;
 }
 
 export interface ReportSection {

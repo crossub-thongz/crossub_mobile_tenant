@@ -7,6 +7,8 @@ export function needsRoutineInspectionAction(
   return inspection.tenantActionRequired;
 }
 
+export { hasRoutineSelfInspectionDraft } from '@/lib/routine-self-inspection-draft';
+
 /** Poll while the routine may change without tenant action (review, decline, approval). */
 export function shouldLivePollRoutineInspection(
   inspection: TenantRoutineInspection | null | undefined,

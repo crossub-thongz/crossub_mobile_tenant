@@ -115,10 +115,10 @@ export function resolveNextRentReviewDate(
   return accepted?.nextRentReviewOpensOn ?? null;
 }
 
-/** Show the next review date after the tenant has accepted a rent review. */
+/** Show the next rent review countdown when a target date is on file. */
 export function shouldShowNextRentReviewDate(
   lease: LeaseSummary | null,
   reviews: RentReviewCase[],
 ): boolean {
-  return Boolean(findAcceptedRentReview(reviews) && resolveNextRentReviewDate(lease, reviews));
+  return Boolean(resolveNextRentReviewDate(lease, reviews));
 }

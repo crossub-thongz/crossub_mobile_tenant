@@ -16,6 +16,7 @@ import { fetchTenantRoutineInspection } from '@/lib/crossub-api/tenant-account-c
 import type { TenantRoutineInspection } from '@/lib/crossub-api/tenant-account-client';
 import {
   needsRoutineInspectionAction,
+  hasRoutineSelfInspectionDraft,
   routineInspectionStatusLabel,
   shouldLivePollRoutineInspection,
 } from '@/lib/routine-inspection';
@@ -104,6 +105,9 @@ export default function RoutineInspectionPage() {
     tenantConfirmed: false,
   }));
 
+  const scheduleKey = inspection.scheduleId ?? inspection.id;
+  const resumeDraft = hasRoutineSelfInspectionDraft(scheduleKey);
+
   const showSelfChecklist =
     inspection.flow === 'self' &&
     needsRoutineInspectionAction(inspection) &&
@@ -176,6 +180,16 @@ export default function RoutineInspectionPage() {
           <p className="text-muted-foreground mt-1 text-xs">
             Your property manager is reviewing your self-inspection. You will be notified when
             the report is available.
+          </p>
+        </div>
+      ) : null}
+
+      {showSelfChecklist && resumeDraft ? (
+        <div className="mb-4 rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm">
+          <p className="font-medium">Continue your self-inspection</p>
+          <p className="text-muted-foreground mt-1 text-xs">
+            Your area checklist and uploaded photos are saved on this device — pick up where you
+            left off below.
           </p>
         </div>
       ) : null}

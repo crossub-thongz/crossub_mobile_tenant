@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 
 import { HomeSummaryCard } from '@/components/tenant/home-summary-card';
+import { TenancyUpcomingTimers } from '@/components/tenant/tenancy-upcoming-timers';
 import { ArrearsBanner } from '@/components/tenant/arrears-banner';
 import { SectionTitle } from '@/components/tenant/page-intro';
 import { TenantShell } from '@/components/layout/tenant-shell';
@@ -34,6 +35,7 @@ import {
 } from '@/lib/outgoing-inspection';
 import {
   findUrgentRoutineInspection,
+  hasRoutineSelfInspectionDraft,
   needsRoutineInspectionAction,
 } from '@/lib/routine-inspection';
 import { findPendingRentReview } from '@/lib/rent-review';
@@ -241,7 +243,11 @@ export default function DashboardPage() {
         title: 'Routine inspection',
         summary:
           urgentRoutine.flow === 'self'
-            ? 'Complete your self-inspection checklist'
+            ? hasRoutineSelfInspectionDraft(
+                urgentRoutine.scheduleId ?? urgentRoutine.id,
+              )
+              ? 'Continue your self-inspection where you left off'
+              : 'Complete your self-inspection checklist'
             : 'Be available for your scheduled routine visit',
         href: hrefWithFrom(routineInspectionPath(urgentRoutine.id), 'dashboard'),
         badge: 'Required',
@@ -279,6 +285,14 @@ export default function DashboardPage() {
         </div>
 
         <ArrearsBanner />
+
+        {lease ? (
+          <TenancyUpcomingTimers
+            lease={lease}
+            routineInspections={routineInspections}
+            rentReviews={rentReviews}
+          />
+        ) : null}
 
         {urgentItems.length > 0 && (
           <section>
