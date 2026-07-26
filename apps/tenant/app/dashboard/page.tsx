@@ -111,7 +111,7 @@ export default function DashboardPage() {
         openRepairs.length > 0
           ? `${openRepairs.length} active · ${openRepairs[0]?.statusLabel ?? ''}`
           : 'No open repairs — report an issue anytime',
-      href: ROUTES.PROPERTY,
+      href: ROUTES.REPAIRS,
       badge: openRepairs.length > 0 ? String(openRepairs.length) : undefined,
       icon: Wrench,
     },
