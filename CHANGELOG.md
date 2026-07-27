@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-07-27
+
+### Fixed
+- Repair detail (`/repairs/[id]`) — the "Approve visit time" card stayed live after the tenant answered, so repeat taps re-triggered the contractor/agent notification email (reported by Angel on MR-00031). The card now becomes a read-only **Confirmed schedule** state on approve (showing the approved times and the confirmed visit datetime) and a **Visit time declined** state on decline; the action buttons never re-enable once a decision is recorded.
+- The decision is persisted per request in `localStorage`, so the 5s `syncMaintenanceRequests` poll — which replaces API-backed rows wholesale and discarded the provider's optimistic `scheduleApprovalPending: false` — can no longer re-open the card, and neither can a page reload (tenants re-enter from the email link). Buttons stay disabled until that record is read, so the first paint after a reload cannot offer a stale action.
+
+### Added
+- `lib/maintenance-schedule-decision.ts` — durable per-request record of the tenant's visit-time decision, stamped with the proposal round so new contractor times correctly re-arm the card.
+- `constants/maintenance-schedule.ts` (`SCHEDULE_DECISION`) and `constants/maintenance-status.ts` (`MAINTENANCE_TENANT_STATUS`, `MAINTENANCE_TENANT_FINISHED_STATUSES`) — runtime constants replacing raw `'approved'`/`'declined'`/`'completed'` string comparisons.
+
 ## 2026-07-03
 
 ### Fixed

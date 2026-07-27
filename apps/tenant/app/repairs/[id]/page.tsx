@@ -32,6 +32,15 @@ import { StatusBadge } from '@/components/tenant/status-badge';
 import { Button } from '@/components/ui/button';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
 import { messageDetail, ROUTES } from '@/constants/routes';
+import { SCHEDULE_DECISION, type ScheduleDecision } from '@/constants/maintenance-schedule';
+import { MAINTENANCE_TENANT_FINISHED_STATUSES } from '@/constants/maintenance-status';
+import {
+  clearScheduleDecision,
+  isNewProposalRound,
+  readScheduleDecision,
+  saveScheduleDecision,
+  type StoredScheduleDecision,
+} from '@/lib/maintenance-schedule-decision';
 import { cn, formatDateTime } from '@/lib/utils';
 
 type Tab = 'overview' | 'status' | 'message';
@@ -47,16 +56,37 @@ export default function RepairDetailPage() {
   const [submittingCompletion, setSubmittingCompletion] = useState(false);
   const [submittingSchedule, setSubmittingSchedule] = useState(false);
   const scheduleActionInFlight = useRef(false);
-  const [scheduleDecision, setScheduleDecision] = useState<'approved' | 'declined' | null>(null);
+  const [scheduleDecision, setScheduleDecision] = useState<ScheduleDecision | null>(null);
+  const [storedScheduleDecision, setStoredScheduleDecision] =
+    useState<StoredScheduleDecision | null>(null);
+  const [scheduleHydrated, setScheduleHydrated] = useState(false);
   const [scheduleDeclineReason, setScheduleDeclineReason] = useState('');
   const [completionPopupOpen, setCompletionPopupOpen] = useState(false);
 
   const needsCompletionApproval =
     request?.completionApprovalPending && !request.tenantCompletionApproved;
   const needsScheduleApproval = request?.scheduleApprovalPending === true;
+  const proposedTimes = request?.scheduleProposedTimes?.trim() ?? '';
+
+  // A fresh set of proposed times supersedes whatever the tenant answered last round.
+  const supersededByNewRound = isNewProposalRound(storedScheduleDecision, proposedTimes);
+  const recordedDecision: ScheduleDecision | null =
+    scheduleDecision ?? (supersededByNewRound ? null : storedScheduleDecision?.decision ?? null);
+
+  // Once answered the card becomes read-only, regardless of what the next poll reports —
+  // re-arming it is what let repeat clicks re-trigger the contractor email.
+  const scheduleAwaitingResponse =
+    !recordedDecision && needsScheduleApproval && Boolean(proposedTimes);
+  const repairFinished = MAINTENANCE_TENANT_FINISHED_STATUSES.some(
+    (s) => s === request?.status,
+  );
   const showScheduleApprovalCard =
-    needsScheduleApproval && Boolean(request?.scheduleProposedTimes?.trim());
-  const scheduleActionsLocked = submittingSchedule;
+    scheduleAwaitingResponse || (Boolean(recordedDecision) && !repairFinished);
+  // Stay locked until the persisted decision has been read, so the first paint after a
+  // reload cannot offer a live button for an already-answered proposal.
+  const scheduleActionsLocked =
+    submittingSchedule || Boolean(recordedDecision) || !scheduleHydrated;
+  const decidedTimes = storedScheduleDecision?.proposedTimes || proposedTimes;
   const needsResponsibilityAck = request?.responsibilityAckRequired === true;
   const responsibilityText = responsibilityLabel(request?.responsibility);
 
@@ -68,13 +98,27 @@ export default function RepairDetailPage() {
     }
   }, [needsCompletionApproval, request?.completionEvidenceUploaded, request?.id]);
 
+  // Rehydrate the persisted decision so a reload (tenants re-enter from the email link)
+  // does not present live buttons for a proposal they already answered.
   useEffect(() => {
-    if (needsScheduleApproval) {
-      setScheduleDecision(null);
-      setScheduleDeclineReason('');
-      scheduleActionInFlight.current = false;
-    }
-  }, [request?.id, request?.scheduleProposedTimes]);
+    if (!request?.id) return;
+    setScheduleDecision(null);
+    setScheduleDeclineReason('');
+    scheduleActionInFlight.current = false;
+    setStoredScheduleDecision(readScheduleDecision(request.id));
+    setScheduleHydrated(true);
+  }, [request?.id]);
+
+  // Contractor proposed new times — drop the stale record and re-arm the card.
+  useEffect(() => {
+    if (!request?.id) return;
+    if (!isNewProposalRound(storedScheduleDecision, proposedTimes)) return;
+    clearScheduleDecision(request.id);
+    setStoredScheduleDecision(null);
+    setScheduleDecision(null);
+    setScheduleDeclineReason('');
+    scheduleActionInFlight.current = false;
+  }, [request?.id, proposedTimes, storedScheduleDecision]);
 
   const handleResponsibilityAck = async (agreed: boolean) => {
     if (!request) return;
@@ -111,12 +155,15 @@ export default function RepairDetailPage() {
   };
 
   const handleScheduleApproval = async () => {
-    if (!request || scheduleActionInFlight.current || scheduleDecision) return;
+    if (!request || scheduleActionInFlight.current || recordedDecision) return;
+    const times = proposedTimes;
     scheduleActionInFlight.current = true;
     setSubmittingSchedule(true);
-    setScheduleDecision('approved');
+    setScheduleDecision(SCHEDULE_DECISION.APPROVED);
     try {
-      await respondToMaintenanceSchedule(request.id, 'approved');
+      await respondToMaintenanceSchedule(request.id, SCHEDULE_DECISION.APPROVED);
+      saveScheduleDecision(request.id, SCHEDULE_DECISION.APPROVED, times);
+      setStoredScheduleDecision(readScheduleDecision(request.id));
       toast.success('Visit time approved — contractor has been notified');
     } catch (err) {
       setScheduleDecision(null);
@@ -128,16 +175,23 @@ export default function RepairDetailPage() {
   };
 
   const handleScheduleDecline = async () => {
-    if (!request || scheduleActionInFlight.current || scheduleDecision) return;
+    if (!request || scheduleActionInFlight.current || recordedDecision) return;
     if (!scheduleDeclineReason.trim()) {
       toast.error('Please tell us why this time does not work');
       return;
     }
+    const times = proposedTimes;
     scheduleActionInFlight.current = true;
     setSubmittingSchedule(true);
-    setScheduleDecision('declined');
+    setScheduleDecision(SCHEDULE_DECISION.DECLINED);
     try {
-      await respondToMaintenanceSchedule(request.id, 'declined', scheduleDeclineReason.trim());
+      await respondToMaintenanceSchedule(
+        request.id,
+        SCHEDULE_DECISION.DECLINED,
+        scheduleDeclineReason.trim(),
+      );
+      saveScheduleDecision(request.id, SCHEDULE_DECISION.DECLINED, times);
+      setStoredScheduleDecision(readScheduleDecision(request.id));
       toast.success('Visit time declined — contractor will propose new times');
       setScheduleDeclineReason('');
     } catch (err) {
@@ -258,36 +312,72 @@ export default function RepairDetailPage() {
           </InfoCard>
         )}
 
-        {showScheduleApprovalCard && (
-          <InfoCard icon={CalendarClock} label="Approve visit time" accent="primary">
-            <p className="text-muted-foreground text-xs leading-relaxed">
-              The contractor proposed the following times to attend your property:
-            </p>
-            <p className="mt-3 whitespace-pre-wrap text-sm font-medium">{request.scheduleProposedTimes}</p>
-            <div className="mt-4 grid gap-2">
-              <Button
-                disabled={scheduleActionsLocked}
-                onClick={() => void handleScheduleApproval()}
-              >
-                Approve visit time
-              </Button>
-              <textarea
-                className="border-input bg-background flex min-h-[72px] w-full rounded-md border px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
-                placeholder="Reason if declining (required to decline)"
-                value={scheduleDeclineReason}
-                disabled={scheduleActionsLocked}
-                onChange={(e) => setScheduleDeclineReason(e.target.value)}
-              />
-              <Button
-                variant="outline"
-                disabled={scheduleActionsLocked}
-                onClick={() => void handleScheduleDecline()}
-              >
-                Decline proposed time
-              </Button>
-            </div>
-          </InfoCard>
-        )}
+        {showScheduleApprovalCard &&
+          (recordedDecision === SCHEDULE_DECISION.APPROVED ? (
+            <InfoCard icon={CheckCircle2} label="Confirmed schedule" accent="primary">
+              <p className="text-primary flex items-center gap-2 text-sm font-semibold">
+                <CheckCircle2 className="size-4 shrink-0" />
+                You approved this visit time
+              </p>
+              {decidedTimes && (
+                <p className="text-muted-foreground mt-3 whitespace-pre-wrap text-sm">
+                  {decidedTimes}
+                </p>
+              )}
+              {request.scheduledAt && (
+                <div className="bg-primary/10 text-primary mt-4 flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium">
+                  <CalendarClock className="size-4 shrink-0" />
+                  Visit confirmed for {formatDateTime(request.scheduledAt)}
+                </div>
+              )}
+              <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
+                The contractor has been notified. No further action is needed — you will be
+                contacted if the visit time changes.
+              </p>
+            </InfoCard>
+          ) : recordedDecision === SCHEDULE_DECISION.DECLINED ? (
+            <InfoCard icon={CalendarClock} label="Visit time declined">
+              <p className="text-sm font-semibold">You declined the proposed times</p>
+              {decidedTimes && (
+                <p className="text-muted-foreground mt-3 whitespace-pre-wrap text-sm line-through">
+                  {decidedTimes}
+                </p>
+              )}
+              <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
+                The contractor has been notified and will propose new times. This section will
+                reopen when new times arrive.
+              </p>
+            </InfoCard>
+          ) : (
+            <InfoCard icon={CalendarClock} label="Approve visit time" accent="primary">
+              <p className="text-muted-foreground text-xs leading-relaxed">
+                The contractor proposed the following times to attend your property:
+              </p>
+              <p className="mt-3 whitespace-pre-wrap text-sm font-medium">{proposedTimes}</p>
+              <div className="mt-4 grid gap-2">
+                <Button
+                  disabled={scheduleActionsLocked}
+                  onClick={() => void handleScheduleApproval()}
+                >
+                  {submittingSchedule ? 'Submitting…' : 'Approve visit time'}
+                </Button>
+                <textarea
+                  className="border-input bg-background flex min-h-[72px] w-full rounded-md border px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+                  placeholder="Reason if declining (required to decline)"
+                  value={scheduleDeclineReason}
+                  disabled={scheduleActionsLocked}
+                  onChange={(e) => setScheduleDeclineReason(e.target.value)}
+                />
+                <Button
+                  variant="outline"
+                  disabled={scheduleActionsLocked}
+                  onClick={() => void handleScheduleDecline()}
+                >
+                  Decline proposed time
+                </Button>
+              </div>
+            </InfoCard>
+          ))}
 
         {request.completionEvidenceUploaded && (
           <InfoCard icon={CheckCircle2} label="Completion evidence" accent="primary">
