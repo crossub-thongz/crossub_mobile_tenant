@@ -18,6 +18,7 @@ import {
   RENT_REVIEW_WORKFLOW_STATE,
   TENANT_NOTIFICATION_TYPE,
 } from '@/constants/api-enums';
+import { toPlainTextBody } from '@/lib/message-body';
 import { routineInspectionStatusLabel } from '@/lib/routine-inspection';
 import { normalizePaymentCycle } from '@/lib/rent-calculations';
 import { recipientPartyFromSubject } from '@/lib/tenant-message-recipients';
@@ -384,7 +385,8 @@ function toThreadMessage(
     // Tenant threads are with CROSSUB staff; the app models the counterpart as `agent`.
     party: 'agent',
     fromName: asString(m.from) ?? (m.fromSelf ? 'You' : 'CROSSUB'),
-    body: asString(m.body) ?? '',
+    // API bodies are email-shaped (plain text + an inline portal CTA button).
+    body: toPlainTextBody(asString(m.body) ?? ''),
     channel: m.channel === COMM_CHANNEL.EMAIL ? 'email' : 'app',
   };
 }
@@ -415,7 +417,7 @@ export function toTenantNotifications(
   return notifications.map((n) => ({
     id: n.id,
     title: asString(n.title) ?? '',
-    body: asString(n.body) ?? '',
+    body: toPlainTextBody(asString(n.body) ?? ''),
     type: notificationCategory(n.type),
     read: Boolean(n.read),
     href: asString(n.href) ?? '/notifications',
@@ -447,7 +449,7 @@ export function toMessageThreads(threads: TenantMessageThread[]): {
       propertyAddress: asString(t.propertyAddress)
         ? mapPropertyAddress(t.propertyAddress)
         : undefined,
-      lastMessage: asString(t.lastMessage) ?? '',
+      lastMessage: toPlainTextBody(asString(t.lastMessage) ?? ''),
       lastAt: asString(t.lastAt) ?? '',
       unread: asNumber(t.unread) ?? 0,
       channel: 'app',
@@ -766,7 +768,7 @@ export function toTenantRentReviews(
       ),
       emails: rawEmails.map((email) => ({
         subject: asString(email.subject) ?? '',
-        body: asString(email.body) ?? '',
+        body: toPlainTextBody(asString(email.body) ?? ''),
         from: asString(email.from) ?? 'Managing Agent',
         to: asString(email.to) ?? 'Tenant',
         fromEmail: asString(email.fromEmail) ?? undefined,

@@ -1,3 +1,4 @@
+import { toPlainTextBody } from '@/lib/message-body';
 import { readTenantStore } from '@/lib/tenant-store';
 import type {
   ArrearsNotice,
@@ -50,8 +51,16 @@ export function loadInitialState(): LoadedTenantState {
   return {
     maintenance: stored.maintenance ?? [],
     applications: stored.applications ?? [],
-    messages: stored.messages ?? [],
-    notifications: stored.notifications ?? [],
+    // Blobs written before bodies were normalised still hold raw email HTML — clean on read
+    // so the inbox never flashes markup while the first refresh is in flight.
+    messages: (stored.messages ?? []).map((m) => ({
+      ...m,
+      lastMessage: toPlainTextBody(m.lastMessage),
+    })),
+    notifications: (stored.notifications ?? []).map((n) => ({
+      ...n,
+      body: toPlainTextBody(n.body),
+    })),
     ingoing: stored.ingoingReport ?? null,
     outgoing: stored.outgoingReport ?? null,
     rentReviews: stored.rentReviews ?? [],

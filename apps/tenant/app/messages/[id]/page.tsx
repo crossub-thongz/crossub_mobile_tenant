@@ -120,7 +120,9 @@ export default function MessageDetailPage() {
                   {label} · {formatDateTime(msg.at)}
                   {msg.channel === 'email' && ' · Email'}
                 </div>
-                <p className="leading-relaxed">{msg.body}</p>
+                <p className="leading-relaxed break-words whitespace-pre-line">
+                  {msg.body}
+                </p>
               </div>
             );
           })

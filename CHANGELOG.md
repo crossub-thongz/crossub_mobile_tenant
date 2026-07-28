@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-07-29
+
+### Fixed
+- Message thread (`/messages/[id]`), inbox previews and notifications rendered API bodies verbatim, so the email portal CTA the API appends at send time (`<p style="…"><a class="crossub-email-cta" …>Open Tenant (Mobile)</a></p>`) showed as raw HTML at the end of every workflow message.
+- Message and notification bodies lost their paragraph breaks and ran together as one block; bodies now render with `whitespace-pre-line`.
+
+### Added
+- `lib/message-body.ts` (`toPlainTextBody`) — projects the email-shaped API bodies onto plain text: drops the portal CTA button and its "Click below to open …" intro line, turns `<br>`/block tags into newlines, keeps other links as `label (url)`, decodes HTML entities. Applied in `lib/crossub-api/tenant-mappers.ts` to thread messages, thread previews, notifications and rent-review notice emails, and on rehydrate in `lib/tenant-data-state.ts` so previously persisted bodies clean up too.
+- `constants/email-body.ts` — `EMAIL_CTA_MARKER`, block-tag list and HTML entity map (mirrors `crossub_web` → `apps/api/src/common/utils/email-cta.util.ts`).
+
 ## 2026-07-27
 
 ### Fixed

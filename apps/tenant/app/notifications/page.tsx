@@ -20,7 +20,7 @@ export default function NotificationsPage() {
             className={`block rounded-xl border p-4 ${!n.read ? 'border-primary/30 bg-card' : 'bg-card/50'}`}
           >
             <p className="font-semibold">{n.title}</p>
-            <p className="text-muted-foreground text-sm">{n.body}</p>
+            <p className="text-muted-foreground text-sm whitespace-pre-line">{n.body}</p>
             {n.actionRequired && (
               <p className="text-primary mt-1 text-xs">{n.actionRequired}</p>
             )}
