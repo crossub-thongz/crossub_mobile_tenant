@@ -2,6 +2,10 @@
 
 ## 2026-07-29
 
+### Changed
+- **Disagreeing with a tenant-responsibility decision now asks for a reason before it closes the case** (officer ask, demo feedback). The red "I disagree" used to submit on the first tap: the job closed instantly and the officer's notification email arrived saying only that the tenant disagreed, with nothing to follow up on. It now opens a required reason box with Cancel / Submit disagreement, and submit stays disabled until at least `MIN_RESPONSIBILITY_DECLINE_REASON_LENGTH` characters are typed (mirrors the API's `@MinLength(3)`, so the tenant is told before the request goes out rather than after a 400 comes back). The reason was already plumbed through the provider and the API DTO — the screen was the only thing never sending it.
+- New `constants/maintenance-responsibility.ts` holds the min/max reason lengths.
+
 ### Fixed
 - Message thread (`/messages/[id]`), inbox previews and notifications rendered API bodies verbatim, so the email portal CTA the API appends at send time (`<p style="…"><a class="crossub-email-cta" …>Open Tenant (Mobile)</a></p>`) showed as raw HTML at the end of every workflow message.
 - Message and notification bodies lost their paragraph breaks and ran together as one block; bodies now render with `whitespace-pre-line`.

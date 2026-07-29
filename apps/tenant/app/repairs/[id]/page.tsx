@@ -35,6 +35,10 @@ import { messageDetail, ROUTES } from '@/constants/routes';
 import { SCHEDULE_DECISION, type ScheduleDecision } from '@/constants/maintenance-schedule';
 import { MAINTENANCE_TENANT_FINISHED_STATUSES } from '@/constants/maintenance-status';
 import {
+  MAX_RESPONSIBILITY_DECLINE_REASON_LENGTH,
+  MIN_RESPONSIBILITY_DECLINE_REASON_LENGTH,
+} from '@/constants/maintenance-responsibility';
+import {
   clearScheduleDecision,
   isNewProposalRound,
   readScheduleDecision,
@@ -53,6 +57,9 @@ export default function RepairDetailPage() {
   const thread = messages.find((m) => m.linkedCaseId === id);
   const [tab, setTab] = useState<Tab>('overview');
   const [submittingAck, setSubmittingAck] = useState(false);
+  // Disagreeing is a two-step action: the first tap opens the reason, the second submits it.
+  const [declineFormOpen, setDeclineFormOpen] = useState(false);
+  const [responsibilityDeclineReason, setResponsibilityDeclineReason] = useState('');
   const [submittingCompletion, setSubmittingCompletion] = useState(false);
   const [submittingSchedule, setSubmittingSchedule] = useState(false);
   const scheduleActionInFlight = useRef(false);
@@ -122,14 +129,23 @@ export default function RepairDetailPage() {
 
   const handleResponsibilityAck = async (agreed: boolean) => {
     if (!request) return;
+    const reason = responsibilityDeclineReason.trim();
+    // The case closes on this answer and does not reopen, so a disagreement has to carry the
+    // tenant's own words — it is the only thing the officer who picks it up has to work from.
+    if (!agreed && reason.length < MIN_RESPONSIBILITY_DECLINE_REASON_LENGTH) {
+      toast.error('Please tell us why you disagree before submitting.');
+      return;
+    }
     setSubmittingAck(true);
     try {
-      await respondMaintenanceResponsibilityAck(request.id, agreed);
+      await respondMaintenanceResponsibilityAck(request.id, agreed, agreed ? undefined : reason);
       toast.success(
         agreed
           ? 'You acknowledged this repair is your responsibility.'
-          : 'Your disagreement was recorded.',
+          : 'Your disagreement and reason were sent to CROSSUB.',
       );
+      setDeclineFormOpen(false);
+      setResponsibilityDeclineReason('');
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : 'Could not record your response. Try again.',
@@ -525,23 +541,70 @@ export default function RepairDetailPage() {
                 />
               </div>
             )}
-            <div className="mt-4 flex gap-2">
-              <Button
-                className="flex-1"
-                disabled={submittingAck}
-                onClick={() => void handleResponsibilityAck(true)}
-              >
-                I agree
-              </Button>
-              <Button
-                variant="destructive"
-                className="flex-1"
-                disabled={submittingAck}
-                onClick={() => void handleResponsibilityAck(false)}
-              >
-                I disagree
-              </Button>
-            </div>
+            {declineFormOpen ? (
+              <div className="mt-4 space-y-2">
+                <label htmlFor="responsibility-decline-reason" className="text-sm font-medium">
+                  Why do you disagree?
+                </label>
+                <p className="text-muted-foreground text-xs leading-relaxed">
+                  Tell us what you think caused the issue, or why it is not yours to fix. This
+                  goes straight to your property manager with the case.
+                </p>
+                <textarea
+                  id="responsibility-decline-reason"
+                  autoFocus
+                  className="border-input bg-background flex min-h-[88px] w-full rounded-md border px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+                  placeholder="e.g. The oven door was already broken when we moved in — it is on the ingoing report."
+                  maxLength={MAX_RESPONSIBILITY_DECLINE_REASON_LENGTH}
+                  value={responsibilityDeclineReason}
+                  disabled={submittingAck}
+                  onChange={(e) => setResponsibilityDeclineReason(e.target.value)}
+                />
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    disabled={submittingAck}
+                    onClick={() => {
+                      setDeclineFormOpen(false);
+                      setResponsibilityDeclineReason('');
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    className="flex-1"
+                    disabled={
+                      submittingAck ||
+                      responsibilityDeclineReason.trim().length <
+                        MIN_RESPONSIBILITY_DECLINE_REASON_LENGTH
+                    }
+                    onClick={() => void handleResponsibilityAck(false)}
+                  >
+                    {submittingAck ? 'Sending…' : 'Submit disagreement'}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-4 flex gap-2">
+                <Button
+                  className="flex-1"
+                  disabled={submittingAck}
+                  onClick={() => void handleResponsibilityAck(true)}
+                >
+                  I agree
+                </Button>
+                <Button
+                  variant="destructive"
+                  className="flex-1"
+                  disabled={submittingAck}
+                  onClick={() => setDeclineFormOpen(true)}
+                >
+                  I disagree
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       )}
