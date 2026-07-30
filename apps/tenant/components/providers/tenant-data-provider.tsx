@@ -75,6 +75,11 @@ import {
   type TenantDocumentView,
 } from '@/lib/crossub-api/tenant-mappers';
 import { resolveTenantPropertyContacts } from '@/lib/tenant-message-recipients';
+import {
+  mergeMaintenanceRequests,
+  sortMaintenanceRequestsNewestFirst,
+} from '@/lib/maintenance-request-filters';
+import { LOCAL_MAINTENANCE_REQUEST_ID_PREFIX } from '@/constants/maintenance-request-list';
 import { VACATING_STAGE } from '@/constants/vacating';
 import { fetchPublicListings } from '@/lib/crossub-api/public-listings-client';
 import {
@@ -270,7 +275,9 @@ function applyLoadedState(
     setVacatingDisplay: (v: VacatingCase | null) => void;
   },
 ) {
-  setters.setMaintenance(loaded.maintenance);
+  // Sorted on the way in: the persisted snapshot can carry the order an older build wrote,
+  // so the first paint would otherwise show yesterday's repairs above today's.
+  setters.setMaintenance(sortMaintenanceRequestsNewestFirst(loaded.maintenance));
   setters.setApplications(loaded.applications);
   setters.setMessages(loaded.messages);
   setters.setNotifications(loaded.notifications);
@@ -459,13 +466,15 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     try {
       const requests = await fetchMaintenanceRequests();
       const fromApi = toTenantMaintenanceRequests(requests, lease?.propertyAddress);
-      const apiIds = new Set(fromApi.map((r) => r.id));
-      const localOnly = readTenantStore().maintenance.filter((m) => !apiIds.has(m.id));
-      setMaintenance([...localOnly, ...fromApi]);
+      const merged = mergeMaintenanceRequests(fromApi, readTenantStore().maintenance);
+      // Persisted too, so the next cold start opens on this list rather than on whatever
+      // snapshot was last written by an in-place patch.
+      persistMaintenance(merged);
+      setMaintenance(merged);
     } catch {
       // keep last good snapshot
     }
-  }, [status, apiConnected, lease?.propertyAddress]);
+  }, [status, apiConnected, lease?.propertyAddress, persistMaintenance]);
 
   /** Poll routine self-inspections (decline, approval, action required). */
   const syncRoutineInspections = useCallback(async () => {
@@ -570,12 +579,11 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
         requests.value,
         loaded?.lease?.propertyAddress,
       );
-      // Keep the tenant's own locally-created (optimistic) repairs, drop demo seeds.
-      const apiIds = new Set(fromApi.map((r) => r.id));
-      const localOnly = readTenantStore().maintenance.filter(
-        (m) => !apiIds.has(m.id),
-      );
-      setMaintenance([...localOnly, ...fromApi]);
+      // Keep the tenant's own locally-created (optimistic) repairs, drop everything else
+      // the API no longer returns.
+      const merged = mergeMaintenanceRequests(fromApi, readTenantStore().maintenance);
+      persistMaintenance(merged);
+      setMaintenance(merged);
     } else {
       noteRejection(requests);
     }
@@ -717,7 +725,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     if (showBlockingLoad) {
       setLoading(false);
     }
-  }, [status, setters, loadLeasingOnboarding]);
+  }, [status, setters, loadLeasingOnboarding, persistMaintenance]);
 
   useEffect(() => {
     void refresh();
@@ -780,7 +788,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     (input: NewRepairInput): MaintenanceRequest => {
       const createdAt = new Date().toISOString();
       const item: MaintenanceRequest = {
-        id: input.id ?? `repair-${Date.now()}`,
+        id: input.id ?? `${LOCAL_MAINTENANCE_REQUEST_ID_PREFIX}${Date.now()}`,
         trackingNumber: input.trackingNumber ?? nextTrackingNumber(),
         propertyAddress: input.propertyAddress ?? propertyAddress,
         category: input.category,

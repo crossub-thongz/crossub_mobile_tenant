@@ -1,5 +1,9 @@
 import type { components } from '@crossub-thongz/api-contract';
 
+import {
+  MAINTENANCE_REQUEST_MAX_PAGES,
+  MAINTENANCE_REQUEST_PAGE_SIZE,
+} from '@/constants/maintenance-request-list';
 import { fileToBase64 } from '@/lib/utils';
 
 import { fetchAuthenticatedBlob } from '@/lib/api';
@@ -479,13 +483,27 @@ export async function declineTenantVacatingSettlement(
 export type TenantMaintenanceResponsibilityAck =
   components['schemas']['TenantMaintenanceResponsibilityAckDto'];
 
-/** Maintenance on the tenant’s leased property (`GET /api/v1/tenant/maintenance-requests`). */
+/**
+ * Maintenance on the tenant’s leased property (`GET /api/v1/tenant/maintenance-requests`).
+ *
+ * The endpoint is paged (20 per page by default) and the app shows the whole history on one
+ * screen, so this walks every page. Reading only the first page silently truncated the list
+ * — and because the provider kept the rows the response was missing, the repairs that fell
+ * off page one stuck to the top of the screen, frozen at their last-seen status.
+ */
 export async function fetchMaintenanceRequests(): Promise<
   TenantMaintenanceRequestSummary[]
 > {
-  const { data, error } = await crossub.GET('/tenant/maintenance-requests');
-  if (error || !data) throw new Error('Failed to load maintenance requests');
-  return data.items;
+  const items: TenantMaintenanceRequestSummary[] = [];
+  for (let page = 1; page <= MAINTENANCE_REQUEST_MAX_PAGES; page += 1) {
+    const { data, error } = await crossub.GET('/tenant/maintenance-requests', {
+      params: { query: { page, pageSize: MAINTENANCE_REQUEST_PAGE_SIZE } },
+    });
+    if (error || !data) throw new Error('Failed to load maintenance requests');
+    items.push(...data.items);
+    if (!data.hasMore || data.items.length === 0) break;
+  }
+  return items;
 }
 
 /** Acknowledge or disagree with tenant-responsibility (`PATCH .../responsibility-ack`). */
