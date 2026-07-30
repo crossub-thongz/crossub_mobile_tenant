@@ -128,6 +128,21 @@ export function mapTenantMaintenancePresentation(input: {
   // both misdescribed the state and read as the end of the conversation when it is the start of
   // one. Progress deliberately stops short of 100% for the same reason.
   if (input.responsibilityAckStatus === 'disagreed') {
+    // ...but a case that has ENDED must read as ended. A parked dispute can be closed by the
+    // officer once it is settled, and cases refused before parking existed were closed outright,
+    // so "disagreed" is not by itself proof the case is still live. Overriding a finished case
+    // with "under review" also kept `repairFinished` false, which offered the tenant an
+    // accept-and-close button on a closed case — an action the API correctly rejects.
+    if (
+      input.status === MAINTENANCE_STATUS.COMPLETED ||
+      input.status === MAINTENANCE_STATUS.CANCELLED
+    ) {
+      return {
+        ...base,
+        statusHint:
+          'This case is closed. Your property manager reviewed the reason you gave for disagreeing.',
+      };
+    }
     return {
       status: 'under_review',
       statusLabel: 'Under review — you disagreed',

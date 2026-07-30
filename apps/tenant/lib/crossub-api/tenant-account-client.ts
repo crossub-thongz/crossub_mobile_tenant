@@ -528,15 +528,18 @@ export async function respondMaintenanceResponsibilityAck(
   requestId: string,
   body: TenantMaintenanceResponsibilityAck,
 ): Promise<TenantMaintenanceRequestSummary> {
-  const { data, error } = await crossub.PATCH(
+  const { data, error, response } = await crossub.PATCH(
     '/tenant/maintenance-requests/{requestId}/responsibility-ack',
     {
       params: { path: { requestId } },
       body,
     },
   );
+  // The API refuses this call with a specific, human reason — the case is already closed, an
+  // answer is already recorded, a reason is required. Collapsing all of them into one generic
+  // "failed" left the tenant nothing to act on and made the cause invisible from the outside.
   if (error || !data) {
-    throw new Error('Failed to record maintenance responsibility response');
+    throwTenantApiError(error, response, 'Failed to record maintenance responsibility response');
   }
   return data;
 }
@@ -549,7 +552,7 @@ export async function approveMaintenanceCompletion(
   requestId: string,
   body: TenantMaintenanceCompletionApproval = { approved: true },
 ): Promise<TenantMaintenanceRequestSummary> {
-  const { data, error } = await crossub.PATCH(
+  const { data, error, response } = await crossub.PATCH(
     '/tenant/maintenance-requests/{requestId}/completion-approval',
     {
       params: { path: { requestId } },
@@ -557,7 +560,7 @@ export async function approveMaintenanceCompletion(
     },
   );
   if (error || !data) {
-    throw new Error('Failed to record maintenance completion approval');
+    throwTenantApiError(error, response, 'Failed to record maintenance completion approval');
   }
   return data;
 }
