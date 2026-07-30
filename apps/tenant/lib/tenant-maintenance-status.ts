@@ -88,8 +88,11 @@ export function mapTenantMaintenancePresentation(input: {
     return {
       status: 'waiting_for_approval',
       statusLabel: 'Action required',
+      // Says what silence actually does. The 48-hour sweep records AGREEMENT and then closes —
+      // "the case will automatically close" hid the part that matters to the tenant, which is
+      // that not replying accepts the decision. Disagreeing keeps the case open instead.
       statusHint:
-        'Please acknowledge or disagree with the responsibility decision. If you do not respond within 48 hours, the case will automatically close.',
+        'Please agree or disagree with the responsibility decision. If you do not reply within 48 hours we will take it as agreement and close the case.',
       progressPercent: 55,
     };
   }
@@ -120,12 +123,17 @@ export function mapTenantMaintenancePresentation(input: {
     };
   }
 
+  // Disagreeing no longer closes the case. The repair is still unresolved — only who pays is in
+  // dispute — so it stays open with the property manager, and telling the tenant it was "closed"
+  // both misdescribed the state and read as the end of the conversation when it is the start of
+  // one. Progress deliberately stops short of 100% for the same reason.
   if (input.responsibilityAckStatus === 'disagreed') {
     return {
-      status: 'closed',
-      statusLabel: 'Closed — disputed',
-      statusHint: 'You disagreed with the responsibility decision. CROSSUB has closed this case.',
-      progressPercent: 100,
+      status: 'under_review',
+      statusLabel: 'Under review — you disagreed',
+      statusHint:
+        'Your reason has been sent to your property manager and this case is still open. They will review it and get back to you.',
+      progressPercent: 60,
     };
   }
 
@@ -272,7 +280,7 @@ export function buildTenantMaintenanceTimeline(input: {
       at: input.createdAt,
       actor: 'You',
       title: 'Responsibility disputed',
-      detail: 'You disagreed with the responsibility decision.',
+      detail: 'You disagreed with the responsibility decision. Your property manager is reviewing it.',
     });
   }
 

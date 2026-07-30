@@ -529,7 +529,8 @@ export default function RepairDetailPage() {
             <p className="font-semibold">Acknowledgement required</p>
             <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
               Please confirm you accept this is your responsibility and will arrange your own
-              contractor. If you disagree, CROSSUB will record your objection and close the case.
+              contractor. If you disagree, tell us why — the case stays open and your property
+              manager reviews your reason.
             </p>
             {request.responsibilityAckDeadline && (
               <div className="mt-3">
