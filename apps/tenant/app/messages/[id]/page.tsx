@@ -13,11 +13,13 @@ import { useTenantData } from '@/components/providers/tenant-data-provider';
 import { maintenanceDetail, rentReviewDetail, ROUTES } from '@/constants/routes';
 import { MESSAGE_CATEGORY_TAG, threadCategory } from '@/lib/message-categories';
 import { MESSAGE_RECIPIENT_LABEL } from '@/lib/message-parties';
+import { LIVE_POLL_MS } from '@/lib/live-sync';
 import { cn, formatDateTime } from '@/lib/utils';
 
 export default function MessageDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { messages, getThreadMessages, sendThreadMessage, markThreadRead } = useTenantData();
+  const { messages, getThreadMessages, sendThreadMessage, markThreadRead, syncMessageThreads } =
+    useTenantData();
   const thread = messages.find((m) => m.id === id);
   const threadMessages = useMemo(
     () => (id ? getThreadMessages(id) : []),
@@ -31,6 +33,24 @@ export default function MessageDetailPage() {
       markThreadRead(thread.id);
     }
   }, [thread, markThreadRead]);
+
+  /**
+   * Keep an OPEN conversation live.
+   *
+   * A reply typed by an officer in the staff console lands in this same thread, and a tenant
+   * staring at it should see it arrive rather than having to leave the screen and come back. The
+   * provider's background tick also refetches threads, but this screen should not depend on it:
+   * that tick is gated on `apiConnected` and is rebuilt whenever auth state moves, and nothing
+   * about "I am reading a conversation" should be invisible to the screen doing the reading.
+   * Pulls immediately on open, then on the shared cadence, and stops when the screen closes.
+   */
+  useEffect(() => {
+    void syncMessageThreads();
+    const id = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void syncMessageThreads();
+    }, LIVE_POLL_MS);
+    return () => window.clearInterval(id);
+  }, [syncMessageThreads]);
 
   const composeBar = thread ? (
     <div className="flex gap-2">

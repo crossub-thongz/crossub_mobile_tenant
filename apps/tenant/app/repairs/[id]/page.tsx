@@ -37,6 +37,8 @@ import { MAINTENANCE_TENANT_FINISHED_STATUSES } from '@/constants/maintenance-st
 import {
   MAX_RESPONSIBILITY_DECLINE_REASON_LENGTH,
   MIN_RESPONSIBILITY_DECLINE_REASON_LENGTH,
+  RESPONSIBILITY_ACCEPT_AFTER_DISPUTE_CTA,
+  RESPONSIBILITY_DISPUTE_OPEN_NOTE,
 } from '@/constants/maintenance-responsibility';
 import {
   clearScheduleDecision,
@@ -95,6 +97,11 @@ export default function RepairDetailPage() {
     submittingSchedule || Boolean(recordedDecision) || !scheduleHydrated;
   const decidedTimes = storedScheduleDecision?.proposedTimes || proposedTimes;
   const needsResponsibilityAck = request?.responsibilityAckRequired === true;
+  // A disagreement parks the case with the property manager rather than closing it, so the tenant
+  // needs a way to end it once the two of them have settled: accepting now is what closes it.
+  // Without this the tenant can open a dispute and never finish it.
+  const disagreedEarlier =
+    request?.responsibilityAckStatus === 'disagreed' && !repairFinished;
   const responsibilityText = responsibilityLabel(request?.responsibility);
 
   useEffect(() => {
@@ -130,8 +137,8 @@ export default function RepairDetailPage() {
   const handleResponsibilityAck = async (agreed: boolean) => {
     if (!request) return;
     const reason = responsibilityDeclineReason.trim();
-    // The case closes on this answer and does not reopen, so a disagreement has to carry the
-    // tenant's own words — it is the only thing the officer who picks it up has to work from.
+    // A disagreement has to carry the tenant's own words — it is the only thing the officer who
+    // picks the case up has to work from, and it is what keeps the case open rather than closing it.
     if (!agreed && reason.length < MIN_RESPONSIBILITY_DECLINE_REASON_LENGTH) {
       toast.error('Please tell us why you disagree before submitting.');
       return;
@@ -141,7 +148,9 @@ export default function RepairDetailPage() {
       await respondMaintenanceResponsibilityAck(request.id, agreed, agreed ? undefined : reason);
       toast.success(
         agreed
-          ? 'You acknowledged this repair is your responsibility.'
+          ? disagreedEarlier
+            ? 'Thanks — you accepted the decision and this case is now closed.'
+            : 'You acknowledged this repair is your responsibility.'
           : 'Your disagreement and reason were sent to CROSSUB.',
       );
       setDeclineFormOpen(false);
@@ -607,6 +616,26 @@ export default function RepairDetailPage() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Disagreed earlier — the case is parked with the property manager, and accepting is how the
+          tenant ends it. Not a fixed bottom bar like the card above: this is not a prompt demanding
+          an answer, it is an option available whenever the two of them settle it. */}
+      {disagreedEarlier && (
+        <div className="mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4">
+          <p className="text-sm font-semibold">You disagreed with this decision</p>
+          <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+            {RESPONSIBILITY_DISPUTE_OPEN_NOTE}
+          </p>
+          <Button
+            variant="outline"
+            className="mt-3 w-full"
+            disabled={submittingAck}
+            onClick={() => void handleResponsibilityAck(true)}
+          >
+            {submittingAck ? 'Sending…' : RESPONSIBILITY_ACCEPT_AFTER_DISPUTE_CTA}
+          </Button>
         </div>
       )}
 

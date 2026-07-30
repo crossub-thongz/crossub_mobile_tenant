@@ -210,6 +210,8 @@ interface TenantDataContextValue {
   addApplication: (input: NewApplicationInput) => RentalApplication;
   addMessageThread: (input: NewMessageInput) => MessageThread;
   getThreadMessages: (threadId: string) => ThreadMessage[];
+  /** Refetch threads + their messages. For a screen displaying a live conversation. */
+  syncMessageThreads: () => Promise<void>;
   sendThreadMessage: (threadId: string, body: string, to: MessageParty) => void;
   markThreadRead: (threadId: string) => void;
   recordRentPayment: (input: RecordRentPaymentInput) => RentReceipt;
@@ -457,6 +459,27 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       const { threads: mapped, messagesById } = toMessageThreads(threadsRes.value);
       setMessages(mapped);
       setThreadMessagesById(messagesById);
+    }
+  }, [status]);
+
+  /**
+   * Pull message threads on their own, for a screen that is actively displaying a conversation.
+   *
+   * The background tick above already refetches threads, but a tenant reading a thread should not
+   * depend on a timer they cannot see: it is gated on `apiConnected`, it is torn down and rebuilt
+   * whenever auth state moves, and it drags notifications and rent reviews along with it. An open
+   * conversation is the one screen where a message arriving late is obvious, so it polls for
+   * itself — and only for what it shows.
+   */
+  const syncMessageThreads = useCallback(async () => {
+    if (status !== 'authed') return;
+    try {
+      const threads = await fetchTenantMessages();
+      const { threads: mapped, messagesById } = toMessageThreads(threads);
+      setMessages(mapped);
+      setThreadMessagesById(messagesById);
+    } catch {
+      // keep the last good snapshot
     }
   }, [status]);
 
@@ -1605,6 +1628,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       addApplication,
       addMessageThread,
       getThreadMessages,
+      syncMessageThreads,
       sendThreadMessage,
       markThreadRead,
       recordRentPayment,
@@ -1666,6 +1690,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       addApplication,
       addMessageThread,
       getThreadMessages,
+      syncMessageThreads,
       sendThreadMessage,
       markThreadRead,
       recordRentPayment,

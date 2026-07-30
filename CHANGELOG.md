@@ -2,7 +2,11 @@
 
 ## 2026-07-30
 
+### Added
+- **A tenant who disagreed can now end the dispute themselves.** Disagreeing parks the case with the property manager instead of closing it, which left the tenant able to open a dispute and never finish it — no button, no way back. The repair now carries an "I accept this — close the case" card once a disagreement is on file, and taking it closes the case exactly as agreeing first time would. Deliberately not a fixed bottom bar like the acknowledgement prompt: this is an option for whenever the two of them settle it, not a demand for an answer.
+
 ### Fixed
+- **An open conversation now shows a new message as it arrives.** A reply typed by an officer in the staff console only appeared after leaving the thread and coming back. The screen rendered whatever the provider's background tick had last fetched and did nothing itself — so it depended on a timer it could not see, one that is gated on `apiConnected` and torn down whenever auth state moves. The thread now pulls when it opens and on the shared cadence while it stays open, and pauses when the tab is hidden.
 - Repairs (`/repairs`) — two old jobs sat above everything else and a repair filed minutes earlier appeared third, under them. `fetchMaintenanceRequests` read only the first page of a paged endpoint (20 of the tenant's 28 jobs) and discarded `total`/`hasMore`, so it never knew the list was cut short. The provider then treated "not in the response" as "created locally, keep it" and concatenated those leftovers **in front** of the API rows — so every repair that slipped past page one was pinned to the top of the screen and frozen at its last-seen status and progress, unable to ever update again.
 - The maintenance list is now read to the end (`pageSize=100`, following `hasMore`), so the tenant's whole history is present and current.
 - Rows the API does not return are kept only while their id is still a local one, and the merged list is always sorted newest-first — the persisted snapshot is sorted on load too, so the first paint after this upgrade already shows the right order rather than the order an older build wrote.
