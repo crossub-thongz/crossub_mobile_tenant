@@ -6,10 +6,14 @@
 - Repairs (`/repairs`) — two old jobs sat above everything else and a repair filed minutes earlier appeared third, under them. `fetchMaintenanceRequests` read only the first page of a paged endpoint (20 of the tenant's 28 jobs) and discarded `total`/`hasMore`, so it never knew the list was cut short. The provider then treated "not in the response" as "created locally, keep it" and concatenated those leftovers **in front** of the API rows — so every repair that slipped past page one was pinned to the top of the screen and frozen at its last-seen status and progress, unable to ever update again.
 - The maintenance list is now read to the end (`pageSize=100`, following `hasMore`), so the tenant's whole history is present and current.
 - Rows the API does not return are kept only while their id is still a local one, and the merged list is always sorted newest-first — the persisted snapshot is sorted on load too, so the first paint after this upgrade already shows the right order rather than the order an older build wrote.
+- **Every other paged tenant list was truncating at 20 the same way** — `fetchTenancies`, `fetchLedger`, `fetchTenantProperties`, `fetchTenantInspections` and `fetchTenantApplications` all read `data.items` from one unparameterised call. The rent ledger was the one due to break next: a weekly tenancy passes 20 entries in five months, after which the oldest payments would simply have stopped appearing, with no empty state or "load more" to hint that anything was missing. All five now read to the end.
+- Verified nothing else truncates: the remaining tenant list facades (`documents`, `messages`, `notifications`, `rent-reviews`, `vacating-cases`, `new-leasing`, the three inspection lists) return bare arrays with no pagination, and `GET /public/listings` is unpaged.
 
 ### Added
+- `lib/crossub-api/paged.ts` — `collectPages`, the one paging loop all six list fetches share.
+- `constants/paged-list.ts` — `LIST_PAGE_SIZE` (100, the API's cap) and `LIST_MAX_PAGES` (a stop so a wrong `hasMore` cannot spin forever).
 - `lib/maintenance-request-filters.ts` — `isLocalMaintenanceRequest`, `sortMaintenanceRequestsNewestFirst`, `mergeMaintenanceRequests` (the merge both sync paths now share).
-- `constants/maintenance-request-list.ts` — local-id prefix plus the list's page size and page cap.
+- `constants/maintenance-request.ts` — the local-id prefix.
 
 ## 2026-07-29
 

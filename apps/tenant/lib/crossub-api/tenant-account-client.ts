@@ -1,13 +1,10 @@
 import type { components } from '@crossub-thongz/api-contract';
 
-import {
-  MAINTENANCE_REQUEST_MAX_PAGES,
-  MAINTENANCE_REQUEST_PAGE_SIZE,
-} from '@/constants/maintenance-request-list';
 import { fileToBase64 } from '@/lib/utils';
 
 import { fetchAuthenticatedBlob } from '@/lib/api';
 import { crossub } from './client';
+import { collectPages } from './paged';
 import { parseApiErrorMessage } from '@/lib/api-error-message';
 
 const API_BASE = `${process.env.NEXT_PUBLIC_API_URL ?? '/api'}/v1`;
@@ -140,32 +137,51 @@ export type TenantRoutineSelfInspectionSectionSubmission =
 export type TenantDeclineVacatingSettlement =
   components['schemas']['TenantDeclineVacatingSettlementDto'];
 
-/** Active leases for the signed-in tenant (`GET /api/v1/tenant/tenancies`). */
+/** Active leases for the signed-in tenant (`GET /api/v1/tenant/tenancies`, all pages). */
 export async function fetchTenancies(): Promise<TenantTenancy[]> {
-  const { data, error } = await crossub.GET('/tenant/tenancies');
-  if (error || !data) throw new Error('Failed to load tenancies');
-  return data.items;
+  return collectPages(async (page, pageSize) => {
+    const { data, error } = await crossub.GET('/tenant/tenancies', {
+      params: { query: { page, pageSize } },
+    });
+    if (error || !data) throw new Error('Failed to load tenancies');
+    return { items: data.items, hasMore: data.hasMore };
+  });
 }
 
-/** Payment ledger for the signed-in tenant (`GET /api/v1/tenant/ledger`). */
+/**
+ * Payment ledger for the signed-in tenant (`GET /api/v1/tenant/ledger`, all pages).
+ * A weekly tenancy passes 20 entries in five months, so this one has to page.
+ */
 export async function fetchLedger(): Promise<TenantLedgerEntry[]> {
-  const { data, error } = await crossub.GET('/tenant/ledger');
-  if (error || !data) throw new Error('Failed to load ledger');
-  return data.items;
+  return collectPages(async (page, pageSize) => {
+    const { data, error } = await crossub.GET('/tenant/ledger', {
+      params: { query: { page, pageSize } },
+    });
+    if (error || !data) throw new Error('Failed to load ledger');
+    return { items: data.items, hasMore: data.hasMore };
+  });
 }
 
-/** Leased properties for the signed-in tenant (`GET /api/v1/tenant/properties`). */
+/** Leased properties for the signed-in tenant (`GET /api/v1/tenant/properties`, all pages). */
 export async function fetchTenantProperties(): Promise<TenantProperty[]> {
-  const { data, error } = await crossub.GET('/tenant/properties');
-  if (error || !data) throw new Error('Failed to load properties');
-  return data.items;
+  return collectPages(async (page, pageSize) => {
+    const { data, error } = await crossub.GET('/tenant/properties', {
+      params: { query: { page, pageSize } },
+    });
+    if (error || !data) throw new Error('Failed to load properties');
+    return { items: data.items, hasMore: data.hasMore };
+  });
 }
 
-/** Inspections on the signed-in tenant's leased property (`GET /api/v1/tenant/inspections`). */
+/** Inspections on the tenant's leased property (`GET /api/v1/tenant/inspections`, all pages). */
 export async function fetchTenantInspections(): Promise<TenantInspection[]> {
-  const { data, error } = await crossub.GET('/tenant/inspections');
-  if (error || !data) throw new Error('Failed to load inspections');
-  return data.items;
+  return collectPages(async (page, pageSize) => {
+    const { data, error } = await crossub.GET('/tenant/inspections', {
+      params: { query: { page, pageSize } },
+    });
+    if (error || !data) throw new Error('Failed to load inspections');
+    return { items: data.items, hasMore: data.hasMore };
+  });
 }
 
 /** Documents on the signed-in tenant's leased property (`GET /api/v1/tenant/documents`). */
@@ -175,11 +191,15 @@ export async function fetchTenantDocuments(): Promise<TenantDocument[]> {
   return data;
 }
 
-/** The signed-in tenant's own rental applications (`GET /api/v1/tenant/applications`). */
+/** The tenant's own rental applications (`GET /api/v1/tenant/applications`, all pages). */
 export async function fetchTenantApplications(): Promise<TenantApplication[]> {
-  const { data, error } = await crossub.GET('/tenant/applications');
-  if (error || !data) throw new Error('Failed to load applications');
-  return data.items;
+  return collectPages(async (page, pageSize) => {
+    const { data, error } = await crossub.GET('/tenant/applications', {
+      params: { query: { page, pageSize } },
+    });
+    if (error || !data) throw new Error('Failed to load applications');
+    return { items: data.items, hasMore: data.hasMore };
+  });
 }
 
 /** Full rental application detail (`GET /api/v1/tenant/applications/:applicationId`). */
@@ -484,26 +504,23 @@ export type TenantMaintenanceResponsibilityAck =
   components['schemas']['TenantMaintenanceResponsibilityAckDto'];
 
 /**
- * Maintenance on the tenant’s leased property (`GET /api/v1/tenant/maintenance-requests`).
+ * Maintenance on the tenant’s leased property (`GET /api/v1/tenant/maintenance-requests`,
+ * all pages).
  *
- * The endpoint is paged (20 per page by default) and the app shows the whole history on one
- * screen, so this walks every page. Reading only the first page silently truncated the list
- * — and because the provider kept the rows the response was missing, the repairs that fell
- * off page one stuck to the top of the screen, frozen at their last-seen status.
+ * Reading only the first page silently truncated the list — and because the provider kept
+ * the rows the response was missing, the repairs that fell off page one stuck to the top of
+ * the screen, frozen at their last-seen status.
  */
 export async function fetchMaintenanceRequests(): Promise<
   TenantMaintenanceRequestSummary[]
 > {
-  const items: TenantMaintenanceRequestSummary[] = [];
-  for (let page = 1; page <= MAINTENANCE_REQUEST_MAX_PAGES; page += 1) {
+  return collectPages(async (page, pageSize) => {
     const { data, error } = await crossub.GET('/tenant/maintenance-requests', {
-      params: { query: { page, pageSize: MAINTENANCE_REQUEST_PAGE_SIZE } },
+      params: { query: { page, pageSize } },
     });
     if (error || !data) throw new Error('Failed to load maintenance requests');
-    items.push(...data.items);
-    if (!data.hasMore || data.items.length === 0) break;
-  }
-  return items;
+    return { items: data.items, hasMore: data.hasMore };
+  });
 }
 
 /** Acknowledge or disagree with tenant-responsibility (`PATCH .../responsibility-ack`). */

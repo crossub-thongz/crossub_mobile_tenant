@@ -79,7 +79,7 @@ import {
   mergeMaintenanceRequests,
   sortMaintenanceRequestsNewestFirst,
 } from '@/lib/maintenance-request-filters';
-import { LOCAL_MAINTENANCE_REQUEST_ID_PREFIX } from '@/constants/maintenance-request-list';
+import { LOCAL_MAINTENANCE_REQUEST_ID_PREFIX } from '@/constants/maintenance-request';
 import { VACATING_STAGE } from '@/constants/vacating';
 import { fetchPublicListings } from '@/lib/crossub-api/public-listings-client';
 import {

@@ -1,4 +1,4 @@
-import { LOCAL_MAINTENANCE_REQUEST_ID_PREFIX } from '@/constants/maintenance-request-list';
+import { LOCAL_MAINTENANCE_REQUEST_ID_PREFIX } from '@/constants/maintenance-request';
 import type { MaintenanceRequest } from '@/lib/types';
 
 /** In-flight repairs the tenant should track (excludes completed/closed/cancelled). */
