@@ -79,7 +79,9 @@ import {
   mergeMaintenanceRequests,
   sortMaintenanceRequestsNewestFirst,
 } from '@/lib/maintenance-request-filters';
+import { isIngoingReportAwaitingTenant } from '@/constants/ingoing-report';
 import { LOCAL_MAINTENANCE_REQUEST_ID_PREFIX } from '@/constants/maintenance-request';
+import { ingoingReport } from '@/constants/routes';
 import { VACATING_STAGE } from '@/constants/vacating';
 import { fetchPublicListings } from '@/lib/crossub-api/public-listings-client';
 import {
@@ -1578,9 +1580,26 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
 
   const displayedInspections = useMemo(() => {
     const routineCards = toRoutineInspectionSummaries(routineInspections);
-    const nonRoutine = inspections.filter((i) => i.type !== 'routine');
+    // An ingoing report the tenant still has to act on opens the acknowledgement
+    // screen, not the PDF. The inspection list only knows `reportUrl`, so every
+    // ingoing card linked straight to the file and the confirm/dispute/approve
+    // flow at /inspections/ingoing/:id was unreachable — the tenant could read
+    // the report but never sign it, and the case sat in "awaiting confirmation"
+    // forever. The ingoing feed is what knows whether it is still open.
+    const awaitingAck = new Set(
+      ingoingInspections
+        .filter((r) => isIngoingReportAwaitingTenant(r.status))
+        .map((r) => r.id),
+    );
+    const nonRoutine = inspections
+      .filter((i) => i.type !== 'routine')
+      .map((i) =>
+        i.type === 'ingoing' && awaitingAck.has(i.id)
+          ? { ...i, href: ingoingReport(i.id) }
+          : i,
+      );
     return [...routineCards, ...nonRoutine];
-  }, [inspections, routineInspections]);
+  }, [inspections, routineInspections, ingoingInspections]);
 
   const propertyContacts = useMemo(
     () =>

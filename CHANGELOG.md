@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-07-31
+
+### Fixed
+- **The ingoing acknowledgement screen is reachable again.** Every inspection card linked straight to its report PDF, so the confirm/dispute/approve flow at `/inspections/ingoing/:id` — the screen the card's own subtitle promises, "confirm each section" — could not be opened from anywhere in the app. A tenant could read their condition report but never sign it, and the case sat at "awaiting confirmation" indefinitely. Ingoing cards whose report is still waiting on the tenant now open that screen; settled ones still open the PDF, since at that point they are just a record.
+
 ## 2026-07-30
 
 ### Added
