@@ -241,11 +241,33 @@ export function RoutineSelfInspectionWizard({
     });
   };
 
-  const updateIssue = (patch: Partial<AreaIssue>) => {
-    setIssues((prev) => ({
-      ...prev,
-      [area]: { ...(prev[area] ?? emptyAreaIssue()), ...patch },
-    }));
+  /**
+   * Patch the current area's record. Pass a FUNCTION whenever the new value is derived from
+   * the old one — an object built from the render-time `issues` is a stale snapshot.
+   *
+   * This is not theoretical. Photo uploads resolve asynchronously and independently per
+   * section, so two can land between renders. The per-section handler used to build its
+   * whole `photosBySection` map from the closure's `issues[area]` and hand it over as a
+   * plain patch; whichever upload resolved second therefore spread a map that did not
+   * contain the first one's photo, and erased it. The tenant saw a section they had just
+   * photographed sitting empty, with no error — the upload itself had succeeded, only the
+   * state write was lost. Reproduced twice on the 7.3 capture run: 3 of 8 photos dropped in
+   * one area, 2 of 8 in another, and the only thing that caught it was the next-area
+   * validation refusing to advance.
+   *
+   * Same defect class as the API's stale-`workflowMeta` clobber. The rule that kills it:
+   * read `prev` inside the updater, never from the closure.
+   */
+  const updateIssue = (
+    patch: Partial<AreaIssue> | ((current: AreaIssue) => Partial<AreaIssue>),
+  ) => {
+    setIssues((prev) => {
+      const current = prev[area] ?? emptyAreaIssue();
+      return {
+        ...prev,
+        [area]: { ...current, ...(typeof patch === 'function' ? patch(current) : patch) },
+      };
+    });
   };
 
   const markAvailable = (available: boolean) => {
@@ -259,30 +281,30 @@ export function RoutineSelfInspectionWizard({
     }
 
     const sections = sectionsForAvailableArea(area, customAreas, ingoingAreaPlan);
-    const photosBySection: Record<string, SectionPhotos> = {
-      ...(issue.photosBySection ?? {}),
-    };
-    for (const section of sections) {
-      if (!photosBySection[section]) {
-        photosBySection[section] = { routinePhotoUrls: [] };
+    updateIssue((current) => {
+      const photosBySection: Record<string, SectionPhotos> = {
+        ...(current.photosBySection ?? {}),
+      };
+      for (const section of sections) {
+        if (!photosBySection[section]) {
+          photosBySection[section] = { routinePhotoUrls: [] };
+        }
       }
-    }
-    updateIssue({
-      available: true,
-      activeSections: sections,
-      photosBySection,
+      return { available: true, activeSections: sections, photosBySection };
     });
   };
 
   const addSection = (section: string) => {
-    const current = issues[area] ?? emptyAreaIssue();
-    if (current.activeSections.includes(section)) return;
-    updateIssue({
-      activeSections: [...current.activeSections, section],
-      photosBySection: {
-        ...current.photosBySection,
-        [section]: emptySectionPhotos(),
-      },
+    if ((issues[area] ?? emptyAreaIssue()).activeSections.includes(section)) return;
+    updateIssue((current) => {
+      if (current.activeSections.includes(section)) return {};
+      return {
+        activeSections: [...current.activeSections, section],
+        photosBySection: {
+          ...current.photosBySection,
+          [section]: emptySectionPhotos(),
+        },
+      };
     });
   };
 
@@ -290,12 +312,13 @@ export function RoutineSelfInspectionWizard({
     const planSections = findIngoingPlanRoom(ingoingAreaPlan, area)?.sections ?? [];
     if (planSections.includes(section)) return;
     if (areaDef?.defaultSections.includes(section)) return;
-    const current = issues[area] ?? emptyAreaIssue();
-    const nextPhotos = { ...current.photosBySection };
-    delete nextPhotos[section];
-    updateIssue({
-      activeSections: current.activeSections.filter((item) => item !== section),
-      photosBySection: nextPhotos,
+    updateIssue((current) => {
+      const nextPhotos = { ...current.photosBySection };
+      delete nextPhotos[section];
+      return {
+        activeSections: current.activeSections.filter((item) => item !== section),
+        photosBySection: nextPhotos,
+      };
     });
   };
 
@@ -544,13 +567,16 @@ export function RoutineSelfInspectionWizard({
               onAddSection={addSection}
               onRemoveSection={removeSection}
               onRoutinePhotosChange={(section, urls) => {
-                const current = issues[area] ?? emptyAreaIssue();
-                const existing = current.photosBySection[section] ?? emptySectionPhotos();
-                updateIssue({
-                  photosBySection: {
-                    ...current.photosBySection,
-                    [section]: { ...existing, routinePhotoUrls: urls },
-                  },
+                // Derived from `current`, never from the render-time `issues` — see
+                // `updateIssue`. Two sections uploading at once used to lose one of them.
+                updateIssue((current) => {
+                  const existing = current.photosBySection[section] ?? emptySectionPhotos();
+                  return {
+                    photosBySection: {
+                      ...current.photosBySection,
+                      [section]: { ...existing, routinePhotoUrls: urls },
+                    },
+                  };
                 });
               }}
             />

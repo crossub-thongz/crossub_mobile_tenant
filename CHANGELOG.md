@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-08-01
+
+### Fixed
+- **A self-inspection no longer loses photos the tenant has already taken.** Each section uploads on its own, so two uploads routinely resolve between renders — and the per-section handler rebuilt the area's whole `photosBySection` map from the render-time `issues` before handing it over as a patch. Whichever upload finished second therefore spread a map that did not contain the first one's photo and erased it. Nothing told the tenant: the upload itself had succeeded, so the section simply sat empty, and the only thing that caught it was the "Next area" validation refusing to advance. Reproduced twice while driving a real routine inspection — 3 of 8 photos dropped in one area, 2 of 8 in another. `updateIssue` now takes a function and every derived write reads the previous state inside the updater, which closes the same hole in add-section, remove-section and the availability gate as well.
+
 ## 2026-07-31
 
 ### Fixed
