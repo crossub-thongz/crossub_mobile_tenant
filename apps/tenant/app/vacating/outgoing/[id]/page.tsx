@@ -20,10 +20,13 @@ export default function OutgoingReportPage() {
   const { id } = useParams<{ id: string }>();
   const searchParams = useSearchParams();
   const backHref = resolveBackHref(searchParams.get('from'), ROUTES.VACATING);
-  const { outgoingReport, outgoingInspections, confirmOutgoingSection, apiConnected } =
-    useTenantData();
+  const { outgoingReport, outgoingInspections, confirmOutgoingSection } = useTenantData();
   const [loadedReport, setLoadedReport] = useState<OutgoingReport | null>(null);
-  const [loading, setLoading] = useState(false);
+  /** Which id we have actually tried to load, and how that attempt ended. */
+  const [lookup, setLookup] = useState<{
+    id: string;
+    state: 'loading' | 'done' | 'failed';
+  } | null>(null);
 
   const summary = outgoingInspections.find((r) => r.id === id);
   const report =
@@ -32,16 +35,42 @@ export default function OutgoingReportPage() {
     summary ??
     null;
 
+  /**
+   * Fetch the report by id, once per id.
+   *
+   * This used to be gated on `apiConnected`, which is only set at the end of the provider's full
+   * refresh. Arriving here from the End of lease screen renders before that completes, so the
+   * fetch was skipped, `report` was null, `loading` was still false — and the page fell straight
+   * through to "Report not found." The tenant was told the report did not exist on a case whose
+   * detail endpoint answers 200 with a reportUrl, purely because nothing had looked yet.
+   *
+   * The page knows the id; it does not need the provider's permission to ask for it.
+   */
   useEffect(() => {
-    if (!apiConnected || report?.sections.length) return;
-    setLoading(true);
+    if (lookup?.id === id) return;
+    let cancelled = false;
+    setLookup({ id, state: 'loading' });
     void fetchTenantOutgoingInspection(id)
-      .then((detail) => setLoadedReport(toOutgoingReport(detail)))
-      .catch(() => setLoadedReport(null))
-      .finally(() => setLoading(false));
-  }, [apiConnected, id, report?.sections.length]);
+      .then((detail) => {
+        if (cancelled) return;
+        setLoadedReport(toOutgoingReport(detail));
+        setLookup({ id, state: 'done' });
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setLoadedReport(null);
+        setLookup({ id, state: 'failed' });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, lookup?.id]);
 
-  if (loading && !report) {
+  const retry = () => setLookup(null);
+
+  // Anything cached (summary or the provider's current report) renders straight away, even while
+  // the fuller fetch is still in flight.
+  if (!report && lookup?.state !== 'failed') {
     return (
       <TenantShell title="Outgoing report" backHref={backHref}>
         <p className="text-sm text-muted-foreground">Loading report…</p>
@@ -50,9 +79,20 @@ export default function OutgoingReportPage() {
   }
 
   if (!report || report.id !== id) {
+    // The API client throws a bare Error, so a missing report and a failed request are
+    // indistinguishable here. Say what is actually known rather than asserting it does not exist.
     return (
       <TenantShell title="Outgoing report" backHref={backHref}>
-        <p className="text-sm text-muted-foreground">Report not found.</p>
+        <p className="text-sm text-muted-foreground">
+          We couldn&rsquo;t load this report just now.
+        </p>
+        <button
+          type="button"
+          onClick={retry}
+          className="text-primary mt-3 text-sm font-medium underline"
+        >
+          Try again
+        </button>
       </TenantShell>
     );
   }
