@@ -22,11 +22,10 @@ export default function OutgoingReportPage() {
   const backHref = resolveBackHref(searchParams.get('from'), ROUTES.VACATING);
   const { outgoingReport, outgoingInspections, confirmOutgoingSection } = useTenantData();
   const [loadedReport, setLoadedReport] = useState<OutgoingReport | null>(null);
-  /** Which id we have actually tried to load, and how that attempt ended. */
-  const [lookup, setLookup] = useState<{
-    id: string;
-    state: 'loading' | 'done' | 'failed';
-  } | null>(null);
+  /** How the lookup for the current id ended. Starts as loading — nothing is known yet. */
+  const [lookupState, setLookupState] = useState<'loading' | 'done' | 'failed'>('loading');
+  /** Bumped by Try again to re-run the fetch effect. */
+  const [retryNonce, setRetryNonce] = useState(0);
 
   const summary = outgoingInspections.find((r) => r.id === id);
   const report =
@@ -47,30 +46,32 @@ export default function OutgoingReportPage() {
    * The page knows the id; it does not need the provider's permission to ask for it.
    */
   useEffect(() => {
-    if (lookup?.id === id) return;
     let cancelled = false;
-    setLookup({ id, state: 'loading' });
+    setLookupState('loading');
     void fetchTenantOutgoingInspection(id)
       .then((detail) => {
         if (cancelled) return;
         setLoadedReport(toOutgoingReport(detail));
-        setLookup({ id, state: 'done' });
+        setLookupState('done');
       })
       .catch(() => {
         if (cancelled) return;
         setLoadedReport(null);
-        setLookup({ id, state: 'failed' });
+        setLookupState('failed');
       });
     return () => {
       cancelled = true;
     };
-  }, [id, lookup?.id]);
+    // Depends only on the id (and an explicit retry). Deriving the deps from state this effect
+    // itself sets would tear the effect down and cancel the in-flight request before it resolved
+    // — the detail came back 200 and was thrown away, leaving the empty list summary on screen.
+  }, [id, retryNonce]);
 
-  const retry = () => setLookup(null);
+  const retry = () => setRetryNonce((n) => n + 1);
 
   // Anything cached (summary or the provider's current report) renders straight away, even while
   // the fuller fetch is still in flight.
-  if (!report && lookup?.state !== 'failed') {
+  if (!report && lookupState !== 'failed') {
     return (
       <TenantShell title="Outgoing report" backHref={backHref}>
         <p className="text-sm text-muted-foreground">Loading report…</p>
