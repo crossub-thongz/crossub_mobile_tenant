@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 
 import { TenantShell } from '@/components/layout/tenant-shell';
 import { ThemeSetting } from '@/components/theme-setting';
+import { TenantGuidePdfDownload } from '@/components/tenant/tenant-guide-pdf-download';
 import { Button } from '@/components/ui/button';
 import { ROUTES } from '@/constants/routes';
 
@@ -70,14 +71,17 @@ export default function SettingsPage() {
         <section className="rounded-xl border bg-card p-4">
           <h2 className="font-semibold">Help</h2>
           <p className="text-muted-foreground mt-1 text-xs">
-            Common questions about sign-in, repairs, inspections, rent, and moving out.
+            FAQ, printable PDF guide, and in-app resources.
           </p>
-          <Link
-            href={ROUTES.FAQ}
-            className="text-primary mt-3 inline-block text-sm font-medium"
-          >
-            View FAQ →
-          </Link>
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <Link
+              href={ROUTES.FAQ}
+              className="text-primary inline-flex items-center text-sm font-medium"
+            >
+              View FAQ →
+            </Link>
+            <TenantGuidePdfDownload variant="secondary" />
+          </div>
         </section>
 
         <section className="rounded-xl border bg-card p-4">

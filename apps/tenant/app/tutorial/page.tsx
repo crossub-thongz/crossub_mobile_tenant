@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 import { TenantShell } from '@/components/layout/tenant-shell';
+import { TenantGuidePdfDownload } from '@/components/tenant/tenant-guide-pdf-download';
 import { Button } from '@/components/ui/button';
 import { ROUTES } from '@/constants/routes';
 
@@ -28,8 +29,9 @@ export default function TutorialPage() {
   return (
     <TenantShell title="How to use the app">
       <p className="text-muted-foreground mb-4 text-sm">
-        Required tutorial for every new registration.
+        Required tutorial for every new registration. You can also download the full PDF guide.
       </p>
+      <TenantGuidePdfDownload className="mb-5" fullWidth />
       <ol className="space-y-3">
         {STEPS.map((s, i) => (
           <li key={s.title} className="rounded-xl border bg-card p-4 text-sm">
