@@ -26,6 +26,7 @@ export const ROUTES = {
   STATEMENT: '/accounting/statement',
   DOCUMENTS: '/documents',
   TUTORIAL: '/tutorial',
+  FAQ: '/faq',
   ONBOARDING_GUIDE: '/onboarding-guide',
   SYSTEM_ACCESS_AGREEMENT: '/system-access-agreement',
 } as const;

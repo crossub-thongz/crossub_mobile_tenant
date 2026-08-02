@@ -38,6 +38,7 @@ const MORE_NAV = [
   { href: ROUTES.SETTINGS, label: 'Settings' },
   { href: ROUTES.PROFILE, label: 'Profile' },
   { href: ROUTES.TUTORIAL, label: 'App tutorial' },
+  { href: ROUTES.FAQ, label: 'FAQ' },
 ] as const;
 
 function isActive(pathname: string, href: string): boolean {
