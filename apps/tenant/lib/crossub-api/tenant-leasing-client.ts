@@ -22,6 +22,19 @@ type AgreementUploadSession =
   | { mode: 'inline' }
   | { mode: 'direct'; uploadUrl: string; storageKey: string };
 
+export interface TenantLeasingContractRevisionDto {
+  version: number;
+  contractRef: string;
+  confirmedAt: string;
+  sentToTenantAt: string | null;
+  supersededAt: string | null;
+  isCurrent: boolean;
+  leaseTerm: string | null;
+  weeklyRent: number | null;
+  startDate: string | null;
+  endDate: string | null;
+}
+
 const agreementSignedPaths = {
   upload: '/tenant/leasing/onboarding/agreement/signed/upload',
   session: '/tenant/leasing/onboarding/agreement/signed/upload-session',
@@ -76,7 +89,10 @@ export interface TenantLeasingOnboardingDto {
       template: string | null;
       leaseTerm: string | null;
       weeklyRent: number | null;
+      contractRef: string | null;
+      currentVersion: number | null;
     };
+    revisions: TenantLeasingContractRevisionDto[];
   };
   ingoingInspectionId: string | null;
   applicationDocuments: {

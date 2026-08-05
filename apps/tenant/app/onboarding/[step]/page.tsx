@@ -396,6 +396,14 @@ export default function OnboardingStepPage() {
             <>
               <div className="rounded-xl border bg-card p-4 text-sm">
                 <p className="font-medium">Lease agreement</p>
+                {agreement?.contract.contractRef && (
+                  <p className="text-muted-foreground mt-1 text-xs">
+                    Reference: {agreement.contract.contractRef}
+                    {agreement.contract.currentVersion != null
+                      ? ` · version ${agreement.contract.currentVersion}`
+                      : ''}
+                  </p>
+                )}
                 {agreement?.contract.template && (
                   <p className="text-muted-foreground mt-1 text-xs">{agreement.contract.template}</p>
                 )}
@@ -420,6 +428,39 @@ export default function OnboardingStepPage() {
                   )}
                 </div>
               </div>
+
+              {agreement.revisions.length > 0 ? (
+                <div className="rounded-xl border bg-card p-4 text-sm">
+                  <p className="font-medium">Agreement versions</p>
+                  <p className="text-muted-foreground mt-1 text-xs">
+                    Your agent may issue updated versions during onboarding. The current version is
+                    marked below.
+                  </p>
+                  <ul className="mt-3 space-y-2">
+                    {[...agreement.revisions].reverse().map((revision) => (
+                      <li
+                        key={`${revision.contractRef}-${revision.version}`}
+                        className="rounded-lg border bg-muted/20 px-3 py-2 text-xs"
+                      >
+                        <p className="font-medium text-foreground">
+                          {revision.contractRef}
+                          {revision.isCurrent ? ' · Current' : ' · Superseded'}
+                        </p>
+                        <p className="text-muted-foreground mt-1">
+                          {[
+                            revision.leaseTerm,
+                            revision.weeklyRent != null
+                              ? `${formatCurrency(revision.weeklyRent)}/week`
+                              : null,
+                          ]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
 
               <div className="flex flex-wrap gap-2">
                 <Button
