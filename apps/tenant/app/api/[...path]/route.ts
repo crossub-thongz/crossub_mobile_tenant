@@ -1,5 +1,11 @@
 import { type NextRequest, NextResponse } from 'next/server';
 
+// TEMPORARY — routine-inspection guide screenshot harness (GUIDE_CAPTURE=1). Remove with the stub.
+import {
+  GUIDE_CAPTURE_ENABLED,
+  guideCaptureResponse,
+} from '@/lib/server/guide-capture-stub';
+
 const apiBase = (): string =>
   process.env.API_INTERNAL_URL ?? 'http://localhost:3001';
 
@@ -55,6 +61,12 @@ const proxy = async (
   const { path } = await context.params;
   const isBodyMethod = req.method !== 'GET' && req.method !== 'HEAD';
   const bodyBuffer = isBodyMethod ? await req.arrayBuffer() : undefined;
+
+  // TEMPORARY — guide screenshot harness. No-op unless GUIDE_CAPTURE=1.
+  if (GUIDE_CAPTURE_ENABLED) {
+    const canned = await guideCaptureResponse(req.method, path, bodyBuffer);
+    if (canned) return canned;
+  }
 
   let upstream: Response;
   try {
