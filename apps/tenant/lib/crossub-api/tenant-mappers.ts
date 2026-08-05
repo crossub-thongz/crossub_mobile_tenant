@@ -186,6 +186,9 @@ export function toLeaseSummary(tenancies: TenantTenancy[]): LeaseSummary | null 
       ),
     rentPaidTo:
       asString((lease as { rentPaidTo?: string | null }).rentPaidTo) ?? undefined,
+    paymentReference:
+      asString((lease as { paymentReference?: string | null }).paymentReference) ??
+      undefined,
   };
 }
 

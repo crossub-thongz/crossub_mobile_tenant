@@ -109,6 +109,8 @@ export default function OnboardingStepPage() {
   const isUpload = step.id === 'deposit' || step.id === 'bond';
   const isLease = step.id === 'lease_signing';
   const agreement = leasingOnboarding?.agreement;
+  const agreementContract = agreement?.contract;
+  const agreementRevisions = agreement?.revisions ?? [];
   const agreementAvailable = Boolean(agreement?.available);
   const agreementConfirmed = agreement?.signingStatus === 'signed';
   const agreementPendingConfirmation = agreement?.status === 'waiting';
@@ -396,28 +398,28 @@ export default function OnboardingStepPage() {
             <>
               <div className="rounded-xl border bg-card p-4 text-sm">
                 <p className="font-medium">Lease agreement</p>
-                {agreement?.contract.contractRef && (
+                {agreementContract?.contractRef && (
                   <p className="text-muted-foreground mt-1 text-xs">
-                    Reference: {agreement.contract.contractRef}
-                    {agreement.contract.currentVersion != null
-                      ? ` · version ${agreement.contract.currentVersion}`
+                    Reference: {agreementContract.contractRef}
+                    {agreementContract.currentVersion != null
+                      ? ` · version ${agreementContract.currentVersion}`
                       : ''}
                   </p>
                 )}
-                {agreement?.contract.template && (
-                  <p className="text-muted-foreground mt-1 text-xs">{agreement.contract.template}</p>
+                {agreementContract?.template && (
+                  <p className="text-muted-foreground mt-1 text-xs">{agreementContract.template}</p>
                 )}
                 <div className="text-muted-foreground mt-3 grid gap-2 text-xs">
-                  {agreement?.contract.leaseTerm && (
+                  {agreementContract?.leaseTerm && (
                     <p>
                       <span className="text-foreground font-medium">Term:</span>{' '}
-                      {agreement.contract.leaseTerm}
+                      {agreementContract.leaseTerm}
                     </p>
                   )}
-                  {agreement?.contract.weeklyRent != null && (
+                  {agreementContract?.weeklyRent != null && (
                     <p>
                       <span className="text-foreground font-medium">Rent:</span>{' '}
-                      {formatCurrency(agreement.contract.weeklyRent)}/week
+                      {formatCurrency(agreementContract.weeklyRent)}/week
                     </p>
                   )}
                   {agreement?.uploadedFileName && (
@@ -429,7 +431,7 @@ export default function OnboardingStepPage() {
                 </div>
               </div>
 
-              {agreement.revisions.length > 0 ? (
+              {agreementRevisions.length > 0 ? (
                 <div className="rounded-xl border bg-card p-4 text-sm">
                   <p className="font-medium">Agreement versions</p>
                   <p className="text-muted-foreground mt-1 text-xs">
@@ -437,7 +439,7 @@ export default function OnboardingStepPage() {
                     marked below.
                   </p>
                   <ul className="mt-3 space-y-2">
-                    {[...agreement.revisions].reverse().map((revision) => (
+                    {[...agreementRevisions].reverse().map((revision) => (
                       <li
                         key={`${revision.contractRef}-${revision.version}`}
                         className="rounded-lg border bg-muted/20 px-3 py-2 text-xs"

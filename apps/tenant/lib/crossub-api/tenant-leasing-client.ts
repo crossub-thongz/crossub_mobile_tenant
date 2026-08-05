@@ -415,6 +415,29 @@ export function mapLeasingOnboardingToSteps(
     }));
 }
 
+function normalizeLeasingOnboarding(
+  dto: TenantLeasingOnboardingDto,
+): TenantLeasingOnboardingDto {
+  const agreement = dto.agreement;
+  return {
+    ...dto,
+    applicationDocuments: dto.applicationDocuments ?? [],
+    agreement: agreement
+      ? {
+          ...agreement,
+          contract: agreement.contract ?? {
+            template: null,
+            leaseTerm: null,
+            weeklyRent: null,
+            contractRef: null,
+            currentVersion: null,
+          },
+          revisions: agreement.revisions ?? [],
+        }
+      : agreement,
+  };
+}
+
 /** Live leasing onboarding for the signed-in tenant (`GET /tenant/leasing/onboarding`). */
 export async function fetchLeasingOnboarding(): Promise<TenantLeasingOnboardingDto> {
   const res = await fetch(`${API_BASE}/tenant/leasing/onboarding`, {
@@ -428,10 +451,7 @@ export async function fetchLeasingOnboarding(): Promise<TenantLeasingOnboardingD
     throw new Error('Failed to load leasing onboarding');
   }
   const dto = (await res.json()) as TenantLeasingOnboardingDto;
-  return {
-    ...dto,
-    applicationDocuments: dto.applicationDocuments ?? [],
-  };
+  return normalizeLeasingOnboarding(dto);
 }
 
 /** Stage a key-collection proof photo (`POST /tenant/leasing/onboarding/key-collection/photos/upload`). */

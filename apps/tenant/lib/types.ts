@@ -205,6 +205,8 @@ export interface LeaseSummary {
   paymentCycle?: 'weekly' | 'fortnightly' | 'monthly';
   /** Rent paid-to date from the property registry. */
   rentPaidTo?: string;
+  /** Rent payment reference for bank transfers. */
+  paymentReference?: string;
 }
 
 export interface ReportSection {

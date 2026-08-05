@@ -97,6 +97,19 @@ export default function PropertyPage() {
                   </span>
                 </p>
               ) : null}
+              {lease.paymentReference ? (
+                <div className="mt-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2.5">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-200">
+                    Rent payment reference
+                  </p>
+                  <p className="mt-1 text-lg font-bold tabular-nums tracking-wide text-amber-950 dark:text-amber-50">
+                    {lease.paymentReference}
+                  </p>
+                  <p className="text-muted-foreground mt-1 text-xs">
+                    Include this reference when paying rent by bank transfer.
+                  </p>
+                </div>
+              ) : null}
               <UpcomingRentHint hint={upcomingRentHint} />
             </>
           ) : (
