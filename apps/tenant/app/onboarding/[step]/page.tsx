@@ -114,6 +114,7 @@ export default function OnboardingStepPage() {
   const agreementAvailable = Boolean(agreement?.available);
   const agreementConfirmed = agreement?.signingStatus === 'signed';
   const agreementPendingConfirmation = agreement?.status === 'waiting';
+  const agreementRejectReason = agreement?.rejectReason?.trim() ?? null;
   const agreementAckLocked = agreementConfirmed || agreementPendingConfirmation;
   const signedProofUrl = agreement?.signedProofUrl ?? null;
   const signedProofFileName = agreement?.signedProofFileName ?? null;
@@ -499,6 +500,18 @@ export default function OnboardingStepPage() {
 
               {!agreementAckLocked ? (
                 <>
+                  {agreementRejectReason ? (
+                    <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm">
+                      <p className="font-medium text-destructive">Submission declined</p>
+                      <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+                        {agreementRejectReason}
+                      </p>
+                      <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
+                        Please upload a corrected signed agreement below.
+                      </p>
+                    </div>
+                  ) : null}
+
                   <div className="space-y-2">
                     <FileUploadField
                       accept="image/*,.pdf"

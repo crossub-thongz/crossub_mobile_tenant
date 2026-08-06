@@ -84,6 +84,7 @@ export interface TenantLeasingOnboardingDto {
     signedProofUrl: string | null;
     signedProofFileName: string | null;
     signedAt: string | null;
+    rejectReason: string | null;
     available: boolean;
     contract: {
       template: string | null;
