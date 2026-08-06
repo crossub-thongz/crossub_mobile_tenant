@@ -15,7 +15,7 @@ import {
   VACATING_STAGE_SHORT,
   type VacatingStage,
 } from '@/constants/vacating';
-import { outgoingReport, ROUTES, statementDetail } from '@/constants/routes';
+import { outgoingReport, statementDetail } from '@/constants/routes';
 import { hrefWithFrom } from '@/lib/back-navigation';
 import { OUTGOING_STATUS_LABEL } from '@/lib/tenant-labels';
 import { needsVacatingSettlementAction } from '@/lib/end-leasing';
@@ -221,9 +221,11 @@ function PhasePanel({
       )}
 
       <div className="flex flex-wrap gap-2">
+        {/* Move-out services — hidden until partner referrals are ready.
         <Button asChild variant="outline" size="sm">
           <Link href={ROUTES.MOVE_OUT_SERVICES}>Move-out services</Link>
         </Button>
+        */}
         <Button
           type="button"
           variant="ghost"

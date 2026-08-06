@@ -13,6 +13,17 @@ export function isOnboardingChecklistComplete(onboardingSteps: OnboardingStep[])
   return onboardingSteps.length > 0 && onboardingSteps.every((s) => s.status === 'completed');
 }
 
+/** Whether the property-page move-in checklist banner should show. */
+export function needsOnboardingChecklistAction(
+  leasingOnboarding: { propertyId: string; onboardingComplete?: boolean } | null | undefined,
+  onboardingSteps: OnboardingStep[],
+  lease?: { propertyId?: string } | null,
+): boolean {
+  if (!leasingOnboarding || leasingOnboarding.onboardingComplete) return false;
+  if (lease?.propertyId && lease.propertyId === leasingOnboarding.propertyId) return false;
+  return onboardingSteps.some((s) => s.status !== 'completed');
+}
+
 /** Whether the tenant still has onboarding checklist items to complete. */
 export function needsNewLeasingOnboardingAction(
   leasingCase: NewLeasingCase,

@@ -435,6 +435,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       return true;
     } catch {
       setLeasingOnboarding(null);
+      setOnboardingSteps([]);
       return false;
     }
   }, []);
@@ -800,11 +801,19 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
         void syncLiveAttention();
         void syncMaintenanceRequests();
         void syncRoutineInspections();
+        void loadLeasingOnboarding();
       }
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
-  }, [status, apiConnected, syncLiveAttention, syncMaintenanceRequests, syncRoutineInspections]);
+  }, [
+    status,
+    apiConnected,
+    syncLiveAttention,
+    syncMaintenanceRequests,
+    syncRoutineInspections,
+    loadLeasingOnboarding,
+  ]);
 
   const propertyAddress = lease?.propertyAddress ?? 'Your property';
   const leaseId = lease?.id;

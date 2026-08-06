@@ -55,6 +55,7 @@ export interface TenantLeasingOnboardingDto {
   lifecycleStep: string;
   applicationStatus: string;
   keyCustody: 'crossub' | 'agent' | string;
+  onboardingComplete?: boolean;
   steps: {
     id: string;
     title: string;

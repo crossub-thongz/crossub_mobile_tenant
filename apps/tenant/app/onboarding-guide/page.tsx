@@ -2,13 +2,17 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { TenantShell } from '@/components/layout/tenant-shell';
 import { Button } from '@/components/ui/button';
 import { ROUTES } from '@/constants/routes';
 import { useAuth } from '@/components/providers/auth-provider';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
-import { markOnboardingGuideDone } from '@/lib/tenant-post-auth';
+import { acknowledgeTenancyWelcomeGuide } from '@/lib/crossub-api/tenant-account-client';
+import { needsTenancyWelcomeGuide, tenantPostAuthPath } from '@/lib/tenant-post-auth';
 
 const STEPS = [
   {
@@ -35,13 +39,38 @@ const STEPS = [
 
 export default function OnboardingGuidePage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, status, refresh } = useAuth();
   const { leasingOnboarding } = useTenantData();
+  const [submitting, setSubmitting] = useState(false);
 
-  const finish = () => {
-    if (user) markOnboardingGuideDone(user.id);
-    router.push(ROUTES.PROPERTY);
+  useEffect(() => {
+    if (status !== 'authed' || !user) return;
+    if (!needsTenancyWelcomeGuide(user)) {
+      router.replace(tenantPostAuthPath(user));
+    }
+  }, [status, user, router]);
+
+  const finish = async () => {
+    if (!user) return;
+    setSubmitting(true);
+    try {
+      await acknowledgeTenancyWelcomeGuide();
+      await refresh();
+      router.push(ROUTES.PROPERTY);
+    } catch {
+      toast.error('Could not save your confirmation. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  if (status === 'loading' || (status === 'authed' && user && !needsTenancyWelcomeGuide(user))) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <Loader2 className="text-primary size-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <TenantShell title="Welcome to your tenancy">
@@ -60,8 +89,8 @@ export default function OnboardingGuidePage() {
           </li>
         ))}
       </ol>
-      <Button className="mt-6 w-full" onClick={finish}>
-        I understand — view my property
+      <Button className="mt-6 w-full" disabled={submitting} onClick={() => void finish()}>
+        {submitting ? <Loader2 className="size-4 animate-spin" /> : 'I understand — view my property'}
       </Button>
       <Link
         href={ROUTES.ONBOARDING}

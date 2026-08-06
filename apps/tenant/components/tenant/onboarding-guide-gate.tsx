@@ -6,8 +6,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/auth-provider';
 import { ROUTES, isPublicRoute } from '@/constants/routes';
 import {
-  isOnboardingGuideDone,
   needsSystemAccessAgreement,
+  needsTenancyWelcomeGuide,
 } from '@/lib/tenant-post-auth';
 
 const GUIDE_EXEMPT = [
@@ -24,7 +24,7 @@ export function OnboardingGuideGate() {
     if (status !== 'authed' || !user || isPublicRoute(pathname)) return;
     if (needsSystemAccessAgreement(user)) return;
     if (GUIDE_EXEMPT.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return;
-    if (isOnboardingGuideDone(user.id)) return;
+    if (!needsTenancyWelcomeGuide(user)) return;
     router.replace(ROUTES.ONBOARDING_GUIDE);
   }, [status, user, pathname, router]);
 

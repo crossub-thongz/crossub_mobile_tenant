@@ -73,7 +73,8 @@ export default function LoginPage() {
         return;
       }
       await refresh();
-      window.location.assign(tenantPostAuthPath(result.user));
+      const me = await api.get<{ user: AuthUser }>('/auth/me');
+      window.location.assign(tenantPostAuthPath(me.user));
       return;
     } catch (err) {
       if (err instanceof ApiError) {

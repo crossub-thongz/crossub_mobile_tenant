@@ -6,6 +6,7 @@ import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ROUTES, onboardingStep } from '@/constants/routes';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
+import { needsOnboardingChecklistAction } from '@/lib/new-leasing';
 
 const STATUS_LABEL: Record<string, string> = {
   pending: 'Not started',
@@ -15,10 +16,13 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export function OnboardingPendingAlert() {
-  const { onboardingSteps, leasingOnboarding } = useTenantData();
-  const pending = onboardingSteps.filter((s) => s.status !== 'completed');
+  const { onboardingSteps, leasingOnboarding, lease } = useTenantData();
 
-  if (!leasingOnboarding || pending.length === 0) return null;
+  if (!needsOnboardingChecklistAction(leasingOnboarding, onboardingSteps, lease)) {
+    return null;
+  }
+
+  const pending = onboardingSteps.filter((s) => s.status !== 'completed');
 
   return (
     <div className="rounded-2xl border border-amber-500/35 bg-amber-500/10 p-4">

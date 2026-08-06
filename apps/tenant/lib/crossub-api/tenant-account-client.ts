@@ -708,3 +708,28 @@ export async function markAllTenantNotificationsRead(): Promise<number> {
   if (error || !data) throw new Error('Failed to mark all notifications read');
   return data.updated;
 }
+
+export type TenantTenancyWelcomeStatus = {
+  acknowledged: boolean;
+};
+
+/** Welcome guide acknowledgement state (`GET /api/v1/tenant/onboarding/welcome`). */
+export async function fetchTenancyWelcomeStatus(): Promise<TenantTenancyWelcomeStatus> {
+  const res = await fetch(`${API_BASE}/tenant/onboarding/welcome`, {
+    credentials: 'include',
+    headers: { Accept: 'application/json' },
+  });
+  if (!res.ok) throw new Error('Failed to load welcome guide status');
+  return (await res.json()) as TenantTenancyWelcomeStatus;
+}
+
+/** Persist welcome guide acknowledgement (`POST /api/v1/tenant/onboarding/welcome/acknowledge`). */
+export async function acknowledgeTenancyWelcomeGuide(): Promise<TenantTenancyWelcomeStatus> {
+  const res = await fetch(`${API_BASE}/tenant/onboarding/welcome/acknowledge`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { Accept: 'application/json' },
+  });
+  if (!res.ok) throw new Error('Failed to acknowledge welcome guide');
+  return (await res.json()) as TenantTenancyWelcomeStatus;
+}

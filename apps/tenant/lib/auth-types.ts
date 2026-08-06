@@ -11,4 +11,5 @@ export interface AuthUser {
   phone?: string | null;
   systemAccessAgreementRequired?: boolean;
   systemAccessAccepted?: boolean;
+  tenancyWelcomeGuideAcknowledged?: boolean;
 }
