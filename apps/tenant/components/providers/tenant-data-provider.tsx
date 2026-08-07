@@ -525,6 +525,30 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     }
   }, [status, apiConnected]);
 
+  /** Poll end-leasing cases without a full refresh (agent/admin stage advances). */
+  const syncVacatingCases = useCallback(async () => {
+    if (status !== 'authed' || !apiConnected) return;
+    try {
+      const cases = await fetchTenantVacatingCases();
+      const mapped = toTenantVacatingCases(cases);
+      const primary = pickDisplayVacatingCase(mapped);
+      setVacatingState(pickActiveVacatingCase(mapped));
+      setVacatingDisplay(primary);
+      patchTenantStore({ vacating: pickActiveVacatingCase(mapped) });
+
+      if (primary?.outgoingReportId && primary.inspectionReportAvailable) {
+        try {
+          const detail = await fetchTenantOutgoingInspection(primary.outgoingReportId);
+          setOutgoing(toOutgoingReport(detail));
+        } catch {
+          // keep last good outgoing snapshot
+        }
+      }
+    } catch {
+      // keep last good snapshot
+    }
+  }, [status, apiConnected]);
+
   const refresh = useCallback(async (options?: { force?: boolean }) => {
     const isInitialLoad = !hasLoadedOnceRef.current;
     const force = options?.force === true;
@@ -777,11 +801,19 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       void syncLiveAttention();
       void syncMaintenanceRequests();
       void syncRoutineInspections();
+      void syncVacatingCases();
     };
     void tick();
     const id = window.setInterval(tick, LIVE_POLL_MS);
     return () => window.clearInterval(id);
-  }, [status, apiConnected, syncLiveAttention, syncMaintenanceRequests, syncRoutineInspections]);
+  }, [
+    status,
+    apiConnected,
+    syncLiveAttention,
+    syncMaintenanceRequests,
+    syncRoutineInspections,
+    syncVacatingCases,
+  ]);
 
   const onboardingPendingAgent = useMemo(
     () => onboardingSteps.some((s) => s.status === 'uploaded'),
@@ -813,6 +845,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
         void syncLiveAttention();
         void syncMaintenanceRequests();
         void syncRoutineInspections();
+        void syncVacatingCases();
         void loadLeasingOnboarding();
       }
     };
@@ -824,6 +857,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     syncLiveAttention,
     syncMaintenanceRequests,
     syncRoutineInspections,
+    syncVacatingCases,
     loadLeasingOnboarding,
   ]);
 

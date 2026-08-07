@@ -9,6 +9,35 @@ export function needsVacatingResponsibilityReviewAction(vacating: VacatingCase):
   );
 }
 
+const VACATING_STAGE_ORDER: VacatingStage[] = [
+  VACATING_STAGE.KEY_RETURN,
+  VACATING_STAGE.OUTGOING_INSPECTION,
+  VACATING_STAGE.MAINTENANCE,
+  VACATING_STAGE.BOND,
+];
+
+export function vacatingStageIndex(stage: VacatingStage): number {
+  return VACATING_STAGE_ORDER.indexOf(stage);
+}
+
+/** Auto-advance the viewed step when the backend moves forward; never snap backward. */
+export function shouldAdvanceVacatingViewStage(
+  prev: VacatingStage,
+  next: VacatingStage,
+): VacatingStage {
+  return vacatingStageIndex(next) > vacatingStageIndex(prev) ? next : prev;
+}
+
+/** Poll while an open end-leasing case may change without tenant action. */
+export function shouldLivePollVacatingCase(
+  vacating: VacatingCase | null | undefined,
+): boolean {
+  if (!vacating || vacating.status !== 'open') return false;
+  if (vacating.bondRefundPaid) return false;
+  if (vacating.tenantSettlementStatus === 'accepted') return false;
+  return true;
+}
+
 /** Default tab after load — bond once make-good responsibilities are acknowledged. */
 export function resolveVacatingViewStage(vacating: VacatingCase): VacatingStage {
   if (
@@ -31,19 +60,13 @@ export function resolveVacatingViewStage(vacating: VacatingCase): VacatingStage 
 
 /** Furthest step the tenant may open in the step rail (includes completed steps). */
 export function maxAccessibleVacatingStageIndex(vacating: VacatingCase): number {
-  const order = [
-    VACATING_STAGE.KEY_RETURN,
-    VACATING_STAGE.OUTGOING_INSPECTION,
-    VACATING_STAGE.MAINTENANCE,
-    VACATING_STAGE.BOND,
-  ] as const;
-  let idx = order.indexOf(vacating.currentStage);
+  let idx = vacatingStageIndex(vacating.currentStage);
   if (idx < 0) idx = 0;
   if (vacating.tenantResponsibilityReviewStatus === 'accepted') {
-    idx = Math.max(idx, order.indexOf(VACATING_STAGE.BOND));
+    idx = Math.max(idx, vacatingStageIndex(VACATING_STAGE.BOND));
   }
   if (vacating.tenantBondAckSentAt) {
-    idx = Math.max(idx, order.indexOf(VACATING_STAGE.BOND));
+    idx = Math.max(idx, vacatingStageIndex(VACATING_STAGE.BOND));
   }
   return idx;
 }

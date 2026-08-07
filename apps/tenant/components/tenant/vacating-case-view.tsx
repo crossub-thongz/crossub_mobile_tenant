@@ -18,7 +18,7 @@ import {
 import { outgoingReport, statementDetail } from '@/constants/routes';
 import { hrefWithFrom } from '@/lib/back-navigation';
 import { OUTGOING_STATUS_LABEL } from '@/lib/tenant-labels';
-import { needsVacatingRepairQuoteAction, needsVacatingResponsibilityReviewAction, needsVacatingSettlementAction, maxAccessibleVacatingStageIndex, resolveVacatingViewStage } from '@/lib/end-leasing';
+import { needsVacatingRepairQuoteAction, needsVacatingResponsibilityReviewAction, needsVacatingSettlementAction, maxAccessibleVacatingStageIndex, resolveVacatingViewStage, shouldAdvanceVacatingViewStage } from '@/lib/end-leasing';
 import type { VacatingCase, VacatingRepairQuoteSettlement } from '@/lib/types';
 import { cn, formatCurrency, formatDate, fileToBase64 } from '@/lib/utils';
 import { uploadTenantKeyReturnPhoto } from '@/lib/crossub-api/tenant-account-client';
@@ -761,16 +761,19 @@ export function VacatingCaseView({
   const maxAccessibleStageIndex = maxAccessibleVacatingStageIndex(vacating);
 
   useEffect(() => {
-    setViewStage(resolveVacatingViewStage(vacating));
-  }, [vacating.id]);
-
-  useEffect(() => {
-    if (vacating.tenantResponsibilityReviewStatus === 'accepted') {
-      setViewStage((prev) =>
-        prev === VACATING_STAGE.MAINTENANCE ? VACATING_STAGE.BOND : prev,
-      );
-    }
-  }, [vacating.tenantResponsibilityReviewStatus]);
+    setViewStage((prev) =>
+      shouldAdvanceVacatingViewStage(prev, resolveVacatingViewStage(vacating)),
+    );
+  }, [
+    vacating.currentStage,
+    vacating.keysReturned,
+    vacating.tenantResponsibilityReviewStatus,
+    vacating.tenantBondAckSentAt,
+    vacating.tenantRepairQuoteStatus,
+    vacating.refundAmount,
+    vacating.tenantSettlementStatus,
+    vacating.inspectionReportAvailable,
+  ]);
 
   const handleWithdraw = async () => {
     if (
