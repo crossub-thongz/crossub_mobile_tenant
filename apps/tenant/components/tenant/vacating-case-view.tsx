@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { KeyRound, Landmark, ClipboardList, Wrench, ImagePlus, Loader2, X } from 'lucide-react';
 
@@ -18,7 +18,7 @@ import {
 import { outgoingReport, statementDetail } from '@/constants/routes';
 import { hrefWithFrom } from '@/lib/back-navigation';
 import { OUTGOING_STATUS_LABEL } from '@/lib/tenant-labels';
-import { needsVacatingRepairQuoteAction, needsVacatingResponsibilityReviewAction, needsVacatingSettlementAction } from '@/lib/end-leasing';
+import { needsVacatingRepairQuoteAction, needsVacatingResponsibilityReviewAction, needsVacatingSettlementAction, maxAccessibleVacatingStageIndex, resolveVacatingViewStage } from '@/lib/end-leasing';
 import type { VacatingCase, VacatingRepairQuoteSettlement } from '@/lib/types';
 import { cn, formatCurrency, formatDate, fileToBase64 } from '@/lib/utils';
 import { uploadTenantKeyReturnPhoto } from '@/lib/crossub-api/tenant-account-client';
@@ -143,25 +143,39 @@ function stageIndex(stage: VacatingStage): number {
   return VACATING_STAGE_ORDER.indexOf(stage);
 }
 
-function StageRail({ current }: { current: VacatingStage }) {
-  const idx = stageIndex(current);
+function StageRail({
+  current,
+  maxAccessibleIndex,
+  onSelect,
+}: {
+  current: VacatingStage;
+  maxAccessibleIndex: number;
+  onSelect: (stage: VacatingStage) => void;
+}) {
+  const currentIdx = stageIndex(current);
   return (
     <div className="flex gap-1 overflow-x-auto rounded-xl border bg-card p-1.5">
       {VACATING_STAGE_ORDER.map((stage, i) => {
         const active = stage === current;
-        const done = i < idx;
+        const done = i < currentIdx;
+        const accessible = i <= maxAccessibleIndex;
         return (
-          <div
+          <button
             key={stage}
+            type="button"
+            disabled={!accessible}
+            onClick={() => onSelect(stage)}
             className={cn(
-              'min-w-[4.5rem] flex-1 rounded-lg px-2 py-2 text-center text-[10px] font-medium',
+              'min-w-[4.5rem] flex-1 rounded-lg px-2 py-2 text-center text-[10px] font-medium transition-colors',
               active && 'bg-primary/15 text-primary',
               done && !active && 'text-emerald-600 dark:text-emerald-400',
               !active && !done && 'text-muted-foreground',
+              accessible && !active && 'hover:bg-muted/60',
+              !accessible && 'cursor-not-allowed opacity-45',
             )}
           >
             {VACATING_STAGE_SHORT[stage]}
-          </div>
+          </button>
         );
       })}
     </div>
@@ -391,6 +405,7 @@ function RepairQuoteAckPanel({
 
 function PhasePanel({
   vacating,
+  stage,
   dateValue,
   draftDate,
   setDraftDate,
@@ -407,6 +422,7 @@ function PhasePanel({
   onSubmitKeyReturn,
 }: {
   vacating: VacatingCase;
+  stage: VacatingStage;
   dateValue: string;
   draftDate: string;
   setDraftDate: (v: string) => void;
@@ -422,7 +438,6 @@ function PhasePanel({
   keyReturnBusy: boolean;
   onSubmitKeyReturn: (photoUrls: string[]) => void;
 }) {
-  const stage = vacating.currentStage;
   const [declineReason, setDeclineReason] = useState('');
   const [keyReturnPhotos, setKeyReturnPhotos] = useState<string[]>(
     () => vacating.keyReturnPhotoUrls ?? [],
@@ -598,6 +613,13 @@ function PhasePanel({
             <Landmark className="text-primary size-4" />
             Bond & settlement
           </div>
+          {!vacating.tenantBondAckSentAt &&
+          vacating.tenantResponsibilityReviewStatus === 'accepted' ? (
+            <p className="text-muted-foreground text-xs font-medium text-emerald-700 dark:text-emerald-300">
+              You acknowledged your repair responsibilities. Pending quotation from CROSSUB — your
+              agent will notify you when bond deductions are ready to review.
+            </p>
+          ) : null}
           {vacating.refundAmount != null && (
             <p className="mt-1 font-semibold text-emerald-600 dark:text-emerald-400">
               Refund: {formatCurrency(vacating.refundAmount)}
@@ -733,8 +755,22 @@ export function VacatingCaseView({
   const [responsibilityBusy, setResponsibilityBusy] = useState(false);
   const [attendanceBusy, setAttendanceBusy] = useState(false);
   const [keyReturnBusy, setKeyReturnBusy] = useState(false);
+  const [viewStage, setViewStage] = useState<VacatingStage>(() => resolveVacatingViewStage(vacating));
   const isDeleted = vacating.status === 'cancelled';
   const dateValue = draftDate || vacating.vacatingDate.slice(0, 10);
+  const maxAccessibleStageIndex = maxAccessibleVacatingStageIndex(vacating);
+
+  useEffect(() => {
+    setViewStage(resolveVacatingViewStage(vacating));
+  }, [vacating.id]);
+
+  useEffect(() => {
+    if (vacating.tenantResponsibilityReviewStatus === 'accepted') {
+      setViewStage((prev) =>
+        prev === VACATING_STAGE.MAINTENANCE ? VACATING_STAGE.BOND : prev,
+      );
+    }
+  }, [vacating.tenantResponsibilityReviewStatus]);
 
   const handleWithdraw = async () => {
     if (
@@ -797,7 +833,7 @@ export function VacatingCaseView({
           <div>
             <p className="font-semibold">{vacating.propertyAddress}</p>
             <p className="text-muted-foreground mt-1">
-              {VACATING_STAGE_LABEL[vacating.currentStage]}
+              {VACATING_STAGE_LABEL[viewStage]}
             </p>
             {vacating.terminationReason && (
               <p className="text-muted-foreground mt-1 text-xs">{vacating.terminationReason}</p>
@@ -819,17 +855,23 @@ export function VacatingCaseView({
 
       {!isDeleted && (
         <>
-          <StageRail current={vacating.currentStage} />
-          {vacating.tenantResponsibilityReviewStatus !== 'none' ? (
+          <StageRail
+            current={viewStage}
+            maxAccessibleIndex={maxAccessibleStageIndex}
+            onSelect={setViewStage}
+          />
+          {viewStage === VACATING_STAGE.MAINTENANCE &&
+          vacating.tenantResponsibilityReviewStatus !== 'none' ? (
             <TenantResponsibilityReviewPanel
               vacating={vacating}
               busy={responsibilityBusy}
               onAccept={() => {
                 setResponsibilityBusy(true);
                 void acceptVacatingResponsibilities(vacating.id)
-                  .then(() =>
-                    toast.success('Responsibilities acknowledged — pending quotation from CROSSUB'),
-                  )
+                  .then(() => {
+                    setViewStage(VACATING_STAGE.BOND);
+                    toast.success('Responsibilities acknowledged — pending quotation from CROSSUB');
+                  })
                   .finally(() => setResponsibilityBusy(false));
               }}
               onDecline={(reason) => {
@@ -840,7 +882,7 @@ export function VacatingCaseView({
               }}
             />
           ) : null}
-          {vacating.tenantBondAckSentAt ? (
+          {viewStage === VACATING_STAGE.BOND && vacating.tenantBondAckSentAt ? (
             <RepairQuoteAckPanel
               vacating={vacating}
               busy={repairQuoteBusy}
@@ -860,6 +902,7 @@ export function VacatingCaseView({
           ) : null}
           <PhasePanel
             vacating={vacating}
+            stage={viewStage}
             dateValue={dateValue}
             draftDate={draftDate}
             setDraftDate={setDraftDate}
