@@ -459,6 +459,10 @@ export interface VacatingCase {
   refundAmount?: number | null;
   debtAmount?: number | null;
   bondRefundPaid?: boolean;
+  tenantRepairQuoteStatus?: 'none' | 'pending' | 'accepted' | 'declined';
+  tenantBondAckSentAt?: string;
+  tenantResponsibilityItems?: VacatingRepairQuoteItem[];
+  repairQuoteSettlementSummary?: VacatingRepairQuoteSettlement | null;
   outgoingStatus:
     | 'report_sent'
     | 'confirmed'
@@ -467,6 +471,22 @@ export interface VacatingCase {
     | 'finalized';
   outgoingReportId?: string;
   tenantOutgoingAttendance?: 'pending' | 'yes' | 'no';
+}
+
+export interface VacatingRepairQuoteItem {
+  area: string;
+  description: string;
+  quote?: string | null;
+  bondDeductible?: boolean;
+}
+
+export interface VacatingRepairQuoteSettlement {
+  unpaidRent: number;
+  unpaidBills: number;
+  maintenanceCost: number;
+  bondHeld: number;
+  netRefund: number;
+  debtAmount: number;
 }
 
 export interface FinalStatement {

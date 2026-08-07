@@ -513,6 +513,52 @@ export async function setTenantVacatingOutgoingAttendance(
   return data;
 }
 
+/** Agree to bond-deduction items from the quote step. */
+export async function acceptTenantVacatingRepairQuote(
+  caseId: string,
+): Promise<TenantVacatingCase> {
+  const response = await fetch(
+    `${API_BASE}/tenant/vacating-cases/${encodeURIComponent(caseId)}/repair-quote/accept`,
+    { method: 'PATCH', credentials: 'include' },
+  );
+  if (!response.ok) {
+    let body: unknown;
+    try {
+      body = await response.json();
+    } catch {
+      body = undefined;
+    }
+    throwTenantApiError(body, response, 'Failed to accept repair quote');
+  }
+  return (await response.json()) as TenantVacatingCase;
+}
+
+/** Disagree with bond-deduction items from the quote step. */
+export async function declineTenantVacatingRepairQuote(
+  caseId: string,
+  body: { reason?: string; acknowledgedPrice?: string },
+): Promise<TenantVacatingCase> {
+  const response = await fetch(
+    `${API_BASE}/tenant/vacating-cases/${encodeURIComponent(caseId)}/repair-quote/decline`,
+    {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+  );
+  if (!response.ok) {
+    let errBody: unknown;
+    try {
+      errBody = await response.json();
+    } catch {
+      errBody = undefined;
+    }
+    throwTenantApiError(errBody, response, 'Failed to decline repair quote');
+  }
+  return (await response.json()) as TenantVacatingCase;
+}
+
 export type TenantMaintenanceResponsibilityAck =
   components['schemas']['TenantMaintenanceResponsibilityAckDto'];
 

@@ -18,8 +18,8 @@ import {
 import { outgoingReport, statementDetail } from '@/constants/routes';
 import { hrefWithFrom } from '@/lib/back-navigation';
 import { OUTGOING_STATUS_LABEL } from '@/lib/tenant-labels';
-import { needsVacatingSettlementAction } from '@/lib/end-leasing';
-import type { VacatingCase } from '@/lib/types';
+import { needsVacatingRepairQuoteAction, needsVacatingSettlementAction } from '@/lib/end-leasing';
+import type { VacatingCase, VacatingRepairQuoteSettlement } from '@/lib/types';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 
 function vacateDateLabel(date: string, changed?: boolean): string {
@@ -52,6 +52,146 @@ function StageRail({ current }: { current: VacatingStage }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function RepairQuoteSettlementPanel({ summary }: { summary: VacatingRepairQuoteSettlement }) {
+  const totalDeductions =
+    summary.unpaidRent + summary.unpaidBills + summary.maintenanceCost;
+
+  return (
+    <div className="overflow-hidden rounded-xl border text-xs">
+      <div className="divide-y">
+        <div className="flex items-center justify-between px-3 py-2">
+          <span className="text-muted-foreground">Unpaid rent</span>
+          <span className="font-medium tabular-nums">{formatCurrency(summary.unpaidRent)}</span>
+        </div>
+        <div className="flex items-center justify-between px-3 py-2">
+          <span className="text-muted-foreground">Unpaid bills</span>
+          <span className="font-medium tabular-nums">{formatCurrency(summary.unpaidBills)}</span>
+        </div>
+        <div className="flex items-center justify-between px-3 py-2">
+          <span className="text-muted-foreground">Your repair items (bond deductible)</span>
+          <span className="font-medium tabular-nums">
+            {formatCurrency(summary.maintenanceCost)}
+          </span>
+        </div>
+        <div className="flex items-center justify-between bg-muted/30 px-3 py-2">
+          <span className="font-semibold">Total bond held</span>
+          <span className="font-semibold tabular-nums">{formatCurrency(summary.bondHeld)}</span>
+        </div>
+        <div className="flex items-center justify-between px-3 py-2">
+          <span className="text-muted-foreground">Less deductions</span>
+          <span className="font-medium tabular-nums text-rose-600 dark:text-rose-400">
+            −{formatCurrency(totalDeductions)}
+          </span>
+        </div>
+        <div className="flex items-center justify-between bg-primary/5 px-3 py-2">
+          <span className="font-semibold">
+            {summary.debtAmount > 0 ? 'Amount owing' : 'Estimated refund'}
+          </span>
+          <span className="text-primary font-semibold tabular-nums">
+            {summary.debtAmount > 0
+              ? formatCurrency(summary.debtAmount)
+              : formatCurrency(summary.netRefund)}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RepairQuoteAckPanel({
+  vacating,
+  busy,
+  onAccept,
+  onDecline,
+}: {
+  vacating: VacatingCase;
+  busy: boolean;
+  onAccept: () => void;
+  onDecline: (reason: string) => void;
+}) {
+  const [declineReason, setDeclineReason] = useState('');
+  const showActions = needsVacatingRepairQuoteAction(vacating);
+  const repairItems = vacating.tenantResponsibilityItems ?? [];
+  const repairSummary = vacating.repairQuoteSettlementSummary;
+
+  return (
+    <div className="rounded-xl border bg-card p-4 text-sm">
+      <div className="mb-2 flex items-center gap-2 font-medium">
+        <Wrench className="text-primary size-4" />
+        Tenant responsibilities & bond deductions
+      </div>
+      <p className="text-muted-foreground text-xs">
+        Your property manager listed items from the outgoing inspection. Bond-deductible items may
+        be taken from your rental bond.
+      </p>
+      {repairItems.length > 0 ? (
+        <div className="mt-4 overflow-hidden rounded-xl border text-xs">
+          <table className="w-full text-left">
+            <thead className="bg-muted/40 text-muted-foreground">
+              <tr>
+                <th className="px-3 py-2 font-semibold">Area</th>
+                <th className="px-3 py-2 font-semibold">Description</th>
+                <th className="px-3 py-2 font-semibold">Quote</th>
+                <th className="px-3 py-2 font-semibold">Bond</th>
+              </tr>
+            </thead>
+            <tbody>
+              {repairItems.map((item, index) => (
+                <tr key={`repair-item-${index}`} className="border-t align-top">
+                  <td className="px-3 py-2">{item.area}</td>
+                  <td className="px-3 py-2 whitespace-pre-wrap">{item.description}</td>
+                  <td className="px-3 py-2 tabular-nums">{item.quote || '—'}</td>
+                  <td className="px-3 py-2">
+                    {item.bondDeductible ? 'Deductible' : 'Not deductible'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+      {repairSummary ? (
+        <div className="mt-4 space-y-2">
+          <p className="text-xs font-medium">Bond calculation</p>
+          <RepairQuoteSettlementPanel summary={repairSummary} />
+        </div>
+      ) : null}
+      {vacating.tenantRepairQuoteStatus === 'accepted' ? (
+        <p className="mt-3 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+          You agreed to these bond deductions. Maintenance jobs are being arranged.
+        </p>
+      ) : null}
+      {vacating.tenantRepairQuoteStatus === 'declined' ? (
+        <p className="mt-3 text-xs font-medium text-rose-600 dark:text-rose-400">
+          You disagreed with the proposed bond deductions. Your agent will follow up.
+        </p>
+      ) : null}
+      {showActions ? (
+        <div className="mt-4 space-y-3 border-t border-border/60 pt-3">
+          <p className="text-xs font-medium">Confirm bond deductions</p>
+          <Button className="w-full" disabled={busy} onClick={onAccept}>
+            I agree
+          </Button>
+          <textarea
+            className="border-input bg-background w-full rounded-xl border px-3 py-2 text-sm"
+            placeholder="Reason for disagreeing (optional)"
+            value={declineReason}
+            onChange={(e) => setDeclineReason(e.target.value)}
+          />
+          <Button
+            variant="destructive"
+            className="w-full"
+            disabled={busy}
+            onClick={() => onDecline(declineReason.trim())}
+          >
+            I disagree
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -186,7 +326,7 @@ function PhasePanel({
         </div>
       )}
 
-      {stage === VACATING_STAGE.MAINTENANCE && (
+      {stage === VACATING_STAGE.MAINTENANCE && !vacating.tenantBondAckSentAt && (
         <div className="rounded-xl border bg-card p-4 text-sm">
           <div className="mb-2 flex items-center gap-2 font-medium">
             <Wrench className="text-primary size-4" />
@@ -313,6 +453,8 @@ export function VacatingCaseView({
   updateVacateDate,
   acceptVacatingSettlement,
   declineVacatingSettlement,
+  acceptVacatingRepairQuote,
+  declineVacatingRepairQuote,
   setVacatingOutgoingAttendance,
 }: {
   vacating: VacatingCase;
@@ -320,12 +462,15 @@ export function VacatingCaseView({
   updateVacateDate: (date: string) => Promise<void>;
   acceptVacatingSettlement: (caseId: string) => Promise<void>;
   declineVacatingSettlement: (caseId: string, reason: string) => Promise<void>;
+  acceptVacatingRepairQuote: (caseId: string) => Promise<void>;
+  declineVacatingRepairQuote: (caseId: string, reason?: string) => Promise<void>;
   setVacatingOutgoingAttendance: (attendance: 'yes' | 'no') => Promise<void>;
 }) {
   const [withdrawing, setWithdrawing] = useState(false);
   const [draftDate, setDraftDate] = useState('');
   const [savingDate, setSavingDate] = useState(false);
   const [settlementBusy, setSettlementBusy] = useState(false);
+  const [repairQuoteBusy, setRepairQuoteBusy] = useState(false);
   const [attendanceBusy, setAttendanceBusy] = useState(false);
   const isDeleted = vacating.status === 'cancelled';
   const dateValue = draftDate || vacating.vacatingDate.slice(0, 10);
@@ -402,6 +547,24 @@ export function VacatingCaseView({
       {!isDeleted && (
         <>
           <StageRail current={vacating.currentStage} />
+          {vacating.tenantBondAckSentAt ? (
+            <RepairQuoteAckPanel
+              vacating={vacating}
+              busy={repairQuoteBusy}
+              onAccept={() => {
+                setRepairQuoteBusy(true);
+                void acceptVacatingRepairQuote(vacating.id)
+                  .then(() => toast.success('Bond deductions accepted — maintenance will be arranged'))
+                  .finally(() => setRepairQuoteBusy(false));
+              }}
+              onDecline={(reason) => {
+                setRepairQuoteBusy(true);
+                void declineVacatingRepairQuote(vacating.id, reason || undefined)
+                  .then(() => toast.success('Response recorded — your agent will follow up'))
+                  .finally(() => setRepairQuoteBusy(false));
+              }}
+            />
+          ) : null}
           <PhasePanel
             vacating={vacating}
             dateValue={dateValue}

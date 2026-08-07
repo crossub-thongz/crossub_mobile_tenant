@@ -861,6 +861,19 @@ export function toTenantVacatingCases(cases: TenantVacatingCase[]): VacatingCase
       outgoingStatus,
       outgoingReportId,
       tenantOutgoingAttendance: c.tenantOutgoingAttendance ?? 'pending',
+      tenantRepairQuoteStatus:
+        (c as { tenantRepairQuoteStatus?: VacatingCase['tenantRepairQuoteStatus'] })
+          .tenantRepairQuoteStatus ?? 'none',
+      tenantBondAckSentAt:
+        asString(
+          (c as { tenantBondAckSentAt?: string | null }).tenantBondAckSentAt,
+        ) ?? undefined,
+      tenantResponsibilityItems:
+        (c as { tenantResponsibilityItems?: VacatingCase['tenantResponsibilityItems'] })
+          .tenantResponsibilityItems ?? [],
+      repairQuoteSettlementSummary:
+        (c as { repairQuoteSettlementSummary?: VacatingCase['repairQuoteSettlementSummary'] })
+          .repairQuoteSettlementSummary ?? null,
     };
   });
 }

@@ -1,6 +1,15 @@
 import { VACATING_STAGE } from '@/constants/vacating';
 import type { VacatingCase } from '@/lib/types';
 
+/** Whether the tenant must accept or decline bond-deduction items from the quote step. */
+export function needsVacatingRepairQuoteAction(vacating: VacatingCase): boolean {
+  return (
+    vacating.status === 'open' &&
+    vacating.tenantRepairQuoteStatus === 'pending' &&
+    Boolean(vacating.tenantBondAckSentAt)
+  );
+}
+
 /** Whether the tenant must accept or decline a bond settlement proposal. */
 export function needsVacatingSettlementAction(vacating: VacatingCase): boolean {
   return (
@@ -22,5 +31,5 @@ export function findActiveEndLeasingCase(
 export function findUrgentEndLeasingCase(
   cases: VacatingCase[],
 ): VacatingCase | undefined {
-  return cases.find(needsVacatingSettlementAction) ?? findActiveEndLeasingCase(cases);
+  return cases.find(needsVacatingRepairQuoteAction) ?? cases.find(needsVacatingSettlementAction) ?? findActiveEndLeasingCase(cases);
 }
