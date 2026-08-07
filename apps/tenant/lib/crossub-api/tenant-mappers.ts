@@ -654,6 +654,7 @@ export function toOutgoingReport(dto: TenantOutgoingInspection): OutgoingReport 
     status,
     sections,
     confirmedCount,
+    reportUrl: dto.reportUrl ?? undefined,
   };
 }
 

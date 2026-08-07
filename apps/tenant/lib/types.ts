@@ -370,6 +370,7 @@ export interface OutgoingReport {
   status: OutgoingReportStatus;
   sections: ReportSection[];
   confirmedCount: number;
+  reportUrl?: string;
 }
 
 export interface RentReceipt {

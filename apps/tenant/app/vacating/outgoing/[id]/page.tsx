@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
+import { ExternalLink, FileText } from 'lucide-react';
 
 import { TenantShell } from '@/components/layout/tenant-shell';
 import { FileUploadField } from '@/components/tenant/file-upload-field';
@@ -108,6 +109,25 @@ export default function OutgoingReportPage() {
         variant={report.status === 'confirmed' ? 'success' : 'action'}
         className="mb-4"
       />
+
+      {report.reportUrl ? (
+        <a
+          href={report.reportUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mb-4 flex items-center gap-2 rounded-xl border bg-card px-4 py-3 text-sm font-medium hover:bg-secondary/40"
+        >
+          <FileText className="text-primary size-4 shrink-0" />
+          <span className="min-w-0 flex-1">View / download outgoing report (PDF)</span>
+          <ExternalLink className="text-muted-foreground size-3.5 shrink-0" />
+        </a>
+      ) : (
+        <div className="text-muted-foreground mb-4 rounded-xl border border-dashed px-4 py-3 text-xs">
+          Full PDF will appear here once the inspector report is generated. You can still review
+          each section below.
+        </div>
+      )}
+
       <p className="text-muted-foreground mb-4 text-xs">
         Review and confirm section-by-section. Upload supporting photos when re-clean, repair, or
         evidence is required.
