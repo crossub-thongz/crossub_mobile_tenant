@@ -22,9 +22,9 @@ export function needsTenancyWelcomeGuide(user: {
   return !user.tenancyWelcomeGuideAcknowledged;
 }
 
-/** First authenticated route after login — SAA, then onboarding guide, then property. */
+/** First authenticated route after login — SAA, then onboarding guide, then home. */
 export function tenantPostAuthPath(user: AuthUser): string {
   if (needsSystemAccessAgreement(user)) return ROUTES.SYSTEM_ACCESS_AGREEMENT;
   if (needsTenancyWelcomeGuide(user)) return ROUTES.ONBOARDING_GUIDE;
-  return ROUTES.PROPERTY;
+  return ROUTES.DASHBOARD;
 }

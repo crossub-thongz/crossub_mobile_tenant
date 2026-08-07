@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Building2, Calendar, FileText, MapPin, Repeat } from 'lucide-react';
+import { Building2, Calendar, DoorOpen, FileText, MapPin, Repeat } from 'lucide-react';
 
 import { TenantShell } from '@/components/layout/tenant-shell';
 import { PropertyHubActions } from '@/components/tenant/property-hub-actions';
@@ -131,6 +131,30 @@ export default function PropertyPage() {
 
         {lease ? (
           <>
+            {vacatingCase ? (
+              <Link
+                href={ROUTES.VACATING}
+                className="block transition-opacity active:opacity-80"
+              >
+                <InfoCard
+                  icon={DoorOpen}
+                  label="Vacate date"
+                  accent="primary"
+                  className="hover:border-primary/40"
+                >
+                  <p className="font-medium">
+                    {formatDate(vacatingCase.vacatingDate)}
+                    {vacatingCase.vacateDateChanged ? (
+                      <span className="text-muted-foreground ml-1 text-sm font-normal">
+                        (changed)
+                      </span>
+                    ) : null}
+                  </p>
+                  <p className="text-muted-foreground mt-1 text-xs">Tap to view end of lease</p>
+                </InfoCard>
+              </Link>
+            ) : null}
+
             <div className="grid grid-cols-2 gap-3">
               <InfoCard icon={Calendar} label="Lease start">
                 <p className="font-medium">{formatDate(lease.leaseStart)}</p>

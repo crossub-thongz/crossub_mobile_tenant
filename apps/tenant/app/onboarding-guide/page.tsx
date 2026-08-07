@@ -56,7 +56,7 @@ export default function OnboardingGuidePage() {
     try {
       await acknowledgeTenancyWelcomeGuide();
       await refresh();
-      router.push(ROUTES.PROPERTY);
+      router.push(ROUTES.DASHBOARD);
     } catch {
       toast.error('Could not save your confirmation. Please try again.');
     } finally {
