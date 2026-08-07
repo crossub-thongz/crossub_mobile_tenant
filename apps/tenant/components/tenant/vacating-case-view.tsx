@@ -15,17 +15,67 @@ import {
   VACATING_STAGE_SHORT,
   type VacatingStage,
 } from '@/constants/vacating';
-import { outgoingReport, statementDetail } from '@/constants/routes';
+import { outgoingReport, repairDetail, statementDetail } from '@/constants/routes';
 import { hrefWithFrom } from '@/lib/back-navigation';
 import { OUTGOING_STATUS_LABEL } from '@/lib/tenant-labels';
 import { needsVacatingRepairQuoteAction, needsVacatingResponsibilityReviewAction, needsVacatingSettlementAction, maxAccessibleVacatingStageIndex, resolveVacatingViewStage, shouldAdvanceVacatingViewStage } from '@/lib/end-leasing';
-import type { VacatingCase, VacatingRepairQuoteSettlement } from '@/lib/types';
+import type { VacatingCase, VacatingRepairQuoteItem, VacatingRepairQuoteSettlement } from '@/lib/types';
 import { cn, formatCurrency, formatDate, fileToBase64 } from '@/lib/utils';
 import { uploadTenantKeyReturnPhoto } from '@/lib/crossub-api/tenant-account-client';
 
 function vacateDateLabel(date: string, changed?: boolean): string {
   const base = formatDate(date);
   return changed ? `${base} (changed)` : base;
+}
+
+function vacatingItemsWithMaintenanceJobs(items: VacatingRepairQuoteItem[]): VacatingRepairQuoteItem[] {
+  return items.filter((item) => item.maintenanceRequestId?.trim());
+}
+
+function VacatingMaintenanceJobLink({
+  maintenanceRequestId,
+}: {
+  maintenanceRequestId?: string | null;
+}) {
+  const id = maintenanceRequestId?.trim();
+  if (!id) {
+    return <span className="text-muted-foreground">—</span>;
+  }
+  return (
+    <Link
+      href={hrefWithFrom(repairDetail(id), 'vacating')}
+      className="text-primary inline-flex items-center font-medium hover:underline"
+    >
+      View repair →
+    </Link>
+  );
+}
+
+function VacatingMaintenanceJobsList({ items }: { items: VacatingRepairQuoteItem[] }) {
+  const linked = vacatingItemsWithMaintenanceJobs(items);
+  if (linked.length === 0) return null;
+
+  return (
+    <div className="mt-4 space-y-2 rounded-xl border bg-muted/20 p-3">
+      <p className="text-xs font-medium">Linked repair jobs</p>
+      <ul className="space-y-2">
+        {linked.map((item, index) => (
+          <li
+            key={item.maintenanceRequestId ?? `linked-job-${index}`}
+            className="flex flex-wrap items-start justify-between gap-2 text-xs"
+          >
+            <div className="min-w-0">
+              <p className="font-medium">{item.area || 'Repair item'}</p>
+              {item.description ? (
+                <p className="text-muted-foreground mt-0.5 whitespace-pre-wrap">{item.description}</p>
+              ) : null}
+            </div>
+            <VacatingMaintenanceJobLink maintenanceRequestId={item.maintenanceRequestId} />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 
 const KEY_RETURN_MAX_PHOTOS = 5;
@@ -242,6 +292,7 @@ function TenantResponsibilityReviewPanel({
   const [declineReason, setDeclineReason] = useState('');
   const showActions = needsVacatingResponsibilityReviewAction(vacating);
   const items = vacating.tenantResponsibilityItems ?? [];
+  const showMaintenanceColumn = items.some((item) => item.maintenanceRequestId?.trim());
 
   return (
     <div className="rounded-xl border bg-card p-4 text-sm">
@@ -260,6 +311,9 @@ function TenantResponsibilityReviewPanel({
               <tr>
                 <th className="px-3 py-2 font-semibold">Area</th>
                 <th className="px-3 py-2 font-semibold">Description</th>
+                {showMaintenanceColumn ? (
+                  <th className="px-3 py-2 font-semibold">Repair job</th>
+                ) : null}
               </tr>
             </thead>
             <tbody>
@@ -267,6 +321,11 @@ function TenantResponsibilityReviewPanel({
                 <tr key={`resp-item-${index}`} className="border-t align-top">
                   <td className="px-3 py-2">{item.area}</td>
                   <td className="px-3 py-2 whitespace-pre-wrap">{item.description}</td>
+                  {showMaintenanceColumn ? (
+                    <td className="px-3 py-2">
+                      <VacatingMaintenanceJobLink maintenanceRequestId={item.maintenanceRequestId} />
+                    </td>
+                  ) : null}
                 </tr>
               ))}
             </tbody>
@@ -324,6 +383,7 @@ function RepairQuoteAckPanel({
   const showActions = needsVacatingRepairQuoteAction(vacating);
   const repairItems = vacating.tenantResponsibilityItems ?? [];
   const repairSummary = vacating.repairQuoteSettlementSummary;
+  const showMaintenanceColumn = repairItems.some((item) => item.maintenanceRequestId?.trim());
 
   return (
     <div className="rounded-xl border bg-card p-4 text-sm">
@@ -344,6 +404,9 @@ function RepairQuoteAckPanel({
                 <th className="px-3 py-2 font-semibold">Description</th>
                 <th className="px-3 py-2 font-semibold">Quote</th>
                 <th className="px-3 py-2 font-semibold">Bond</th>
+                {showMaintenanceColumn ? (
+                  <th className="px-3 py-2 font-semibold">Repair job</th>
+                ) : null}
               </tr>
             </thead>
             <tbody>
@@ -355,6 +418,11 @@ function RepairQuoteAckPanel({
                   <td className="px-3 py-2">
                     {item.bondDeductible ? 'Deductible' : 'Not deductible'}
                   </td>
+                  {showMaintenanceColumn ? (
+                    <td className="px-3 py-2">
+                      <VacatingMaintenanceJobLink maintenanceRequestId={item.maintenanceRequestId} />
+                    </td>
+                  ) : null}
                 </tr>
               ))}
             </tbody>
@@ -369,7 +437,7 @@ function RepairQuoteAckPanel({
       ) : null}
       {vacating.tenantRepairQuoteStatus === 'accepted' ? (
         <p className="mt-3 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-          You agreed to these bond deductions. Maintenance jobs are being arranged.
+          You agreed to these bond deductions. Open each linked repair job above to follow progress.
         </p>
       ) : null}
       {vacating.tenantRepairQuoteStatus === 'declined' ? (
@@ -604,6 +672,7 @@ function PhasePanel({
               agent will update the bond settlement once complete.
             </p>
           )}
+          <VacatingMaintenanceJobsList items={vacating.tenantResponsibilityItems ?? []} />
         </div>
       )}
 

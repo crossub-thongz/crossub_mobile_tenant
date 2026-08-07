@@ -484,6 +484,8 @@ export interface VacatingRepairQuoteItem {
   description: string;
   quote?: string | null;
   bondDeductible?: boolean;
+  /** Linked End of Lease maintenance job, when spawned from this responsibility row. */
+  maintenanceRequestId?: string | null;
 }
 
 export interface VacatingRepairQuoteSettlement {
