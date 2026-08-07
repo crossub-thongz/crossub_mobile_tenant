@@ -68,6 +68,8 @@ function PhasePanel({
   settlementBusy,
   onAcceptSettlement,
   onDeclineSettlement,
+  attendanceBusy,
+  onSetOutgoingAttendance,
 }: {
   vacating: VacatingCase;
   dateValue: string;
@@ -80,10 +82,15 @@ function PhasePanel({
   settlementBusy: boolean;
   onAcceptSettlement: () => void;
   onDeclineSettlement: (reason: string) => void;
+  attendanceBusy: boolean;
+  onSetOutgoingAttendance: (attendance: 'yes' | 'no') => void;
 }) {
   const stage = vacating.currentStage;
   const [declineReason, setDeclineReason] = useState('');
   const showSettlementActions = needsVacatingSettlementAction(vacating);
+  const tenantAttendance = vacating.tenantOutgoingAttendance ?? 'pending';
+  const attendanceLabel =
+    tenantAttendance === 'yes' ? 'Yes' : tenantAttendance === 'no' ? 'No' : 'Not yet answered';
 
   return (
     <div className="space-y-3">
@@ -137,6 +144,37 @@ function PhasePanel({
               : 'Your outgoing inspection will be scheduled after key return.'}
           </p>
           <p className="mt-2 text-xs">{OUTGOING_STATUS_LABEL[vacating.outgoingStatus]}</p>
+          <div className="mt-4 space-y-2 border-t border-border/60 pt-3">
+            <p className="text-xs font-medium">Will you attend the outgoing inspection?</p>
+            <p className="text-muted-foreground text-xs">
+              Your property manager will see your answer in End Leasing and on the inspection job.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={tenantAttendance === 'yes' ? 'default' : 'outline'}
+                disabled={attendanceBusy}
+                onClick={() => onSetOutgoingAttendance('yes')}
+              >
+                Yes, I will attend
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={tenantAttendance === 'no' ? 'default' : 'outline'}
+                disabled={attendanceBusy}
+                onClick={() => onSetOutgoingAttendance('no')}
+              >
+                No, I will not attend
+              </Button>
+            </div>
+            {tenantAttendance !== 'pending' && (
+              <p className="text-muted-foreground text-xs">
+                Your response: <span className="font-medium">{attendanceLabel}</span>
+              </p>
+            )}
+          </div>
           {vacating.outgoingReportId && vacating.inspectionReportAvailable && (
             <Link
               href={hrefWithFrom(outgoingReport(vacating.outgoingReportId), 'vacating')}
@@ -275,17 +313,20 @@ export function VacatingCaseView({
   updateVacateDate,
   acceptVacatingSettlement,
   declineVacatingSettlement,
+  setVacatingOutgoingAttendance,
 }: {
   vacating: VacatingCase;
   cancelVacatingCase: (reason?: string) => Promise<void>;
   updateVacateDate: (date: string) => Promise<void>;
   acceptVacatingSettlement: (caseId: string) => Promise<void>;
   declineVacatingSettlement: (caseId: string, reason: string) => Promise<void>;
+  setVacatingOutgoingAttendance: (attendance: 'yes' | 'no') => Promise<void>;
 }) {
   const [withdrawing, setWithdrawing] = useState(false);
   const [draftDate, setDraftDate] = useState('');
   const [savingDate, setSavingDate] = useState(false);
   const [settlementBusy, setSettlementBusy] = useState(false);
+  const [attendanceBusy, setAttendanceBusy] = useState(false);
   const isDeleted = vacating.status === 'cancelled';
   const dateValue = draftDate || vacating.vacatingDate.slice(0, 10);
 
@@ -314,6 +355,20 @@ export function VacatingCaseView({
       setDraftDate('');
     } finally {
       setSavingDate(false);
+    }
+  };
+
+  const handleSetOutgoingAttendance = async (attendance: 'yes' | 'no') => {
+    setAttendanceBusy(true);
+    try {
+      await setVacatingOutgoingAttendance(attendance);
+      toast.success(
+        attendance === 'yes'
+          ? 'Thanks — we noted you will attend the outgoing inspection'
+          : 'Thanks — we noted you will not attend the outgoing inspection',
+      );
+    } finally {
+      setAttendanceBusy(false);
     }
   };
 
@@ -369,6 +424,8 @@ export function VacatingCaseView({
                 .then(() => toast.success('Settlement declined — your agent will follow up'))
                 .finally(() => setSettlementBusy(false));
             }}
+            attendanceBusy={attendanceBusy}
+            onSetOutgoingAttendance={(attendance) => void handleSetOutgoingAttendance(attendance)}
           />
         </>
       )}

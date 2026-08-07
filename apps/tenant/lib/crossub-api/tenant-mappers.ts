@@ -860,6 +860,7 @@ export function toTenantVacatingCases(cases: TenantVacatingCase[]): VacatingCase
       bondRefundPaid: c.bondRefundPaid ?? false,
       outgoingStatus,
       outgoingReportId,
+      tenantOutgoingAttendance: c.tenantOutgoingAttendance ?? 'pending',
     };
   });
 }

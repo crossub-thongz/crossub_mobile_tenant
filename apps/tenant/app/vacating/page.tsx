@@ -17,6 +17,7 @@ export default function VacatingPage() {
     updateVacateDate,
     acceptVacatingSettlement,
     declineVacatingSettlement,
+    setVacatingOutgoingAttendance,
   } = useTenantData();
   const [starting, setStarting] = useState(false);
 
@@ -65,6 +66,7 @@ export default function VacatingPage() {
           updateVacateDate={updateVacateDate}
           acceptVacatingSettlement={acceptVacatingSettlement}
           declineVacatingSettlement={declineVacatingSettlement}
+          setVacatingOutgoingAttendance={setVacatingOutgoingAttendance}
         />
         {vacatingCase.status === 'cancelled' && !apiConnected && (
           <div className="space-y-3 border-t pt-6">

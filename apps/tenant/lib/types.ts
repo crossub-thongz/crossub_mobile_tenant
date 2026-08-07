@@ -466,6 +466,7 @@ export interface VacatingCase {
     | 'supporting_photos_required'
     | 'finalized';
   outgoingReportId?: string;
+  tenantOutgoingAttendance?: 'pending' | 'yes' | 'no';
 }
 
 export interface FinalStatement {

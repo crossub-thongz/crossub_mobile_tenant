@@ -500,6 +500,19 @@ export async function declineTenantVacatingSettlement(
   return data;
 }
 
+/** Record outgoing inspection attendance (`PATCH /api/v1/tenant/vacating-cases/:caseId/outgoing-attendance`). */
+export async function setTenantVacatingOutgoingAttendance(
+  caseId: string,
+  attendance: 'yes' | 'no',
+): Promise<TenantVacatingCase> {
+  const { data, error } = await crossub.PATCH(
+    '/tenant/vacating-cases/{caseId}/outgoing-attendance',
+    { params: { path: { caseId } }, body: { attendance } },
+  );
+  if (error || !data) throw new Error('Failed to update outgoing inspection attendance');
+  return data;
+}
+
 export type TenantMaintenanceResponsibilityAck =
   components['schemas']['TenantMaintenanceResponsibilityAckDto'];
 
