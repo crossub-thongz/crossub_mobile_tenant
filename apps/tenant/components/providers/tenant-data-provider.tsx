@@ -43,6 +43,8 @@ import {
   declineTenantVacatingRepairQuote,
   setTenantVacatingOutgoingAttendance,
   submitTenantKeyReturn,
+  acceptTenantVacatingResponsibilities,
+  declineTenantVacatingResponsibilities,
   createTenantVacatingCase,
   cancelTenantVacatingCase,
   updateTenantVacateDate,
@@ -242,6 +244,8 @@ interface TenantDataContextValue {
   declineVacatingRepairQuote: (caseId: string, reason?: string) => Promise<void>;
   setVacatingOutgoingAttendance: (attendance: 'yes' | 'no') => Promise<void>;
   submitVacatingKeyReturn: (photoUrls: string[]) => Promise<void>;
+  acceptVacatingResponsibilities: (caseId: string) => Promise<void>;
+  declineVacatingResponsibilities: (caseId: string, reason: string) => Promise<void>;
   markNotificationRead: (id: string) => void;
   confirmIngoingSection: (
     sectionId: string,
@@ -1492,6 +1496,32 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     [status, vacatingDisplay?.id, applyVacatingCaseUpdate],
   );
 
+  const acceptVacatingResponsibilities = useCallback(
+    async (caseId: string) => {
+      if (status !== 'authed') return;
+      try {
+        const updated = await acceptTenantVacatingResponsibilities(caseId);
+        applyVacatingCaseUpdate(toTenantVacatingCases([updated])[0] ?? null);
+      } catch {
+        /* keep current state; a later refresh reconciles */
+      }
+    },
+    [status, applyVacatingCaseUpdate],
+  );
+
+  const declineVacatingResponsibilities = useCallback(
+    async (caseId: string, reason: string) => {
+      if (status !== 'authed') return;
+      try {
+        const updated = await declineTenantVacatingResponsibilities(caseId, { reason });
+        applyVacatingCaseUpdate(toTenantVacatingCases([updated])[0] ?? null);
+      } catch {
+        /* keep current state; a later refresh reconciles */
+      }
+    },
+    [status, applyVacatingCaseUpdate],
+  );
+
   const respondRentReview = useCallback(
     async (
       id: string,
@@ -1731,6 +1761,8 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       declineVacatingRepairQuote,
       setVacatingOutgoingAttendance,
       submitVacatingKeyReturn,
+      acceptVacatingResponsibilities,
+      declineVacatingResponsibilities,
       finalStatement,
       arrears,
       paymentProofs,
@@ -1797,6 +1829,8 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       declineVacatingRepairQuote,
       setVacatingOutgoingAttendance,
       submitVacatingKeyReturn,
+      acceptVacatingResponsibilities,
+      declineVacatingResponsibilities,
       finalStatement,
       arrears,
       paymentProofs,

@@ -21,6 +21,8 @@ export default function VacatingPage() {
     declineVacatingRepairQuote,
     setVacatingOutgoingAttendance,
     submitVacatingKeyReturn,
+    acceptVacatingResponsibilities,
+    declineVacatingResponsibilities,
   } = useTenantData();
   const [starting, setStarting] = useState(false);
 
@@ -73,6 +75,8 @@ export default function VacatingPage() {
           declineVacatingRepairQuote={declineVacatingRepairQuote}
           setVacatingOutgoingAttendance={setVacatingOutgoingAttendance}
           submitVacatingKeyReturn={submitVacatingKeyReturn}
+          acceptVacatingResponsibilities={acceptVacatingResponsibilities}
+          declineVacatingResponsibilities={declineVacatingResponsibilities}
         />
         {vacatingCase.status === 'cancelled' && !apiConnected && (
           <div className="space-y-3 border-t pt-6">

@@ -872,6 +872,13 @@ export function toTenantVacatingCases(cases: TenantVacatingCase[]): VacatingCase
       tenantRepairQuoteStatus:
         (c as { tenantRepairQuoteStatus?: VacatingCase['tenantRepairQuoteStatus'] })
           .tenantRepairQuoteStatus ?? 'none',
+      tenantResponsibilityReviewStatus:
+        (c as { tenantResponsibilityReviewStatus?: VacatingCase['tenantResponsibilityReviewStatus'] })
+          .tenantResponsibilityReviewStatus ?? 'none',
+      tenantResponsibilityDeclineReason:
+        asString(
+          (c as { tenantResponsibilityDeclineReason?: string | null }).tenantResponsibilityDeclineReason,
+        ) ?? null,
       tenantBondAckSentAt:
         asString(
           (c as { tenantBondAckSentAt?: string | null }).tenantBondAckSentAt,

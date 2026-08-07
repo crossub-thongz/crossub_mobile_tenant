@@ -621,6 +621,52 @@ export async function submitTenantKeyReturn(input: {
   return (await response.json()) as TenantVacatingCase;
 }
 
+/** Acknowledge tenant responsibility items from the compare step. */
+export async function acceptTenantVacatingResponsibilities(
+  caseId: string,
+): Promise<TenantVacatingCase> {
+  const response = await fetch(
+    `${API_BASE}/tenant/vacating-cases/${encodeURIComponent(caseId)}/responsibilities/accept`,
+    { method: 'PATCH', credentials: 'include' },
+  );
+  if (!response.ok) {
+    let errBody: unknown;
+    try {
+      errBody = await response.json();
+    } catch {
+      errBody = undefined;
+    }
+    throwTenantApiError(errBody, response, 'Failed to acknowledge responsibilities');
+  }
+  return (await response.json()) as TenantVacatingCase;
+}
+
+/** Decline tenant responsibility items from the compare step. */
+export async function declineTenantVacatingResponsibilities(
+  caseId: string,
+  body: { reason: string },
+): Promise<TenantVacatingCase> {
+  const response = await fetch(
+    `${API_BASE}/tenant/vacating-cases/${encodeURIComponent(caseId)}/responsibilities/decline`,
+    {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+  );
+  if (!response.ok) {
+    let errBody: unknown;
+    try {
+      errBody = await response.json();
+    } catch {
+      errBody = undefined;
+    }
+    throwTenantApiError(errBody, response, 'Failed to decline responsibilities');
+  }
+  return (await response.json()) as TenantVacatingCase;
+}
+
 export type TenantMaintenanceResponsibilityAck =
   components['schemas']['TenantMaintenanceResponsibilityAckDto'];
 

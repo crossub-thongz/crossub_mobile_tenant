@@ -463,6 +463,8 @@ export interface VacatingCase {
   debtAmount?: number | null;
   bondRefundPaid?: boolean;
   tenantRepairQuoteStatus?: 'none' | 'pending' | 'accepted' | 'declined';
+  tenantResponsibilityReviewStatus?: 'none' | 'pending' | 'accepted' | 'declined';
+  tenantResponsibilityDeclineReason?: string | null;
   tenantBondAckSentAt?: string;
   tenantResponsibilityItems?: VacatingRepairQuoteItem[];
   repairQuoteSettlementSummary?: VacatingRepairQuoteSettlement | null;

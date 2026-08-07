@@ -18,7 +18,7 @@ import {
 import { outgoingReport, statementDetail } from '@/constants/routes';
 import { hrefWithFrom } from '@/lib/back-navigation';
 import { OUTGOING_STATUS_LABEL } from '@/lib/tenant-labels';
-import { needsVacatingRepairQuoteAction, needsVacatingSettlementAction } from '@/lib/end-leasing';
+import { needsVacatingRepairQuoteAction, needsVacatingResponsibilityReviewAction, needsVacatingSettlementAction } from '@/lib/end-leasing';
 import type { VacatingCase, VacatingRepairQuoteSettlement } from '@/lib/types';
 import { cn, formatCurrency, formatDate, fileToBase64 } from '@/lib/utils';
 import { uploadTenantKeyReturnPhoto } from '@/lib/crossub-api/tenant-account-client';
@@ -210,6 +210,87 @@ function RepairQuoteSettlementPanel({ summary }: { summary: VacatingRepairQuoteS
           </span>
         </div>
       </div>
+    </div>
+  );
+}
+
+function TenantResponsibilityReviewPanel({
+  vacating,
+  busy,
+  onAccept,
+  onDecline,
+}: {
+  vacating: VacatingCase;
+  busy: boolean;
+  onAccept: () => void;
+  onDecline: (reason: string) => void;
+}) {
+  const [declineReason, setDeclineReason] = useState('');
+  const showActions = needsVacatingResponsibilityReviewAction(vacating);
+  const items = vacating.tenantResponsibilityItems ?? [];
+
+  return (
+    <div className="rounded-xl border bg-card p-4 text-sm">
+      <div className="mb-2 flex items-center gap-2 font-medium">
+        <Wrench className="text-primary size-4" />
+        Your repair responsibilities
+      </div>
+      <p className="text-muted-foreground text-xs">
+        Your property manager has listed items from the outgoing inspection that you are responsible
+        for. Please review and confirm before CROSSUB prepares quotations.
+      </p>
+      {items.length > 0 ? (
+        <div className="mt-4 overflow-hidden rounded-xl border text-xs">
+          <table className="w-full text-left">
+            <thead className="bg-muted/40 text-muted-foreground">
+              <tr>
+                <th className="px-3 py-2 font-semibold">Area</th>
+                <th className="px-3 py-2 font-semibold">Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item, index) => (
+                <tr key={`resp-item-${index}`} className="border-t align-top">
+                  <td className="px-3 py-2">{item.area}</td>
+                  <td className="px-3 py-2 whitespace-pre-wrap">{item.description}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+      {vacating.tenantResponsibilityReviewStatus === 'accepted' ? (
+        <p className="mt-3 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+          You acknowledged these items. Pending quotation from CROSSUB.
+        </p>
+      ) : null}
+      {vacating.tenantResponsibilityReviewStatus === 'declined' ? (
+        <p className="mt-3 text-xs font-medium text-rose-600 dark:text-rose-400">
+          You disagreed with this list. Your property manager will send updated responsibilities.
+        </p>
+      ) : null}
+      {showActions ? (
+        <div className="mt-4 space-y-3 border-t border-border/60 pt-3">
+          <p className="text-xs font-medium">Confirm these responsibilities</p>
+          <Button className="w-full" disabled={busy} onClick={onAccept}>
+            I acknowledge these items
+          </Button>
+          <textarea
+            className="border-input bg-background w-full rounded-xl border px-3 py-2 text-sm"
+            placeholder="Reason for disagreeing (required)"
+            value={declineReason}
+            onChange={(e) => setDeclineReason(e.target.value)}
+          />
+          <Button
+            variant="destructive"
+            className="w-full"
+            disabled={busy || !declineReason.trim()}
+            onClick={() => onDecline(declineReason.trim())}
+          >
+            I disagree
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -488,10 +569,26 @@ function PhasePanel({
             <Wrench className="text-primary size-4" />
             Make-good
           </div>
-          <p className="text-muted-foreground text-xs">
-            Any tenant-chargeable repairs from the outgoing inspection are being finalised. Your
-            agent will update the bond settlement once complete.
-          </p>
+          {vacating.tenantResponsibilityReviewStatus === 'accepted' ? (
+            <p className="text-muted-foreground text-xs font-medium text-emerald-700 dark:text-emerald-300">
+              Pending quotation from CROSSUB — your agent will notify you when bond deductions are
+              ready to review.
+            </p>
+          ) : vacating.tenantResponsibilityReviewStatus === 'declined' ? (
+            <p className="text-muted-foreground text-xs">
+              You disagreed with the responsibility list. Your property manager will send an updated
+              list for you to review.
+            </p>
+          ) : vacating.tenantResponsibilityReviewStatus === 'pending' ? (
+            <p className="text-muted-foreground text-xs">
+              Please review your repair responsibilities above and confirm or disagree.
+            </p>
+          ) : (
+            <p className="text-muted-foreground text-xs">
+              Any tenant-chargeable repairs from the outgoing inspection are being finalised. Your
+              agent will update the bond settlement once complete.
+            </p>
+          )}
         </div>
       )}
 
@@ -613,6 +710,8 @@ export function VacatingCaseView({
   declineVacatingRepairQuote,
   setVacatingOutgoingAttendance,
   submitVacatingKeyReturn,
+  acceptVacatingResponsibilities,
+  declineVacatingResponsibilities,
 }: {
   vacating: VacatingCase;
   cancelVacatingCase: (reason?: string) => Promise<void>;
@@ -623,12 +722,15 @@ export function VacatingCaseView({
   declineVacatingRepairQuote: (caseId: string, reason?: string) => Promise<void>;
   setVacatingOutgoingAttendance: (attendance: 'yes' | 'no') => Promise<void>;
   submitVacatingKeyReturn: (photoUrls: string[]) => Promise<void>;
+  acceptVacatingResponsibilities: (caseId: string) => Promise<void>;
+  declineVacatingResponsibilities: (caseId: string, reason: string) => Promise<void>;
 }) {
   const [withdrawing, setWithdrawing] = useState(false);
   const [draftDate, setDraftDate] = useState('');
   const [savingDate, setSavingDate] = useState(false);
   const [settlementBusy, setSettlementBusy] = useState(false);
   const [repairQuoteBusy, setRepairQuoteBusy] = useState(false);
+  const [responsibilityBusy, setResponsibilityBusy] = useState(false);
   const [attendanceBusy, setAttendanceBusy] = useState(false);
   const [keyReturnBusy, setKeyReturnBusy] = useState(false);
   const isDeleted = vacating.status === 'cancelled';
@@ -718,6 +820,26 @@ export function VacatingCaseView({
       {!isDeleted && (
         <>
           <StageRail current={vacating.currentStage} />
+          {vacating.tenantResponsibilityReviewStatus !== 'none' ? (
+            <TenantResponsibilityReviewPanel
+              vacating={vacating}
+              busy={responsibilityBusy}
+              onAccept={() => {
+                setResponsibilityBusy(true);
+                void acceptVacatingResponsibilities(vacating.id)
+                  .then(() =>
+                    toast.success('Responsibilities acknowledged — pending quotation from CROSSUB'),
+                  )
+                  .finally(() => setResponsibilityBusy(false));
+              }}
+              onDecline={(reason) => {
+                setResponsibilityBusy(true);
+                void declineVacatingResponsibilities(vacating.id, reason)
+                  .then(() => toast.success('Response recorded — your agent will send an updated list'))
+                  .finally(() => setResponsibilityBusy(false));
+              }}
+            />
+          ) : null}
           {vacating.tenantBondAckSentAt ? (
             <RepairQuoteAckPanel
               vacating={vacating}
