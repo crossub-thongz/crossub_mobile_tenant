@@ -850,6 +850,14 @@ export function toTenantVacatingCases(cases: TenantVacatingCase[]): VacatingCase
       terminationReason: asString(c.terminationReason) ?? undefined,
       currentStage: c.currentStage ?? VACATING_STAGE.KEY_RETURN,
       keysReturned: c.keysReturned ?? false,
+      keysReturnAddress:
+        asString((c as { keysReturnAddress?: string | null }).keysReturnAddress) ?? null,
+      keyReturnPhotoUrls:
+        (c as { keyReturnPhotoUrls?: string[] }).keyReturnPhotoUrls ?? [],
+      tenantKeyReturnSubmittedAt:
+        asString(
+          (c as { tenantKeyReturnSubmittedAt?: string | null }).tenantKeyReturnSubmittedAt,
+        ) ?? null,
       inspectionDate: asString(c.inspectionDate)?.slice(0, 10) ?? undefined,
       outgoingInspectionId: outgoingReportId,
       inspectionReportAvailable: c.inspectionReportAvailable ?? false,

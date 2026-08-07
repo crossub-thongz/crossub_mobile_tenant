@@ -451,6 +451,9 @@ export interface VacatingCase {
   terminationReason?: string;
   currentStage: VacatingStage;
   keysReturned: boolean;
+  keysReturnAddress?: string | null;
+  keyReturnPhotoUrls?: string[];
+  tenantKeyReturnSubmittedAt?: string | null;
   inspectionDate?: string;
   outgoingInspectionId?: string;
   inspectionReportAvailable?: boolean;

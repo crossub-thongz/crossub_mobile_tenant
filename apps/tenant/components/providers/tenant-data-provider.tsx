@@ -42,6 +42,7 @@ import {
   acceptTenantVacatingRepairQuote,
   declineTenantVacatingRepairQuote,
   setTenantVacatingOutgoingAttendance,
+  submitTenantKeyReturn,
   createTenantVacatingCase,
   cancelTenantVacatingCase,
   updateTenantVacateDate,
@@ -240,6 +241,7 @@ interface TenantDataContextValue {
   acceptVacatingRepairQuote: (caseId: string) => Promise<void>;
   declineVacatingRepairQuote: (caseId: string, reason?: string) => Promise<void>;
   setVacatingOutgoingAttendance: (attendance: 'yes' | 'no') => Promise<void>;
+  submitVacatingKeyReturn: (photoUrls: string[]) => Promise<void>;
   markNotificationRead: (id: string) => void;
   confirmIngoingSection: (
     sectionId: string,
@@ -1480,6 +1482,16 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     [status, vacatingDisplay?.id, applyVacatingCaseUpdate],
   );
 
+  const submitVacatingKeyReturn = useCallback(
+    async (photoUrls: string[]) => {
+      const id = vacatingDisplay?.id;
+      if (!id || status !== 'authed') return;
+      const updated = await submitTenantKeyReturn({ caseId: id, photoUrls });
+      applyVacatingCaseUpdate(toTenantVacatingCases([updated])[0] ?? null);
+    },
+    [status, vacatingDisplay?.id, applyVacatingCaseUpdate],
+  );
+
   const respondRentReview = useCallback(
     async (
       id: string,
@@ -1718,6 +1730,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       acceptVacatingRepairQuote,
       declineVacatingRepairQuote,
       setVacatingOutgoingAttendance,
+      submitVacatingKeyReturn,
       finalStatement,
       arrears,
       paymentProofs,
@@ -1783,6 +1796,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       acceptVacatingRepairQuote,
       declineVacatingRepairQuote,
       setVacatingOutgoingAttendance,
+      submitVacatingKeyReturn,
       finalStatement,
       arrears,
       paymentProofs,

@@ -559,6 +559,68 @@ export async function declineTenantVacatingRepairQuote(
   return (await response.json()) as TenantVacatingCase;
 }
 
+/** Upload proof photo for key return (`POST .../key-return/photos/upload`). */
+export async function uploadTenantKeyReturnPhoto(input: {
+  caseId: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  contentBase64: string;
+}): Promise<string> {
+  const response = await fetch(
+    `${API_BASE}/tenant/vacating-cases/${encodeURIComponent(input.caseId)}/key-return/photos/upload`,
+    {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fileName: input.fileName,
+        mimeType: input.mimeType,
+        sizeBytes: input.sizeBytes,
+        contentBase64: input.contentBase64,
+      }),
+    },
+  );
+  if (!response.ok) {
+    let errBody: unknown;
+    try {
+      errBody = await response.json();
+    } catch {
+      errBody = undefined;
+    }
+    throwTenantApiError(errBody, response, 'Failed to upload key return photo');
+  }
+  const data = (await response.json()) as { url?: string };
+  if (!data.url) throw new Error('Upload succeeded but no URL returned');
+  return data.url;
+}
+
+/** Submit key return proof (`PATCH .../key-return`). */
+export async function submitTenantKeyReturn(input: {
+  caseId: string;
+  photoUrls: string[];
+}): Promise<TenantVacatingCase> {
+  const response = await fetch(
+    `${API_BASE}/tenant/vacating-cases/${encodeURIComponent(input.caseId)}/key-return`,
+    {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ photoUrls: input.photoUrls }),
+    },
+  );
+  if (!response.ok) {
+    let errBody: unknown;
+    try {
+      errBody = await response.json();
+    } catch {
+      errBody = undefined;
+    }
+    throwTenantApiError(errBody, response, 'Failed to submit key return');
+  }
+  return (await response.json()) as TenantVacatingCase;
+}
+
 export type TenantMaintenanceResponsibilityAck =
   components['schemas']['TenantMaintenanceResponsibilityAckDto'];
 

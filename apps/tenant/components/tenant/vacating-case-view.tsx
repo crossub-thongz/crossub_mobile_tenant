@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { KeyRound, Landmark, ClipboardList, Wrench } from 'lucide-react';
+import { KeyRound, Landmark, ClipboardList, Wrench, ImagePlus, Loader2, X } from 'lucide-react';
 
 import { useTenantData } from '@/components/providers/tenant-data-provider';
 import { Button } from '@/components/ui/button';
@@ -20,11 +20,123 @@ import { hrefWithFrom } from '@/lib/back-navigation';
 import { OUTGOING_STATUS_LABEL } from '@/lib/tenant-labels';
 import { needsVacatingRepairQuoteAction, needsVacatingSettlementAction } from '@/lib/end-leasing';
 import type { VacatingCase, VacatingRepairQuoteSettlement } from '@/lib/types';
-import { cn, formatCurrency, formatDate } from '@/lib/utils';
+import { cn, formatCurrency, formatDate, fileToBase64 } from '@/lib/utils';
+import { uploadTenantKeyReturnPhoto } from '@/lib/crossub-api/tenant-account-client';
 
 function vacateDateLabel(date: string, changed?: boolean): string {
   const base = formatDate(date);
   return changed ? `${base} (changed)` : base;
+}
+
+const KEY_RETURN_MAX_PHOTOS = 5;
+const KEY_RETURN_MAX_BYTES = 25 * 1024 * 1024;
+
+function KeyReturnProofUpload({
+  caseId,
+  photos,
+  onPhotosChange,
+  disabled,
+}: {
+  caseId: string;
+  photos: string[];
+  onPhotosChange: (urls: string[]) => void;
+  disabled?: boolean;
+}) {
+  const [uploading, setUploading] = useState(false);
+
+  const uploadFiles = async (files: FileList | null) => {
+    if (!files?.length) return;
+    const remaining = KEY_RETURN_MAX_PHOTOS - photos.length;
+    if (remaining <= 0) {
+      toast.error(`Maximum ${KEY_RETURN_MAX_PHOTOS} photos`);
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const urls: string[] = [];
+      for (const file of Array.from(files).slice(0, remaining)) {
+        const mime = file.type || 'image/jpeg';
+        if (!mime.startsWith('image/')) {
+          toast.error(`${file.name} must be a photo`);
+          continue;
+        }
+        if (file.size > KEY_RETURN_MAX_BYTES) {
+          toast.error(`${file.name} exceeds the 25 MB limit`);
+          continue;
+        }
+        const contentBase64 = await fileToBase64(file);
+        const url = await uploadTenantKeyReturnPhoto({
+          caseId,
+          fileName: file.name,
+          mimeType: mime,
+          sizeBytes: file.size,
+          contentBase64,
+        });
+        urls.push(url);
+      }
+      if (urls.length) {
+        onPhotosChange([...new Set([...photos, ...urls])]);
+        toast.success(`${urls.length} photo${urls.length === 1 ? '' : 's'} uploaded`);
+      }
+    } catch {
+      toast.error('Upload failed — try again');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-medium">Photo of returned keys *</p>
+      <p className="text-muted-foreground text-[11px]">
+        Upload at least one clear photo showing the keys, remotes, or access devices you returned.
+      </p>
+
+      {photos.length > 0 ? (
+        <ul className="grid grid-cols-3 gap-2">
+          {photos.map((url) => (
+            <li key={url} className="group relative aspect-square overflow-hidden rounded-lg border">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={url} alt="" className="size-full object-cover" />
+              <button
+                type="button"
+                disabled={disabled || uploading}
+                onClick={() => onPhotosChange(photos.filter((item) => item !== url))}
+                className="bg-background/90 absolute top-1 right-1 rounded-full p-0.5 opacity-0 shadow-sm transition-opacity group-hover:opacity-100"
+                aria-label="Remove photo"
+              >
+                <X className="size-3.5" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      <label
+        className={cn(
+          'flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed px-3 py-4 text-xs font-medium transition-colors',
+          disabled || uploading || photos.length >= KEY_RETURN_MAX_PHOTOS
+            ? 'text-muted-foreground cursor-not-allowed opacity-60'
+            : 'text-muted-foreground hover:border-primary/40 hover:bg-primary/5 hover:text-primary',
+        )}
+      >
+        {uploading ? <Loader2 className="size-4 animate-spin" /> : <ImagePlus className="size-4" />}
+        {uploading ? 'Uploading…' : 'Add photos'}
+        <input
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          disabled={disabled || uploading || photos.length >= KEY_RETURN_MAX_PHOTOS}
+          onChange={(e) => {
+            void uploadFiles(e.target.files);
+            e.target.value = '';
+          }}
+        />
+      </label>
+    </div>
+  );
 }
 
 function stageIndex(stage: VacatingStage): number {
@@ -210,6 +322,8 @@ function PhasePanel({
   onDeclineSettlement,
   attendanceBusy,
   onSetOutgoingAttendance,
+  keyReturnBusy,
+  onSubmitKeyReturn,
 }: {
   vacating: VacatingCase;
   dateValue: string;
@@ -224,9 +338,14 @@ function PhasePanel({
   onDeclineSettlement: (reason: string) => void;
   attendanceBusy: boolean;
   onSetOutgoingAttendance: (attendance: 'yes' | 'no') => void;
+  keyReturnBusy: boolean;
+  onSubmitKeyReturn: (photoUrls: string[]) => void;
 }) {
   const stage = vacating.currentStage;
   const [declineReason, setDeclineReason] = useState('');
+  const [keyReturnPhotos, setKeyReturnPhotos] = useState<string[]>(
+    () => vacating.keyReturnPhotoUrls ?? [],
+  );
   const showSettlementActions = needsVacatingSettlementAction(vacating);
   const tenantAttendance = vacating.tenantOutgoingAttendance ?? 'pending';
   const attendanceLabel =
@@ -250,6 +369,43 @@ function PhasePanel({
           <p className="text-muted-foreground mt-1 text-xs">
             Keys returned: {vacating.keysReturned ? 'Yes' : 'Not yet'}
           </p>
+          {vacating.keysReturnAddress ? (
+            <div className="mt-3 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs">
+              <p className="font-medium">Return keys to</p>
+              <p className="mt-1 whitespace-pre-wrap">{vacating.keysReturnAddress}</p>
+            </div>
+          ) : (
+            <p className="text-muted-foreground mt-3 text-xs">
+              Your property manager will send the key return location shortly.
+            </p>
+          )}
+          {vacating.tenantKeyReturnSubmittedAt && !vacating.keysReturned ? (
+            <p className="mt-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+              Key return proof submitted{' '}
+              {formatDate(vacating.tenantKeyReturnSubmittedAt)} — waiting for confirmation.
+            </p>
+          ) : null}
+          {vacating.keysReturnAddress && !vacating.keysReturned ? (
+            <div className="mt-4 space-y-3 border-t border-border/60 pt-3">
+              <KeyReturnProofUpload
+                caseId={vacating.id}
+                photos={keyReturnPhotos}
+                onPhotosChange={setKeyReturnPhotos}
+                disabled={keyReturnBusy || !!vacating.tenantKeyReturnSubmittedAt}
+              />
+              {!vacating.tenantKeyReturnSubmittedAt ? (
+                <Button
+                  type="button"
+                  className="w-full"
+                  size="sm"
+                  disabled={keyReturnBusy || keyReturnPhotos.length === 0}
+                  onClick={() => onSubmitKeyReturn(keyReturnPhotos)}
+                >
+                  {keyReturnBusy ? 'Submitting…' : 'Submit key return proof'}
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
           <div className="mt-4 space-y-2 border-t border-border/60 pt-3">
             <p className="text-xs font-medium">Change vacate date</p>
             <div className="flex flex-wrap items-center gap-2">
@@ -456,6 +612,7 @@ export function VacatingCaseView({
   acceptVacatingRepairQuote,
   declineVacatingRepairQuote,
   setVacatingOutgoingAttendance,
+  submitVacatingKeyReturn,
 }: {
   vacating: VacatingCase;
   cancelVacatingCase: (reason?: string) => Promise<void>;
@@ -465,6 +622,7 @@ export function VacatingCaseView({
   acceptVacatingRepairQuote: (caseId: string) => Promise<void>;
   declineVacatingRepairQuote: (caseId: string, reason?: string) => Promise<void>;
   setVacatingOutgoingAttendance: (attendance: 'yes' | 'no') => Promise<void>;
+  submitVacatingKeyReturn: (photoUrls: string[]) => Promise<void>;
 }) {
   const [withdrawing, setWithdrawing] = useState(false);
   const [draftDate, setDraftDate] = useState('');
@@ -472,6 +630,7 @@ export function VacatingCaseView({
   const [settlementBusy, setSettlementBusy] = useState(false);
   const [repairQuoteBusy, setRepairQuoteBusy] = useState(false);
   const [attendanceBusy, setAttendanceBusy] = useState(false);
+  const [keyReturnBusy, setKeyReturnBusy] = useState(false);
   const isDeleted = vacating.status === 'cancelled';
   const dateValue = draftDate || vacating.vacatingDate.slice(0, 10);
 
@@ -514,6 +673,18 @@ export function VacatingCaseView({
       );
     } finally {
       setAttendanceBusy(false);
+    }
+  };
+
+  const handleSubmitKeyReturn = async (photoUrls: string[]) => {
+    setKeyReturnBusy(true);
+    try {
+      await submitVacatingKeyReturn(photoUrls);
+      toast.success('Key return proof submitted — your agent will confirm receipt');
+    } catch {
+      toast.error('Could not submit key return — check your photos and try again');
+    } finally {
+      setKeyReturnBusy(false);
     }
   };
 
@@ -589,6 +760,8 @@ export function VacatingCaseView({
             }}
             attendanceBusy={attendanceBusy}
             onSetOutgoingAttendance={(attendance) => void handleSetOutgoingAttendance(attendance)}
+            keyReturnBusy={keyReturnBusy}
+            onSubmitKeyReturn={(photoUrls) => void handleSubmitKeyReturn(photoUrls)}
           />
         </>
       )}
