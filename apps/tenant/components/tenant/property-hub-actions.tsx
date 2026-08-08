@@ -193,7 +193,9 @@ export function PropertyHubActions() {
             icon={DoorOpen}
             title="End of lease"
             subtitle={
-              needsVacatingSettlementAction(vacatingCase)
+              vacatingCase.status === 'completed'
+                ? `Completed · vacate ${vacatingCase.vacatingDate}`
+                : needsVacatingSettlementAction(vacatingCase)
                 ? `Settlement due · vacate ${vacatingCase.vacatingDate}`
                 : urgentOutgoing &&
                     outgoingReport &&
@@ -204,6 +206,8 @@ export function PropertyHubActions() {
             badge={
               needsVacatingSettlementAction(vacatingCase)
                 ? 'Required'
+                : vacatingCase.status === 'completed'
+                  ? 'Completed'
                 : urgentOutgoing &&
                     outgoingReport &&
                     needsOutgoingConfirmationAction(outgoingReport)

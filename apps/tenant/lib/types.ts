@@ -445,7 +445,7 @@ export interface VacatingCase {
   propertyAddress: string;
   propertyId?: string;
   vacatingDate: string;
-  status: 'open' | 'cancelled';
+  status: 'open' | 'completed' | 'cancelled';
   vacateDateChanged?: boolean;
   initialVacatingDate?: string;
   cancellationReason?: string;

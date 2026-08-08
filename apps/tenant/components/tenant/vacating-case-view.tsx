@@ -488,6 +488,7 @@ function PhasePanel({
   onSetOutgoingAttendance,
   keyReturnBusy,
   onSubmitKeyReturn,
+  readOnly = false,
 }: {
   vacating: VacatingCase;
   stage: VacatingStage;
@@ -505,6 +506,7 @@ function PhasePanel({
   onSetOutgoingAttendance: (attendance: 'yes' | 'no') => void;
   keyReturnBusy: boolean;
   onSubmitKeyReturn: (photoUrls: string[]) => void;
+  readOnly?: boolean;
 }) {
   const [declineReason, setDeclineReason] = useState('');
   const [keyReturnPhotos, setKeyReturnPhotos] = useState<string[]>(
@@ -549,7 +551,7 @@ function PhasePanel({
               {formatDate(vacating.tenantKeyReturnSubmittedAt)} — waiting for confirmation.
             </p>
           ) : null}
-          {vacating.keysReturnAddress && !vacating.keysReturned ? (
+          {vacating.keysReturnAddress && !vacating.keysReturned && !readOnly ? (
             <div className="mt-4 space-y-3 border-t border-border/60 pt-3">
               <KeyReturnProofUpload
                 caseId={vacating.id}
@@ -570,6 +572,7 @@ function PhasePanel({
               ) : null}
             </div>
           ) : null}
+          {!readOnly ? (
           <div className="mt-4 space-y-2 border-t border-border/60 pt-3">
             <p className="text-xs font-medium">Change vacate date</p>
             <div className="flex flex-wrap items-center gap-2">
@@ -589,6 +592,7 @@ function PhasePanel({
               </Button>
             </div>
           </div>
+          ) : null}
         </div>
       )}
 
@@ -606,6 +610,8 @@ function PhasePanel({
           <p className="mt-2 text-xs">{OUTGOING_STATUS_LABEL[vacating.outgoingStatus]}</p>
           <div className="mt-4 space-y-2 border-t border-border/60 pt-3">
             <p className="text-xs font-medium">Will you attend the outgoing inspection?</p>
+            {!readOnly ? (
+              <>
             <p className="text-muted-foreground text-xs">
               Your property manager will see your answer in End Leasing and on the inspection job.
             </p>
@@ -629,6 +635,8 @@ function PhasePanel({
                 No, I will not attend
               </Button>
             </div>
+              </>
+            ) : null}
             {tenantAttendance !== 'pending' && (
               <p className="text-muted-foreground text-xs">
                 Your response: <span className="font-medium">{attendanceLabel}</span>
@@ -707,7 +715,7 @@ function PhasePanel({
           {vacating.bondRefundPaid && (
             <p className="mt-2 text-xs font-medium text-emerald-600">Bond refund processed</p>
           )}
-          {showSettlementActions && (
+          {showSettlementActions && !readOnly && (
             <div className="mt-4 space-y-3 border-t border-border/60 pt-3">
               <p className="text-xs font-medium">Confirm bond settlement</p>
               <Button
@@ -742,12 +750,8 @@ function PhasePanel({
         </div>
       )}
 
+      {!readOnly ? (
       <div className="flex flex-wrap gap-2">
-        {/* Move-out services — hidden until partner referrals are ready.
-        <Button asChild variant="outline" size="sm">
-          <Link href={ROUTES.MOVE_OUT_SERVICES}>Move-out services</Link>
-        </Button>
-        */}
         <Button
           type="button"
           variant="ghost"
@@ -759,6 +763,7 @@ function PhasePanel({
           {withdrawing ? 'Withdrawing…' : 'Delete vacating case'}
         </Button>
       </div>
+      ) : null}
     </div>
   );
 }
@@ -826,6 +831,8 @@ export function VacatingCaseView({
   const [keyReturnBusy, setKeyReturnBusy] = useState(false);
   const [viewStage, setViewStage] = useState<VacatingStage>(() => resolveVacatingViewStage(vacating));
   const isDeleted = vacating.status === 'cancelled';
+  const isCompleted = vacating.status === 'completed';
+  const readOnly = isDeleted || isCompleted;
   const dateValue = draftDate || vacating.vacatingDate.slice(0, 10);
   const maxAccessibleStageIndex = maxAccessibleVacatingStageIndex(vacating);
 
@@ -916,11 +923,22 @@ export function VacatingCaseView({
               Deleted
             </span>
           )}
+          {isCompleted && (
+            <span className="rounded-full border border-emerald-500/35 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-800 dark:text-emerald-200">
+              Completed
+            </span>
+          )}
         </div>
         {isDeleted && (
           <p className="text-muted-foreground mt-3 text-xs">
             Withdrawn
             {vacating.cancellationReason ? ` — ${vacating.cancellationReason}` : '.'}
+          </p>
+        )}
+        {isCompleted && (
+          <p className="text-muted-foreground mt-3 text-xs">
+            This end-of-lease case is closed. You can review each step below for your records.
+            {vacating.bondRefundPaid ? ' Bond refund has been processed.' : ''}
           </p>
         )}
       </div>
@@ -932,7 +950,7 @@ export function VacatingCaseView({
             maxAccessibleIndex={maxAccessibleStageIndex}
             onSelect={setViewStage}
           />
-          {viewStage === VACATING_STAGE.MAINTENANCE &&
+          {!isCompleted && viewStage === VACATING_STAGE.MAINTENANCE &&
           vacating.tenantResponsibilityReviewStatus !== 'none' ? (
             <TenantResponsibilityReviewPanel
               vacating={vacating}
@@ -954,7 +972,7 @@ export function VacatingCaseView({
               }}
             />
           ) : null}
-          {viewStage === VACATING_STAGE.BOND && vacating.tenantBondAckSentAt ? (
+          {!isCompleted && viewStage === VACATING_STAGE.BOND && vacating.tenantBondAckSentAt ? (
             <RepairQuoteAckPanel
               vacating={vacating}
               busy={repairQuoteBusy}
@@ -975,6 +993,7 @@ export function VacatingCaseView({
           <PhasePanel
             vacating={vacating}
             stage={viewStage}
+            readOnly={isCompleted}
             dateValue={dateValue}
             draftDate={draftDate}
             setDraftDate={setDraftDate}

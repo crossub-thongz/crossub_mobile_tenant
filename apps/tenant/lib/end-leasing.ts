@@ -40,6 +40,9 @@ export function shouldLivePollVacatingCase(
 
 /** Default tab after load — bond once make-good responsibilities are acknowledged. */
 export function resolveVacatingViewStage(vacating: VacatingCase): VacatingStage {
+  if (vacating.status === 'completed') {
+    return VACATING_STAGE.BOND;
+  }
   if (
     vacating.tenantResponsibilityReviewStatus === 'accepted' &&
     !needsVacatingResponsibilityReviewAction(vacating)
@@ -60,6 +63,9 @@ export function resolveVacatingViewStage(vacating: VacatingCase): VacatingStage 
 
 /** Furthest step the tenant may open in the step rail (includes completed steps). */
 export function maxAccessibleVacatingStageIndex(vacating: VacatingCase): number {
+  if (vacating.status === 'completed') {
+    return vacatingStageIndex(VACATING_STAGE.BOND);
+  }
   let idx = vacatingStageIndex(vacating.currentStage);
   if (idx < 0) idx = 0;
   if (vacating.tenantResponsibilityReviewStatus === 'accepted') {

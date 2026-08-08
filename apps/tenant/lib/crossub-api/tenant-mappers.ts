@@ -807,11 +807,18 @@ export function pickActiveVacatingCase(cases: VacatingCase[]): VacatingCase | nu
 
 /**
  * Case to show on the Vacating screen: prefer an open case; otherwise the most
- * recently withdrawn one (Deleted tag) so refresh matches Crossub Web.
+ * recently completed one; otherwise the most recently withdrawn one (Deleted tag).
  */
 export function pickDisplayVacatingCase(cases: VacatingCase[]): VacatingCase | null {
   const open = pickActiveVacatingCase(cases);
   if (open) return open;
+  const completed = cases.filter((c) => c.status === 'completed');
+  if (completed.length > 0) {
+    return completed.sort(
+      (a, b) =>
+        new Date(b.vacatingDate || 0).getTime() - new Date(a.vacatingDate || 0).getTime(),
+    )[0]!;
+  }
   const cancelled = cases.filter((c) => c.status === 'cancelled');
   if (cancelled.length === 0) return null;
   return cancelled.sort(
