@@ -60,8 +60,10 @@ export default function RentReviewDetailPage() {
   }
 
   const leaseAgreementEnabled =
-    review.noticeTerms?.leaseAgreementPdfAvailable ||
-    review.noticeTerms?.requiresLeaseAgreementSign;
+    review.status === 'accepted' &&
+    (review.noticeTerms?.leaseAgreementPdfAvailable ||
+      review.noticeTerms?.requiresLeaseAgreementSign ||
+      review.noticeTerms?.leaseAgreementSigned);
   const signLease = leaseAgreementEnabled ? () => signLeaseAgreement(review.id) : undefined;
 
   const handleAccept = async () => {
@@ -132,10 +134,21 @@ export default function RentReviewDetailPage() {
             review={review}
             busy={busy}
             onSignLeaseAgreement={signLease}
-            {...responseHandlers}
           />
-        ) : responseHandlers ? (
+        ) : null}
+
+        {responseHandlers ? (
           <RentReviewResponsePanel review={review} busy={busy} {...responseHandlers} />
+        ) : review.status === 'accepted' &&
+          review.noticeTerms?.requiresLeaseAgreementSign !== true &&
+          !review.noticeTerms?.leaseAgreementSigned ? (
+          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm">
+            <p className="font-semibold text-emerald-950 dark:text-emerald-50">Rent increase accepted</p>
+            <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+              Your property manager will send the lease extension agreement for signature when it is
+              ready.
+            </p>
+          </div>
         ) : null}
 
         {review.status === 'countered' ? (

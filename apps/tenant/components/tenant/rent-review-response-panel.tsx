@@ -21,24 +21,11 @@ export function RentReviewResponsePanel({
   onAccept: () => Promise<void>;
   onReject: (moveOutDate: string) => Promise<void>;
   onCounter: (amount: number) => Promise<void>;
-  /** Render inside the lease agreement card (no outer border). */
   embedded?: boolean;
 }) {
   const [moveOutDate, setMoveOutDate] = useState(review.moveOutDate ?? '');
   const [counterWeekly, setCounterWeekly] = useState('');
   const canCounter = review.rentNegotiable === true;
-
-  const leaseTerms = review.noticeTerms;
-  const mustSignBeforeAccept = leaseTerms?.requiresLeaseAgreementSign === true;
-  const leaseSigned = leaseTerms?.leaseAgreementSigned === true;
-  const canAccept = !mustSignBeforeAccept || leaseSigned;
-
-  const helperText =
-    mustSignBeforeAccept && !leaseSigned
-      ? 'Review and sign the lease agreement above before accepting the rent increase.'
-      : mustSignBeforeAccept && leaseSigned
-        ? 'Your signed agreement is ready — accept the rent increase to confirm.'
-        : 'Submit your response to the proposed rent increase. Your property manager will be notified immediately.';
 
   return (
     <div
@@ -56,18 +43,16 @@ export function RentReviewResponsePanel({
         >
           Your response
         </p>
-        <p className="text-muted-foreground mt-1 text-xs">{helperText}</p>
+        <p className="text-muted-foreground mt-1 text-xs">
+          Submit your response to the proposed rent increase. Your property manager will be notified
+          immediately. If you accept a fixed-term renewal, the lease extension agreement is sent
+          separately for signature afterward.
+        </p>
       </div>
 
-      {canAccept ? (
-        <Button className="w-full" disabled={busy} onClick={() => void onAccept()}>
-          Accept rent increase
-        </Button>
-      ) : mustSignBeforeAccept ? (
-        <Button className="w-full" disabled>
-          Accept rent increase
-        </Button>
-      ) : null}
+      <Button className="w-full" disabled={busy} onClick={() => void onAccept()}>
+        Accept rent increase
+      </Button>
 
       <div className="space-y-2 border-t border-dashed pt-3">
         <Label htmlFor={`move-out-${review.id}`}>Move-out date (reject path)</Label>

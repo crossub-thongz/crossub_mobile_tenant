@@ -22,16 +22,11 @@ export function RentReviewNoticeAlert() {
     : (unreadNotice?.href ?? '/rent-review');
 
   const title = pending ? 'Rent review notice — action required' : unreadNotice!.title;
-  const needsLeaseSign =
-    pending?.noticeTerms?.requiresLeaseAgreementSign === true &&
-    pending.noticeTerms.leaseAgreementSigned !== true;
   const body = pending
     ? `Your property manager proposed ${formatCurrency(pending.proposedRentWeekly)}/week. ${
-        needsLeaseSign
-          ? 'Review and sign the lease extension agreement, then accept or decline the increase.'
-          : pending.rentNegotiable === true
-            ? 'Accept, decline, or submit a counter-offer.'
-            : 'Accept or decline — rent is non-negotiable.'
+        pending.rentNegotiable === true
+          ? 'Accept, decline, or submit a counter-offer.'
+          : 'Accept or decline — rent is non-negotiable.'
       }`
     : unreadNotice!.body;
 
