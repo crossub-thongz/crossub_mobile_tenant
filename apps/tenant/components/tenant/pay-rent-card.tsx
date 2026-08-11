@@ -5,18 +5,15 @@ import { CreditCard, Landmark } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/components/providers/auth-provider';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
 import {
   DEMO_BANK_DETAILS,
   computeRentAmountDue,
   rentPaymentCycleHint,
-  rentPaymentReference,
 } from '@/lib/rent-payment';
 import { formatCurrency } from '@/lib/utils';
 
 export function PayRentCard() {
-  const { user } = useAuth();
   const { lease, arrears, outstandingBalance, recordRentPayment } = useTenantData();
   const [submitting, setSubmitting] = useState(false);
 
@@ -33,8 +30,6 @@ export function PayRentCard() {
       </section>
     );
   }
-
-  const reference = rentPaymentReference(lease.id, user?.id ?? null);
 
   const onPay = async (method: 'bank_transfer' | 'card') => {
     setSubmitting(true);
@@ -69,23 +64,22 @@ export function PayRentCard() {
         <p className="text-muted-foreground text-xs font-medium uppercase">Bank transfer</p>
         <p>
           <span className="text-muted-foreground">Account name: </span>
-          {DEMO_BANK_DETAILS.accountName}
+          {DEMO_BANK_DETAILS.accountName || null}
         </p>
         <p>
           <span className="text-muted-foreground">BSB: </span>
-          {DEMO_BANK_DETAILS.bsb}
+          {DEMO_BANK_DETAILS.bsb || null}
         </p>
         <p>
           <span className="text-muted-foreground">Account: </span>
-          {DEMO_BANK_DETAILS.accountNumber}
+          {DEMO_BANK_DETAILS.accountNumber || null}
         </p>
         <p>
           <span className="text-muted-foreground">PayID: </span>
-          {DEMO_BANK_DETAILS.payId}
+          {DEMO_BANK_DETAILS.payId || null}
         </p>
         <p>
           <span className="text-muted-foreground">Reference (required): </span>
-          <strong className="font-mono text-xs">{reference}</strong>
         </p>
       </div>
 

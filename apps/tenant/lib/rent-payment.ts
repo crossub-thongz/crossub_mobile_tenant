@@ -26,11 +26,12 @@ export function rentPaymentCycleHint(lease: LeaseSummary | null): string {
   return `Suggested payment — one ${paymentCycleUnitLabel(cycle)} at current rate`;
 }
 
+/** Bank transfer fields — left empty until real agency trust details are wired. */
 export const DEMO_BANK_DETAILS = {
-  accountName: 'CROSSUB Trust Account',
-  bsb: '062-000',
-  accountNumber: '1234 5678',
-  payId: 'rent@crossub.demo',
+  accountName: '',
+  bsb: '',
+  accountNumber: '',
+  payId: '',
 } as const;
 
 export function rentPaymentReference(leaseId: string | null, userId: string | null): string {
