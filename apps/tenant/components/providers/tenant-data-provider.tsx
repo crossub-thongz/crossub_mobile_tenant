@@ -175,6 +175,11 @@ interface TenantDataContextValue {
    * anchor yet (typical 403 from tenant facades). Distinct from a network outage.
    */
   profileUnlinked: boolean;
+  /**
+   * True when every facade call came back 401 — the token is missing or stale, so the fix is
+   * to sign in again. Distinct from both a network outage and an unlinked profile.
+   */
+  sessionExpired: boolean;
   phase: TenantLifecyclePhase;
   refresh: () => Promise<void>;
   pendingActions: PendingAction[];
@@ -327,12 +332,27 @@ function isForbiddenRejection(reason: unknown): boolean {
   return /not linked to a tenant profile|403|forbidden/i.test(message);
 }
 
+/**
+ * A 401 is the third way every facade call can fail, and it used to fall into the same
+ * bucket as a network outage — so an expired or missing token was reported to the tenant as
+ * "could not reach the API", sending them to check their connection when the fix is to sign
+ * in again. Kept deliberately narrower than `isForbiddenRejection`: that one also matches on
+ * message text because the 403 carries a recognisable sentence from our own API, whereas
+ * "unauthorized" appears in plenty of unrelated prose. Status code only.
+ */
+function isUnauthorizedRejection(reason: unknown): boolean {
+  if (!reason || typeof reason !== 'object') return false;
+  const record = reason as { status?: number; response?: { status?: number } };
+  return record.status === 401 || record.response?.status === 401;
+}
+
 export function TenantDataProvider({ children }: { children: React.ReactNode }) {
   const { status } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [apiConnected, setApiConnected] = useState(false);
   const [profileUnlinked, setProfileUnlinked] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
   const [notifications, setNotifications] = useState<TenantNotification[]>([]);
   const [maintenance, setMaintenance] = useState<MaintenanceRequest[]>([]);
   const [leasedPropertyContacts, setLeasedPropertyContacts] = useState<{
@@ -559,6 +579,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       if (showBlockingLoad) {
         setApiConnected(false);
         setProfileUnlinked(false);
+        setSessionExpired(false);
         setLoading(false);
       }
       return;
@@ -610,10 +631,11 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
 
     let connected = false;
     let sawForbidden = false;
+    let sawUnauthorized = false;
     const noteRejection = (result: PromiseSettledResult<unknown>) => {
-      if (result.status === 'rejected' && isForbiddenRejection(result.reason)) {
-        sawForbidden = true;
-      }
+      if (result.status !== 'rejected') return;
+      if (isForbiddenRejection(result.reason)) sawForbidden = true;
+      if (isUnauthorizedRejection(result.reason)) sawUnauthorized = true;
     };
 
     if (tenancies.status === 'fulfilled') {
@@ -783,6 +805,9 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
 
     setApiConnected(connected);
     setProfileUnlinked(!connected && sawForbidden);
+    // 403 wins over 401: a tenant who is signed in but unlinked has a more specific problem
+    // than a stale token, and telling them to sign in again would not fix it.
+    setSessionExpired(!connected && !sawForbidden && sawUnauthorized);
     hasLoadedOnceRef.current = true;
     if (showBlockingLoad) {
       setLoading(false);
@@ -1746,6 +1771,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       loading,
       apiConnected,
       profileUnlinked,
+      sessionExpired,
       phase,
       refresh,
       pendingActions,
@@ -1814,6 +1840,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       loading,
       apiConnected,
       profileUnlinked,
+      sessionExpired,
       phase,
       refresh,
       pendingActions,

@@ -30,6 +30,7 @@ export default function PropertyPage() {
     loading,
     apiConnected,
     profileUnlinked,
+    sessionExpired,
   } = useTenantData();
 
   const activeNewLeasing =
@@ -46,11 +47,15 @@ export default function PropertyPage() {
       );
     }
 
+    // Four distinct states, and they used to collapse into three — a 401 fell through to the
+    // network message, so an expired session told the tenant to check their connection.
     const description = apiConnected
       ? 'Your login is active, but no approved application or onboarding case was found for this account. Ask your agent (or admin) to send tenant login credentials again from the approved application — that links your account to the property.'
       : profileUnlinked
         ? 'You are signed in, but this login is not linked to your rental application yet. Use the exact email from your approval credentials email, or ask admin to resend tenant login from the approved application.'
-        : 'Could not reach the CROSSUB API. Check that the tenant app can reach the API, then sign in again with the email from your credentials email.';
+        : sessionExpired
+          ? 'Your session has expired. Sign out and sign in again to reload your property — your details are still here.'
+          : 'We could not load your property just now. Check your internet connection and pull down to refresh; if it keeps happening, sign out and sign in again.';
 
     return (
       <TenantShell title="Property">
