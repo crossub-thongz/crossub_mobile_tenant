@@ -74,10 +74,10 @@ export function PayRentCard() {
           <span className="text-muted-foreground">Account: </span>
           {DEMO_BANK_DETAILS.accountNumber || null}
         </p>
-        <p>
+        {/* <p>
           <span className="text-muted-foreground">PayID: </span>
           {DEMO_BANK_DETAILS.payId || null}
-        </p>
+        </p> */}
         <p>
           <span className="text-muted-foreground">Reference (required): </span>
         </p>
