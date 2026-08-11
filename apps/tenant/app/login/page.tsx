@@ -22,19 +22,33 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PASSWORD_MAX, PASSWORD_MIN } from '@/constants/auth';
+import { PASSWORD_MAX } from '@/constants/auth';
 import { ROUTES } from '@/constants/routes';
 import { ApiError, api } from '@/lib/api';
 import type { AuthUser } from '@/lib/auth-types';
 import { clearForeignPortalSession, isTenantPortalUser } from '@/lib/tenant-auth';
 import { tenantPostAuthPath } from '@/lib/tenant-post-auth';
 
+/**
+ * ⚠️ `password` deliberately carries NO `.min(PASSWORD_MIN)`. Signing in VERIFIES a password;
+ * it does not SET one. The length policy belongs on the screens that set a password, and the
+ * setup/reset page on crossub_web still enforces it. A minimum here cannot admit an account
+ * the API would reject; it can only lock out an account whose password predates the policy,
+ * and it does so in the BROWSER, so the request never reaches the API and nothing is logged
+ * server-side.
+ *
+ * `LoginDto` dropped this same rule on 10 Aug 2026 after it locked out 23 of the 43 migrated
+ * agent logins, and `login-dto-validation.spec.ts` pins it there. The agent app's copy was
+ * fixed with it; this one was missed, and it fails in a nastier way than a 401 — the form
+ * greys out with "Min 10 characters" under a password that is perfectly correct, which reads
+ * as "my password is wrong" rather than "this app will not let me try".
+ *
+ * `.max(PASSWORD_MAX)` stays: it bounds what is handed to Argon2 and is a cost guard, not a
+ * policy statement. Do not "restore" the minimum here for symmetry with the setter forms.
+ */
 const loginSchema = z.object({
   email: z.string().email('Enter a valid email'),
-  password: z
-    .string()
-    .min(PASSWORD_MIN, `Min ${PASSWORD_MIN} characters`)
-    .max(PASSWORD_MAX),
+  password: z.string().min(1, 'Enter your password').max(PASSWORD_MAX),
 });
 
 type LoginValues = z.infer<typeof loginSchema>;
@@ -108,8 +122,16 @@ export default function LoginPage() {
       <div className="w-full max-w-md rounded-xl border bg-card p-8 shadow-lg">
         <div className="mb-6 space-y-1 text-center">
           <h1 className="text-xl font-semibold">Sign in</h1>
+          {/*
+            The old line — "use the email and password your agent gave you" — described a
+            handover that never happened. Nobody was given a password: accounts were
+            provisioned with an emailed setup link, and most have never been opened. Telling
+            a tenant to use a password they were never issued sends them looking for a
+            message that does not exist, instead of to the link below that mints one.
+          */}
           <p className="text-sm text-muted-foreground">
-            Use the email and password your agent gave you after your lease was set up
+            Sign in with the email address your lease is under. No password yet, or cannot
+            find the email we sent? Use the link below.
           </p>
         </div>
 
@@ -164,7 +186,7 @@ export default function LoginPage() {
               href={ROUTES.FORGOT_PASSWORD}
               className="text-sm text-primary hover:underline"
             >
-              Forgot password?
+              Set or reset my password
             </Link>
           </div>
           <Button type="submit" disabled={isSubmitting} className="w-full">
