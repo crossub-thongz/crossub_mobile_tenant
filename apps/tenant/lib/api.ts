@@ -11,7 +11,16 @@ export class ApiError extends Error {
   }
 }
 
-const isAuthPath = (path: string): boolean => path.startsWith('/auth/');
+/**
+ * 401 on these must not trigger `/auth/refresh` (would loop). Other `/auth/*`
+ * routes (e.g. `/auth/me`, change-password) should still refresh.
+ */
+const shouldSkipSessionRefresh = (path: string): boolean =>
+  path === '/auth/login' ||
+  path === '/auth/refresh' ||
+  path === '/auth/logout' ||
+  path === '/auth/forgot-password' ||
+  path.startsWith('/auth/reset-password');
 
 let refreshInFlight: Promise<boolean> | null = null;
 
@@ -88,7 +97,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (
     res.status === 401 &&
     typeof window !== 'undefined' &&
-    !isAuthPath(path)
+    !shouldSkipSessionRefresh(path)
   ) {
     if (await tryRefreshSession()) {
       res = await doFetch(path, init);
