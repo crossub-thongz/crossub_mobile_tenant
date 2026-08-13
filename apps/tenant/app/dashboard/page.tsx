@@ -28,6 +28,7 @@ import {
   ROUTES,
 } from '@/constants/routes';
 import { hrefWithFrom } from '@/lib/back-navigation';
+import { formatDate } from '@/lib/format-datetime';
 import { findUrgentIngoingInspection, needsIngoingConfirmationAction } from '@/lib/ingoing-inspection';
 import {
   findUrgentOutgoingInspection,
@@ -192,7 +193,7 @@ export default function DashboardPage() {
         title: 'End of lease settlement',
         summary: `Confirm bond settlement · respond by ${
           vacatingCase.tenantConfirmationDueAt
-            ? new Date(vacatingCase.tenantConfirmationDueAt).toLocaleDateString()
+            ? formatDate(vacatingCase.tenantConfirmationDueAt)
             : 'deadline'
         }`,
         href: ROUTES.VACATING,
