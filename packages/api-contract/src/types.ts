@@ -176,6 +176,26 @@ export interface paths {
         patch: operations["TenantMaintenanceController_respondToSchedule"];
         trace?: never;
     };
+    "/tenant/voice/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Open an in-app voice call with the CROSSUB assistant.
+         * @description Mints a short-lived LiveKit join token and dispatches the voice agent into a fresh room. The caller’s read scope is derived from this session server-side, so the assistant does not have to verify a spoken name and address the way the phone line did. POST because it creates a room and a dispatch; it is not cacheable and not idempotent.
+         */
+        post: operations["TenantAccountController_createVoiceSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/tenant/tenancies": {
         parameters: {
             query?: never;
@@ -829,6 +849,108 @@ export interface paths {
         head?: never;
         /** Decline the proposed bond settlement on an agent-opened end-leasing case. */
         patch: operations["TenantAccountController_declineVacatingSettlement"];
+        trace?: never;
+    };
+    "/tenant/vacating-cases/{caseId}/repair-quote/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Agree to bond-deduction items from the end-leasing quote step. */
+        patch: operations["TenantAccountController_acceptVacatingRepairQuote"];
+        trace?: never;
+    };
+    "/tenant/vacating-cases/{caseId}/repair-quote/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Disagree with bond-deduction items from the end-leasing quote step. */
+        patch: operations["TenantAccountController_declineVacatingRepairQuote"];
+        trace?: never;
+    };
+    "/tenant/vacating-cases/{caseId}/responsibilities/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Acknowledge tenant responsibility items from the end-leasing compare step. */
+        patch: operations["TenantAccountController_acceptVacatingResponsibilities"];
+        trace?: never;
+    };
+    "/tenant/vacating-cases/{caseId}/responsibilities/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Decline tenant responsibility items from the end-leasing compare step. */
+        patch: operations["TenantAccountController_declineVacatingResponsibilities"];
+        trace?: never;
+    };
+    "/tenant/vacating-cases/{caseId}/key-return/photos/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload a key-return proof photo for an end-of-lease case. */
+        post: operations["TenantAccountController_uploadVacatingKeyReturnPhoto"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenant/vacating-cases/{caseId}/key-return": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Submit key-return proof photos after returning keys to the agent location. */
+        patch: operations["TenantAccountController_submitVacatingKeyReturn"];
         trace?: never;
     };
     "/tenant/messages": {
@@ -2071,6 +2193,106 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/inspector/inspections/open-batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The OPEN TASK POOL for the Saturday currently being planned.
+         * @description The weekly batch: its Wednesday cutoffs, which state it is in, what is still unclaimed, and what this inspector already holds. Readable in every state — before Wednesday noon `selectable` is false and the list is a preview. Times are ISO instants; render them in Australia/Sydney, never the handset zone.
+         */
+        get: operations["InspectorInspectionsController_openBatch"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/inspector/inspections/open-batch/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The routed Saturday this inspector is being asked to confirm.
+         * @description Step 5 of the open flow. Returns the persisted plan — the same times the selection returned, never re-planned on read, so what is confirmed is exactly what was shown. Null-bodied 200 when the inspector has selected nothing.
+         */
+        get: operations["InspectorInspectionsController_openBatchPlan"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/inspector/inspections/open-batch/select": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Select the properties to open on Saturday, and get the routed day back.
+         * @description Steps 3 and 4 in one call. Send every pick together — the route, and therefore every suggested time, is a property of the whole selection, so claiming one at a time would suggest the same start for all of them. Picks that do not fit the day come back under `overflow` and are returned to the pool; surface them.
+         */
+        post: operations["InspectorInspectionsController_selectOpenBatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/inspector/inspections/open-batch/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm the suggested open times — or edit them and confirm.
+         * @description Step 6, both halves of the OR in one call: omit `overrides` to accept every suggestion, or include only the stops being moved. On success the schedule becomes real (pool job, viewing session and letting move together) and the agent is emailed the confirmed time — step 7, and the first notice in the flow that carries a time at all. An edited start must stay on the batch’s Saturday and must not overlap another of this inspector’s opens.
+         */
+        post: operations["InspectorInspectionsController_confirmOpenBatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/inspector/inspections/open-batch/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Hand selected opens back to the pool before confirming.
+         * @description Returns them for anyone else in the same batch and re-plans whatever this inspector still holds — dropping a stop changes every time after it. Null-bodied 200 when nothing is left. A confirmed open cannot be released this way.
+         */
+        post: operations["InspectorInspectionsController_releaseOpenBatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/inspector/inspections/{inspectionId}": {
         parameters: {
             query?: never;
@@ -2643,6 +2865,26 @@ export interface paths {
         patch: operations["InspectorAccountController_setLocation"];
         trace?: never;
     };
+    "/agent/voice/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Open an in-app voice call with Gii.
+         * @description Mints a short-lived LiveKit join token and dispatches the voice agent into a fresh room as a spoken front-end for Gii. The signed-in staff identity is passed to the worker server-side, so Gii runs under this agent’s own scoping. POST because it creates a room and a dispatch; it is not cacheable and not idempotent.
+         */
+        post: operations["AgentPortalController_createVoiceSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent/agencies": {
         parameters: {
             query?: never;
@@ -2967,6 +3209,27 @@ export interface paths {
         patch: operations["AgentPortalController_updateProperty"];
         trace?: never;
     };
+    "/agent/properties/{propertyId}/contacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List live tenant and landlord contacts on a property. */
+        get: operations["AgentPortalController_listPropertyContacts"];
+        put?: never;
+        /**
+         * Add a tenant or landlord contact on a property.
+         * @description TENANT contacts are capped at 5. Adding a TENANT with an email automatically emails Tenant app login credentials.
+         */
+        post: operations["AgentPortalController_addPropertyContact"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent/properties/{propertyId}/assigned-agent": {
         parameters: {
             query?: never;
@@ -3083,6 +3346,26 @@ export interface paths {
         put?: never;
         /** Schedule agent self-conducted open (Mon–Fri / Sunday) — no inspector pool job. */
         post: operations["AgentPortalController_scheduleSelfOpenInspection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/properties/{propertyId}/workflows/open-inspection/{inspectionId}/confirm-schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm the scheduled time of an open inspection.
+         * @description The agent accepts the time CROSSUB scheduled. Only available once an inspector is on the job and a time is set — confirming earlier would promise a viewing nobody has agreed to attend. Until it is confirmed, staff see the job as PENDING.
+         */
+        post: operations["AgentPortalController_confirmOpenInspectionSchedule"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3206,6 +3489,26 @@ export interface paths {
         head?: never;
         /** Complete a rent review and sync the new rent to the system. */
         patch: operations["AgentPortalController_completeRentReview"];
+        trace?: never;
+    };
+    "/agent/properties/{propertyId}/workflows/rent-review/{reviewId}/recommended-rent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Adjust the recommended rent, or clear the adjustment.
+         * @description Send `weekly` to recommend your own figure instead of the researched one; omit it or send null to go back to the research. The landlord pack, the report and the notice draft all quote this rate, so they follow the change.
+         */
+        patch: operations["AgentPortalController_setRentReviewRecommendedRent"];
         trace?: never;
     };
     "/agent/properties/{propertyId}/workflows/rent-review/{reviewId}/proposed-rent": {
@@ -3586,6 +3889,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent/properties/{propertyId}/workflows/inspection/routine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request routine inspections for a property.
+         * @description Puts the property on the routine cadence. The agent names no date: the cadence comes from the property’s state (NSW 3/yr, VIC 2/yr) and each instance date is set by the account manager. Idempotent — a property already on routine returns its existing schedule with the request recorded against it.
+         */
+        post: operations["AgentPortalController_requestRoutineInspection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent/properties/{propertyId}/workflows/inspection/ingoing": {
         parameters: {
             query?: never;
@@ -3595,8 +3918,31 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Schedule an ingoing (move-in) inspection. */
+        /**
+         * Request an ingoing (move-in) inspection.
+         * @description The agent names no time — CROSSUB confirms it and emails them (CRS-0068). A `scheduledTime` in the body is accepted and ignored, so an older build of the agent app keeps working.
+         */
         post: operations["AgentPortalController_createIngoingInspection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/properties/{propertyId}/workflows/inspection/outgoing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request an outgoing (move-out) inspection without an end-leasing case (Level 1 / standalone).
+         * @description The agent names no time and no inspector — CROSSUB confirms both and emails them (CRS-0068). `scheduledTime` and `inspectorName` are accepted and ignored.
+         */
+        post: operations["AgentPortalController_createOutgoingInspection"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4052,6 +4398,26 @@ export interface paths {
          * @description Decodes the base64 body, puts it to object storage (R2), and records a PortalDocument. A given propertyId must be within the agent’s assigned book.
          */
         post: operations["AgentPortalController_uploadDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/documents/{documentId}/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stream a managed property document for in-app preview.
+         * @description Proxies stored media (R2 / object storage) through the API so the browser can preview without cross-origin fetch failures. Accepts `portal:<uuid>`, bare portal uuid, and aggregated ids (`inspection:`, `inspection-report:`, `lease:`, `maintenance:`).
+         */
+        get: operations["AgentPortalController_streamDocumentFile"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4532,6 +4898,20 @@ export interface components {
             uploadUrl: string;
             /** @description Storage key to pass to the matching proof/upload-complete endpoint. */
             storageKey: string;
+        };
+        VoiceSessionResponseDto: {
+            /**
+             * @description The LiveKit server to dial. Public URL — connect the client straight to this.
+             * @example wss://crossub-abc123.livekit.cloud
+             */
+            serverUrl: string;
+            /** @description Short-lived join JWT scoped to this room only. Bounds how long the app has to START the call; an established call is unaffected by its expiry. */
+            token: string;
+            /**
+             * @description The room to join. Also the voice agent’s call id, which is what the end-of-call Comm Hub record is keyed by.
+             * @example crossub-tenant-3f7c1b2a-0000-4000-8000-000000000001
+             */
+            roomName: string;
         };
         TenantTenancyResponseDto: {
             /** Format: uuid */
@@ -5221,6 +5601,26 @@ export interface components {
         };
         TenantRentReviewRespondDto: Record<string, never>;
         CreateTenantVacatingCaseDto: Record<string, never>;
+        TenantVacatingRepairQuoteItemDto: {
+            area: string;
+            description: string;
+            quote?: Record<string, never> | null;
+            /** @description When true, this item may be deducted from the bond. */
+            bondDeductible?: boolean;
+            /**
+             * Format: uuid
+             * @description Linked End of Lease maintenance job for this responsibility item, when spawned.
+             */
+            maintenanceRequestId?: Record<string, never> | null;
+        };
+        TenantVacatingSettlementSummaryDto: {
+            unpaidRent: number;
+            unpaidBills: number;
+            maintenanceCost: number;
+            bondHeld: number;
+            netRefund: number;
+            debtAmount: number;
+        };
         TenantVacatingCaseResponseDto: {
             /** Format: uuid */
             id: string;
@@ -5229,10 +5629,10 @@ export interface components {
             /** @example 1 Mobile Way, Sydney */
             propertyAddress: string | null;
             /**
-             * @description Whether the vacating case is active or has been withdrawn.
+             * @description Whether the vacating case is active, fully completed, or has been withdrawn.
              * @enum {string}
              */
-            status: "open" | "cancelled";
+            status: "open" | "completed" | "cancelled";
             /**
              * @description Current end-leasing phase (mirrors staff dashboard tabs).
              * @enum {string}
@@ -5252,6 +5652,15 @@ export interface components {
             vacateDateChanged: boolean;
             /** @description Whether keys have been returned to the agent. */
             keysReturned: boolean;
+            /** @description Where the tenant should return keys (set by the managing agent). */
+            keysReturnAddress: string | null;
+            /** @description Tenant-uploaded proof photos when keys were returned. */
+            keyReturnPhotoUrls: string[];
+            /**
+             * Format: date-time
+             * @description When the tenant submitted their key return report in the app.
+             */
+            tenantKeyReturnSubmittedAt: string | null;
             /**
              * Format: date-time
              * @description Scheduled outgoing inspection date.
@@ -5293,6 +5702,25 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+            /**
+             * @description Tenant review of the compare-step responsibility list (make-good step, before quotes).
+             * @enum {string}
+             */
+            tenantResponsibilityReviewStatus: "none" | "pending" | "accepted" | "declined";
+            /** @description Why the tenant disagreed with the responsibility list, when declined. */
+            tenantResponsibilityDeclineReason: string | null;
+            /**
+             * @description Tenant response to bond-deduction acknowledgement on the quote step.
+             * @enum {string}
+             */
+            tenantRepairQuoteStatus: "pending" | "accepted" | "declined" | "none";
+            /**
+             * Format: date-time
+             * @description When the bond-deduction acknowledgement was sent to the tenant.
+             */
+            tenantBondAckSentAt: string | null;
+            tenantResponsibilityItems: components["schemas"]["TenantVacatingRepairQuoteItemDto"][];
+            repairQuoteSettlementSummary: components["schemas"]["TenantVacatingSettlementSummaryDto"] | null;
         };
         CancelTenantVacatingCaseDto: Record<string, never>;
         UpdateTenantVacateDateDto: Record<string, never>;
@@ -5304,6 +5732,17 @@ export interface components {
             attendance: "yes" | "no";
         };
         TenantDeclineVacatingSettlementDto: Record<string, never>;
+        TenantDeclineVacatingRepairQuoteDto: Record<string, never>;
+        TenantDeclineVacatingResponsibilitiesDto: Record<string, never>;
+        TenantSubmitKeyReturnDto: {
+            /**
+             * @description Public URLs of uploaded key-return proof photos (1–5).
+             * @example [
+             *       "https://cdn.example.com/tenant-key-return/uuid/keys.jpg"
+             *     ]
+             */
+            photoUrls: string[];
+        };
         TenantThreadMessageResponseDto: {
             /** Format: uuid */
             id: string;
@@ -5341,7 +5780,7 @@ export interface components {
              * @example MAINTENANCE
              * @enum {string}
              */
-            department: "LEASING" | "MAINTENANCE" | "INSPECTION" | "ACCOUNTING" | "TRIBUNAL" | "GENERAL";
+            department: "LEASING" | "MAINTENANCE" | "INSPECTION" | "ACCOUNTING" | "TRIBUNAL" | "GENERAL" | "RENT_REVIEW" | "COMPLAINT";
             /**
              * @example [
              *       "CROSSUB Support",
@@ -5370,7 +5809,7 @@ export interface components {
              * @default GENERAL
              * @enum {string}
              */
-            department: "LEASING" | "MAINTENANCE" | "INSPECTION" | "ACCOUNTING" | "TRIBUNAL" | "GENERAL";
+            department: "LEASING" | "MAINTENANCE" | "INSPECTION" | "ACCOUNTING" | "TRIBUNAL" | "GENERAL" | "RENT_REVIEW" | "COMPLAINT";
             /**
              * Format: uuid
              * @description The leased property the thread is about. Omit for a general enquiry.
@@ -5699,6 +6138,16 @@ export interface components {
              *     ]
              */
             features: string[];
+            /**
+             * @description One-line listing headline.
+             * @example 2 bedroom apartment in Chatswood
+             */
+            listingHeadline: string;
+            /**
+             * @description The listing description. States only what the property record holds — see leasing-listing-description.constants.ts.
+             * @example An apartment at 12 Smith Street, Chatswood NSW 2067. The property has 2 bedrooms and 1 bathroom. Rent is $650 per week. Available from 1 September 2026.
+             */
+            description: string;
         };
         PublicListingsResponseDto: {
             items: components["schemas"]["PublicListingResponseDto"][];
@@ -5726,6 +6175,14 @@ export interface components {
             sizeBytes: number;
             /** @description File contents, base64-encoded (no data: URI prefix). */
             contentBase64: string;
+        };
+        PublicApplicationCoApplicantDto: {
+            /** @example Jessica Morris */
+            fullName: string;
+            /** @example jessica.m@email.com */
+            email?: string;
+            /** @example +61 400 333 444 */
+            phone?: string;
         };
         SubmitPublicApplicationDto: {
             /** @example Michael Lee */
@@ -5762,6 +6219,8 @@ export interface components {
             };
             /** @description 100-point check uploads — identity, income, and supporting documentation categories. */
             documents?: components["schemas"]["PublicApplicationDocumentDto"][];
+            /** @description Other adults who will be parties to the lease, named on this same application. They reach the tenancy agreement with the applicant they were named alongside — approve the application and they are on it, decline it and none of them are. */
+            coApplicants?: components["schemas"]["PublicApplicationCoApplicantDto"][];
         };
         PublicApplicationResponseDto: {
             /** Format: uuid */
@@ -6241,7 +6700,7 @@ export interface components {
              * @example ACCOUNTING
              * @enum {string}
              */
-            department: "LEASING" | "MAINTENANCE" | "INSPECTION" | "ACCOUNTING" | "TRIBUNAL" | "GENERAL";
+            department: "LEASING" | "MAINTENANCE" | "INSPECTION" | "ACCOUNTING" | "TRIBUNAL" | "GENERAL" | "RENT_REVIEW" | "COMPLAINT";
             /**
              * @example [
              *       "CROSSUB Support",
@@ -6270,7 +6729,7 @@ export interface components {
              * @default GENERAL
              * @enum {string}
              */
-            department: "LEASING" | "MAINTENANCE" | "INSPECTION" | "ACCOUNTING" | "TRIBUNAL" | "GENERAL";
+            department: "LEASING" | "MAINTENANCE" | "INSPECTION" | "ACCOUNTING" | "TRIBUNAL" | "GENERAL" | "RENT_REVIEW" | "COMPLAINT";
             /**
              * Format: uuid
              * @description An owned property the thread is about. Omit for a general enquiry.
@@ -6800,6 +7259,16 @@ export interface components {
             createdAt: string;
             /** @description When an agent declined the last submitted report — inspector must redo and resubmit. */
             reportDeclineReason: string | null;
+            /**
+             * @description Level 1 prepaid: true until the agency pays at order create — inspector cannot start while this is true. Always false for Level 2 (postpaid).
+             * @example false
+             */
+            awaitingAgentPayment: boolean;
+            /**
+             * @description True when CROSSUB staff manually assigned this job (no accept step) — surface under “Assigned by CROSSUB” in the inspector app.
+             * @example false
+             */
+            assignedByStaff: boolean;
         };
         PaginatedInspectorInspectionsDto: {
             /**
@@ -6823,6 +7292,138 @@ export interface components {
              */
             hasMore: boolean;
             items: components["schemas"]["InspectorInspectionResponseDto"][];
+        };
+        OpenBatchPoolItemDto: {
+            /** Format: uuid */
+            inspectionId: string;
+            /** Format: uuid */
+            propertyId?: string | null;
+            /** @description Display address — street plus suburb where both exist. */
+            address: string;
+            suburb?: string | null;
+            postcode?: string | null;
+            /** @description The property is geocoded, so any leg touching it is a real measurement rather than a suburb-level inference. */
+            hasCoordinates: boolean;
+            /** @description The time the agent asked for, if any. A hint the route weighs — never a booking. */
+            agentPreferredStart?: string | null;
+            /** @description TRUE means this property has NO open time yet — the stored time is a placeholder. Never render a provisional time as an open time; show "time to be confirmed". */
+            timeProvisional: boolean;
+            /** @description Position in the selecting inspector’s route (1-based). */
+            routeSequence?: number | null;
+            /** @description Suggested start (ISO instant). */
+            suggestedStart?: string | null;
+            /** @description Set once the inspector confirmed this open time. */
+            confirmedAt?: string | null;
+            /** @description YYYY-MM-DD of the batch Wednesday this job belongs to. */
+            weekKey: string;
+        };
+        OpenBatchOverviewDto: {
+            weekKey: string;
+            /**
+             * @description ACCUMULATING = before Wednesday noon, list visible but nothing selectable. SELECTING = the Wednesday 12:00–17:00 window. PAST_DEADLINE = late; the office is assigning what is left, but confirmations are still accepted.
+             * @enum {string}
+             */
+            state: "ACCUMULATING" | "SELECTING" | "PAST_DEADLINE";
+            /** @description Ready-to-render banner text for the current state. */
+            stateLabel: string;
+            /** @description Wednesday 12:00pm Sydney — intake closes (note 1). */
+            intakeClosesAt: string;
+            /** @description Wednesday 12:00pm Sydney — selection opens (note 2). */
+            selectionOpensAt: string;
+            /** @description Wednesday 5:00pm Sydney — finalize by here (note 3). */
+            finalizeBy: string;
+            /** @description The Saturday this batch is planning — ISO instant. */
+            viewingDate: string;
+            /** @description Sydney-rendered label for the viewing day. */
+            viewingDateLabel: string;
+            /** @description False before Wednesday noon. The list is still readable — show it, and say when selection opens rather than hiding it behind an unexplained disabled button. */
+            selectable: boolean;
+            /** @description Most opens one inspector may hold for one Saturday. */
+            maxSelectable: number;
+            /** @description Unclaimed in this batch. */
+            available: components["schemas"]["OpenBatchPoolItemDto"][];
+            /** @description Already taken by the signed-in inspector, in route order. */
+            mine: components["schemas"]["OpenBatchPoolItemDto"][];
+            /** @description How many other inspectors’ picks are in this batch. */
+            takenByOthers: number;
+        };
+        OpenBatchPlannedStopDto: {
+            /** Format: uuid */
+            inspectionId: string;
+            /** Format: uuid */
+            propertyId?: string | null;
+            address: string;
+            suburb?: string | null;
+            /** @description 1-based position in the drive. */
+            sequence: number;
+            /** @description Suggested (or confirmed) start — ISO instant. */
+            startTime: string;
+            /** @description End of the viewing window — ISO instant. */
+            endTime: string;
+            /** @description Server-rendered Sydney wall clock for the start, e.g. "15 Aug 2026, 9:00 am AEST". Use it when the client cannot guarantee a Sydney-zoned formatter. */
+            startTimeLabel: string;
+            /** @description Travel allowance from the previous stop, in minutes. */
+            travelMinutesFromPrevious: number;
+            /** @description Estimated road distance from the previous stop. NULL when either end lacks coordinates — the gap was inferred, not measured, and must not be shown as a number. */
+            distanceKmFromPrevious?: number | null;
+            /**
+             * @description How this position was arrived at. COORDINATES = measured; SUBURB = placed by its suburb’s geocoded siblings; UNPLACED = nothing to order on, appended at the end.
+             * @enum {string}
+             */
+            basis: "COORDINATES" | "SUBURB" | "UNPLACED";
+            /** @description Minutes between the planned start and the agent’s requested time. Negative = earlier. */
+            agentPreferenceOffsetMinutes?: number | null;
+            /** @description False only when an agent asked for a time and the route could not get close to it. */
+            agentPreferenceHonoured: boolean;
+            confirmedAt?: string | null;
+            /** @description The inspector moved this stop off its suggested time. */
+            edited: boolean;
+            /** @description When the agent was told the confirmed time (step 7). */
+            agentNotifiedAt?: string | null;
+            weekKey: string;
+        };
+        OpenBatchOverflowDto: {
+            /** Format: uuid */
+            inspectionId: string;
+            address: string;
+            /** @description DAY_FULL — the route ran past the last permitted start. */
+            reason: string;
+        };
+        OpenBatchPlanDto: {
+            /** @description Groups this inspector’s picks into one planned day. */
+            submissionId: string;
+            /** @description YYYY-MM-DD of the batch Wednesday. */
+            weekKey: string;
+            /** @description The Saturday being planned — ISO instant of its midnight. */
+            viewingDate: string;
+            /** @enum {string} */
+            state: "ACCUMULATING" | "SELECTING" | "PAST_DEADLINE";
+            /** @description Wednesday 5:00pm Sydney — confirm by here (note 3). */
+            finalizeBy: string;
+            /** @description Every stop has a confirmed time. */
+            confirmed: boolean;
+            stops: components["schemas"]["OpenBatchPlannedStopDto"][];
+            /** @description Picks that did not fit the day and were returned to the pool. Surface these — a silently dropped selection is a property nobody covers on Saturday. */
+            overflow: components["schemas"]["OpenBatchOverflowDto"][];
+            totalDistanceKm?: number | null;
+            totalTravelMinutes: number;
+        };
+        SelectOpenBatchDto: {
+            /** @description Pool inspection ids to take. Sent together — the route is planned across the whole set, not per property. Ids already held by this inspector are re-planned alongside the new ones rather than rejected. */
+            inspectionIds: string[];
+        };
+        OpenBatchTimeOverrideDto: {
+            /** Format: uuid */
+            inspectionId: string;
+            /** @description Replacement start, ISO instant. Must fall on the batch’s Saturday (Sydney) and must not overlap another of this inspector’s opens. */
+            startTime: string;
+        };
+        ConfirmOpenBatchDto: {
+            /** @description Omit or leave empty to accept every suggested time as-is. Include only the stops being moved — unlisted stops keep their suggestion. */
+            overrides?: components["schemas"]["OpenBatchTimeOverrideDto"][];
+        };
+        ReleaseOpenBatchDto: {
+            inspectionIds: string[];
         };
         InspectorKeyCustodyDto: {
             /** Format: date-time */
@@ -6880,6 +7481,11 @@ export interface components {
             originalScheduledStart?: Record<string, never> | null;
             /** @description Inspector may POST /open-viewing/start while accepted and not yet live. */
             canStart: boolean;
+            /**
+             * @description Level 1 prepaid: true until the agent pays — Start stays disabled while awaiting payment. Always false for Level 2 (postpaid monthly invoice).
+             * @example false
+             */
+            awaitingAgentPayment: boolean;
             /** @description Inspector may POST /inspections/:id/complete while the viewing is live (early finish). */
             canCompleteEarly: boolean;
             checkInUrl: string;
@@ -7132,6 +7738,12 @@ export interface components {
              * @enum {string}
              */
             channel: "APP" | "EMAIL" | "VOICE" | "INTERNAL_NOTE" | "PUSH";
+            attachments?: {
+                fileName?: string;
+                mimeType?: string;
+                sizeBytes?: number;
+                url?: string;
+            }[];
         };
         InspectorMessageThreadResponseDto: {
             /** Format: uuid */
@@ -7165,20 +7777,41 @@ export interface components {
             unread: number;
             messages: components["schemas"]["InspectorThreadMessageResponseDto"][];
         };
+        InspectorMessageAttachmentUploadDto: {
+            /** @example access-notes.pdf */
+            fileName: string;
+            /** @example application/pdf */
+            mimeType: string;
+            /**
+             * @description Decoded byte size (≤ 10 MB).
+             * @example 184321
+             */
+            sizeBytes: number;
+            /** @description The file contents, base64-encoded (no data: URI prefix). */
+            contentBase64: string;
+        };
         CreateInspectorMessageThreadDto: {
             /** @example Access for the routine inspection */
             subject: string;
-            /** @example Can the tenant confirm access for Friday 9am? */
+            /**
+             * @description Message body. May be empty when attachments are provided.
+             * @example Can the tenant confirm access for Friday 9am?
+             */
             body: string;
             /**
              * Format: uuid
              * @description An assigned inspection the thread is about. Omit for a general enquiry.
              */
             inspectionId?: string;
+            attachments?: components["schemas"]["InspectorMessageAttachmentUploadDto"][];
         };
         SendInspectorMessageDto: {
-            /** @example Thanks — I will attend Friday morning. */
+            /**
+             * @description Message body. May be empty when attachments are provided.
+             * @example Thanks — I will attend Friday morning.
+             */
             body: string;
+            attachments?: components["schemas"]["InspectorMessageAttachmentUploadDto"][];
         };
         InspectorNotificationResponseDto: {
             /** Format: uuid */
@@ -7755,7 +8388,7 @@ export interface components {
             items: components["schemas"]["AgentAgencyResponseDto"][];
         };
         AgentPortalWelcomeStatusDto: {
-            /** @description True when at least one assigned agency has completed Sales onboarding (platform access granted, training, listings, handover complete) or is an active client without a sales handover. */
+            /** @description True when at least one assigned agency has completed Sales onboarding, or is an active/onboarding client (including self-registration) without a blocking sales handover. */
             eligible: boolean;
             /** @description True when this user has already dismissed the welcome tour. */
             dismissed: boolean;
@@ -8053,6 +8686,8 @@ export interface components {
              * @example DS633468
              */
             paymentReference: string | null;
+            /** @description Present on PATCH when a newly saved tenant email triggered an automatic Tenant app invite. */
+            tenantPortalInvite?: Record<string, never>;
         };
         PaginatedAgentPropertiesDto: {
             /**
@@ -8076,6 +8711,40 @@ export interface components {
              */
             hasMore: boolean;
             items: components["schemas"]["AgentPropertyResponseDto"][];
+        };
+        AgentPropertyContactDto: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            role: "TENANT" | "LANDLORD";
+            name: string | null;
+            email: string | null;
+            phone: string | null;
+            isPrimary: boolean;
+            sortOrder: number;
+        };
+        AgentPropertyContactsResponseDto: {
+            contacts: components["schemas"]["AgentPropertyContactDto"][];
+        };
+        CreateAgentPropertyContactDto: {
+            /**
+             * @example TENANT
+             * @enum {string}
+             */
+            role: "TENANT" | "LANDLORD";
+            /** @example Alex Tenant */
+            name?: string;
+            /** @example alex@example.com */
+            email?: string;
+            /** @example +61 400 000 000 */
+            phone?: string;
+            /** @description When true, becomes the statutory-notice recipient for this role. */
+            isPrimary?: boolean;
+        };
+        CreateAgentPropertyContactResponseDto: {
+            contacts: components["schemas"]["AgentPropertyContactDto"][];
+            /** @description Present when a TENANT contact with an email triggered an automatic Tenant app invite. */
+            tenantPortalInvite?: Record<string, never>;
         };
         CreateAgentPropertyDto: Record<string, never>;
         UpdateAgentPropertyDto: Record<string, never>;
@@ -8108,12 +8777,14 @@ export interface components {
             force?: boolean;
         };
         RequestAgentOpenInspectionDto: Record<string, never>;
+        AgentOpenInspectionConfirmResultDto: Record<string, never>;
         CancelAgentOpenInspectionDto: Record<string, never>;
         AgentCreateRentReviewDto: Record<string, never>;
         CancelAgentRentReviewDto: {
             /** @example Opened in error — landlord not proceeding with increase */
             reason: string;
         };
+        SetRecommendedRentDto: Record<string, never>;
         SetProposedRentDto: Record<string, never>;
         UpdateNoticePayableFromDto: Record<string, never>;
         UpdateLeaseAgreementTermsDto: Record<string, never>;
@@ -8179,7 +8850,17 @@ export interface components {
             /** @description Public URL of the stored photo. */
             url: string;
         };
+        AgentRequestRoutineInspectionDto: {
+            /**
+             * @description Self-conducted by the tenant, or attended in person by a CROSSUB inspector. Defaults to in-person.
+             * @enum {string}
+             */
+            flow?: "self" | "in_person";
+            /** @description Anything CROSSUB should know when scheduling — access, tenant availability, urgency. Read by a person; never parsed into a date. */
+            note?: string;
+        };
         AgentCreateIngoingInspectionDto: Record<string, never>;
+        AgentCreateOutgoingInspectionDto: Record<string, never>;
         AgentKeyCollectionReportDto: {
             /** Format: date-time */
             submittedAt: string | null;
@@ -8275,6 +8956,11 @@ export interface components {
             status: "DRAFT" | "IN_PROGRESS" | "FIRST_REVIEW" | "SECOND_REVIEW" | "COMPLETED" | "PUBLISHED" | "CANCELLED";
             /** @example Ivy Inspector */
             inspectorName: string | null;
+            /**
+             * @description Prior inspector when staff reassigned this DRAFT job before work started.
+             * @example Alex Chen
+             */
+            previousInspectorName?: string | null;
             /** Format: date-time */
             scheduledDate: string | null;
             /** Format: date-time */
@@ -8740,7 +9426,7 @@ export interface components {
              * @example INSPECTION
              * @enum {string}
              */
-            department: "LEASING" | "MAINTENANCE" | "INSPECTION" | "ACCOUNTING" | "TRIBUNAL" | "GENERAL";
+            department: "LEASING" | "MAINTENANCE" | "INSPECTION" | "ACCOUNTING" | "TRIBUNAL" | "GENERAL" | "RENT_REVIEW" | "COMPLAINT";
             /**
              * @example INSPECTION
              * @enum {string|null}
@@ -8814,7 +9500,7 @@ export interface components {
              * @default GENERAL
              * @enum {string}
              */
-            department: "LEASING" | "MAINTENANCE" | "INSPECTION" | "ACCOUNTING" | "TRIBUNAL" | "GENERAL";
+            department: "LEASING" | "MAINTENANCE" | "INSPECTION" | "ACCOUNTING" | "TRIBUNAL" | "GENERAL" | "RENT_REVIEW" | "COMPLAINT";
             /**
              * Format: uuid
              * @description A managed property the thread is about. Omit for a general enquiry.
@@ -8875,6 +9561,8 @@ export interface components {
             pendingCount: number;
             /** @description True when the agent has returned a signed copy and is waiting for the salesperson to confirm. */
             awaitingSalesApproval: boolean;
+            /** @description True for self-registered Full Service agents — upload signed copy only; admin reviews later. */
+            selfRegistration: boolean;
         };
         AgentSalesAgreementDto: {
             /** Format: uuid */
@@ -8905,6 +9593,8 @@ export interface components {
             /** Format: date-time */
             salesRejectedAt: string | null;
             salesRejectionReason: string | null;
+            /** @description True for self-registered Full Service agents — upload only, no salesperson return step. */
+            selfRegistration: boolean;
         };
         ReturnAgentSalesAgreementDto: {
             /** @description Optional note to the salesperson. */
@@ -9134,6 +9824,13 @@ export interface components {
             content: string;
             attachments?: components["schemas"]["GiiChatAttachmentDto"][];
         };
+        GiiPendingPropertyCandidateDto: {
+            /** Format: uuid */
+            propertyId: string;
+            /** @example 1A Lucy Street, Merrylands West NSW 2160 */
+            label: string;
+            tenantName?: string | null;
+        };
         GiiChatContextDto: {
             /** Format: uuid */
             propertyId?: string;
@@ -9145,6 +9842,10 @@ export interface components {
             pageModule?: string;
             /** @example Property Portal · 66 Berry Street */
             pageLabel?: string;
+            /** @example true */
+            propertyChanged?: boolean;
+            /** @description Echo back `pendingPropertyCandidates` from the previous response when the user is picking from an ambiguous list. */
+            pendingPropertyCandidates?: components["schemas"]["GiiPendingPropertyCandidateDto"][];
         };
         GiiChatRequestDto: {
             messages: components["schemas"]["GiiChatMessageDto"][];
@@ -9279,12 +9980,35 @@ export interface components {
             /** @example VT-1042 */
             caseRef: string;
         };
+        GiiJobCaseLinkDto: {
+            /** @example a1b2c3d4-e5f6-7890-abcd-ef1234567890 */
+            id: string;
+            /**
+             * @example maintenance
+             * @enum {string}
+             */
+            kind: "maintenance" | "rent_review" | "inspection";
+            /**
+             * @description Business reference when one exists (order number / tracking).
+             * @example Q20227
+             */
+            reference: string | null;
+            /**
+             * @description Short button label for the chat UI.
+             * @example Q20227 · Entrance hallway window cannot lock
+             */
+            label: string;
+        };
         GiiChatResponseDto: {
             /** @example That is a break lease — 243 of 365 days elapsed (66.6%), so a 2-week fee of $2,000.00 applies. */
             reply: string;
             /** @description The deterministic assessment behind the reply, for rendering. Null when the turn produced no assessment. */
             assessment: components["schemas"]["GiiAssessmentDto"] | null;
             lodged: components["schemas"]["GiiLodgedDto"] | null;
+            /** @description Job cases from tools on this turn (maintenance, rent review, inspection) for Open buttons in chat. */
+            jobCases: components["schemas"]["GiiJobCaseLinkDto"][];
+            /** @description When find_property was ambiguous this turn, echo these back as `context.pendingPropertyCandidates` so the next reply can pick by number or address fragment. */
+            pendingPropertyCandidates: components["schemas"]["GiiPendingPropertyCandidateDto"][];
             /**
              * @example end_turn
              * @enum {string}
@@ -9768,6 +10492,46 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["TenantMaintenanceRequestSummaryDto"];
                 };
+            };
+        };
+    };
+    TenantAccountController_createVoiceSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VoiceSessionResponseDto"];
+                };
+            };
+            /** @description Missing/invalid/expired token, or the user is not active. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Caller is not a TENANT, or has no tenant profile anchor. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description In-app calling is not configured on this environment, or the voice worker could not be dispatched. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -11153,6 +11917,211 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    TenantAccountController_acceptVacatingRepairQuote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                caseId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantVacatingCaseResponseDto"];
+                };
+            };
+            /** @description Missing/invalid/expired token, or the user is not active. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Caller is not a TENANT, or the case is not on their leased property. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description End-leasing case not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bond acknowledgement has not been sent or was already answered. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    TenantAccountController_declineVacatingRepairQuote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                caseId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TenantDeclineVacatingRepairQuoteDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantVacatingCaseResponseDto"];
+                };
+            };
+            /** @description Invalid body. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing/invalid/expired token, or the user is not active. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Caller is not a TENANT, or the case is not on their leased property. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description End-leasing case not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bond acknowledgement has not been sent or was already answered. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    TenantAccountController_acceptVacatingResponsibilities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                caseId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantVacatingCaseResponseDto"];
+                };
+            };
+        };
+    };
+    TenantAccountController_declineVacatingResponsibilities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                caseId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TenantDeclineVacatingResponsibilitiesDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantVacatingCaseResponseDto"];
+                };
+            };
+        };
+    };
+    TenantAccountController_uploadVacatingKeyReturnPhoto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                caseId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UploadTenantPhotoDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantPhotoUploadResponseDto"];
+                };
+            };
+        };
+    };
+    TenantAccountController_submitVacatingKeyReturn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                caseId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TenantSubmitKeyReturnDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantVacatingCaseResponseDto"];
+                };
             };
         };
     };
@@ -14080,6 +15049,8 @@ export interface operations {
                 pageSize?: number;
                 /** @description Optional type filter. When omitted, all pool types (OPEN, ROUTINE, INGOING, OUTGOING) are returned. */
                 type?: "CONDITION" | "ROUTINE" | "INGOING" | "OUTGOING" | "WARD_ROUND" | "OPEN";
+                /** @description Case-insensitive property search (address or suburb). When set, only matching pool jobs are returned. */
+                search?: string;
             };
             header?: never;
             path?: never;
@@ -14104,6 +15075,239 @@ export interface operations {
             };
             /** @description Caller is not an INSPECTOR, or has no inspector roster record. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    InspectorInspectionsController_openBatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenBatchOverviewDto"];
+                };
+            };
+            /** @description Missing/invalid/expired token, or the user is not active. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Caller is not an INSPECTOR, or has no inspector roster record. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    InspectorInspectionsController_openBatchPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenBatchPlanDto"];
+                };
+            };
+            /** @description Missing/invalid/expired token, or the user is not active. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Caller is not an INSPECTOR, or has no inspector roster record. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    InspectorInspectionsController_selectOpenBatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SelectOpenBatchDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenBatchPlanDto"];
+                };
+            };
+            /** @description Empty selection, more than the per-inspector limit, or a non-UUID id. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing/invalid/expired token, or the user is not active. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Caller is not an INSPECTOR, or has no inspector roster record. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description One or more ids is no longer an unclaimed OPEN pool job. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Before Wednesday 12:00pm (selection is not open yet), receiving jobs is off, or another inspector took every pick first. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    InspectorInspectionsController_confirmOpenBatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmOpenBatchDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenBatchPlanDto"];
+                };
+            };
+            /** @description An override names an open this inspector does not hold, falls on another day, or overlaps another stop. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing/invalid/expired token, or the user is not active. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Caller is not an INSPECTOR, or has no inspector roster record. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description This inspector has selected nothing for the current batch. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A selected open has no suggested time yet, or its viewing was already closed. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    InspectorInspectionsController_releaseOpenBatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReleaseOpenBatchDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenBatchPlanDto"];
+                };
+            };
+            /** @description Empty list or a non-UUID id. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing/invalid/expired token, or the user is not active. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Caller is not an INSPECTOR, or has no inspector roster record. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description One of the ids is already confirmed — release it from the job instead. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -15599,6 +16803,46 @@ export interface operations {
             };
         };
     };
+    AgentPortalController_createVoiceSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VoiceSessionResponseDto"];
+                };
+            };
+            /** @description Missing/invalid/expired token, or the user is not active. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Caller is not an ACCOUNT_MANAGER. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description In-app calling is not configured on this environment, or the voice worker could not be dispatched. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     AgentPortalController_listAgencies: {
         parameters: {
             query?: {
@@ -16629,6 +17873,101 @@ export interface operations {
             };
         };
     };
+    AgentPortalController_listPropertyContacts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                propertyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentPropertyContactsResponseDto"];
+                };
+            };
+            /** @description Missing/invalid/expired token, or the user is not active. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Caller is not an ACCOUNT_MANAGER. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description propertyId does not exist or is not within an assigned agency. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AgentPortalController_addPropertyContact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                propertyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAgentPropertyContactDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateAgentPropertyContactResponseDto"];
+                };
+            };
+            /** @description Invalid body, or the property already has 5 tenants. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing/invalid/expired token, or the user is not active. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Caller is not an ACCOUNT_MANAGER. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description propertyId does not exist or is not within an assigned agency. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     AgentPortalController_assignPropertyAgent: {
         parameters: {
             query?: never;
@@ -16835,6 +18174,28 @@ export interface operations {
             };
         };
     };
+    AgentPortalController_confirmOpenInspectionSchedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                propertyId: string;
+                inspectionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentOpenInspectionConfirmResultDto"];
+                };
+            };
+        };
+    };
     AgentPortalController_cancelOpenInspection: {
         parameters: {
             query?: never;
@@ -16983,6 +18344,30 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AgentPortalController_setRentReviewRecommendedRent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                propertyId: string;
+                reviewId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetRecommendedRentDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -17559,6 +18944,31 @@ export interface operations {
             };
         };
     };
+    AgentPortalController_requestRoutineInspection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                propertyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentRequestRoutineInspectionDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentWorkflowCreateResultDto"];
+                };
+            };
+        };
+    };
     AgentPortalController_createIngoingInspection: {
         parameters: {
             query?: never;
@@ -17571,6 +18981,31 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["AgentCreateIngoingInspectionDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentWorkflowCreateResultDto"];
+                };
+            };
+        };
+    };
+    AgentPortalController_createOutgoingInspection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                propertyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentCreateOutgoingInspectionDto"];
             };
         };
         responses: {
@@ -18562,6 +19997,41 @@ export interface operations {
                 content?: never;
             };
             /** @description propertyId is set but is not within the agent’s assigned book. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AgentPortalController_streamDocumentFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Document id from list/detail (`portal:<uuid>`, `lease:<uuid>`, …). URL-encode colons. */
+                documentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Missing/invalid/expired token, or the user is not active. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Caller is not an ACCOUNT_MANAGER. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Document not found or not within the agent’s assigned book. */
             404: {
                 headers: {
                     [name: string]: unknown;

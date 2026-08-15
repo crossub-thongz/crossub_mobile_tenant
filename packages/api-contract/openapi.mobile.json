@@ -463,6 +463,43 @@
         ]
       }
     },
+    "/tenant/voice/session": {
+      "post": {
+        "description": "Mints a short-lived LiveKit join token and dispatches the voice agent into a fresh room. The caller’s read scope is derived from this session server-side, so the assistant does not have to verify a spoken name and address the way the phone line did. POST because it creates a room and a dispatch; it is not cacheable and not idempotent.",
+        "operationId": "TenantAccountController_createVoiceSession",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceSessionResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller is not a TENANT, or has no tenant profile anchor."
+          },
+          "503": {
+            "description": "In-app calling is not configured on this environment, or the voice worker could not be dispatched."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Open an in-app voice call with the CROSSUB assistant.",
+        "tags": [
+          "tenant"
+        ]
+      }
+    },
     "/tenant/tenancies": {
       "get": {
         "operationId": "TenantAccountController_listTenancies",
@@ -2191,6 +2228,295 @@
           }
         ],
         "summary": "Decline the proposed bond settlement on an agent-opened end-leasing case.",
+        "tags": [
+          "tenant"
+        ]
+      }
+    },
+    "/tenant/vacating-cases/{caseId}/repair-quote/accept": {
+      "patch": {
+        "operationId": "TenantAccountController_acceptVacatingRepairQuote",
+        "parameters": [
+          {
+            "name": "caseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantVacatingCaseResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller is not a TENANT, or the case is not on their leased property."
+          },
+          "404": {
+            "description": "End-leasing case not found."
+          },
+          "409": {
+            "description": "Bond acknowledgement has not been sent or was already answered."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Agree to bond-deduction items from the end-leasing quote step.",
+        "tags": [
+          "tenant"
+        ]
+      }
+    },
+    "/tenant/vacating-cases/{caseId}/repair-quote/decline": {
+      "patch": {
+        "operationId": "TenantAccountController_declineVacatingRepairQuote",
+        "parameters": [
+          {
+            "name": "caseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantDeclineVacatingRepairQuoteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantVacatingCaseResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body."
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller is not a TENANT, or the case is not on their leased property."
+          },
+          "404": {
+            "description": "End-leasing case not found."
+          },
+          "409": {
+            "description": "Bond acknowledgement has not been sent or was already answered."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Disagree with bond-deduction items from the end-leasing quote step.",
+        "tags": [
+          "tenant"
+        ]
+      }
+    },
+    "/tenant/vacating-cases/{caseId}/responsibilities/accept": {
+      "patch": {
+        "operationId": "TenantAccountController_acceptVacatingResponsibilities",
+        "parameters": [
+          {
+            "name": "caseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantVacatingCaseResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Acknowledge tenant responsibility items from the end-leasing compare step.",
+        "tags": [
+          "tenant"
+        ]
+      }
+    },
+    "/tenant/vacating-cases/{caseId}/responsibilities/decline": {
+      "patch": {
+        "operationId": "TenantAccountController_declineVacatingResponsibilities",
+        "parameters": [
+          {
+            "name": "caseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantDeclineVacatingResponsibilitiesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantVacatingCaseResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Decline tenant responsibility items from the end-leasing compare step.",
+        "tags": [
+          "tenant"
+        ]
+      }
+    },
+    "/tenant/vacating-cases/{caseId}/key-return/photos/upload": {
+      "post": {
+        "operationId": "TenantAccountController_uploadVacatingKeyReturnPhoto",
+        "parameters": [
+          {
+            "name": "caseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadTenantPhotoDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantPhotoUploadResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Upload a key-return proof photo for an end-of-lease case.",
+        "tags": [
+          "tenant"
+        ]
+      }
+    },
+    "/tenant/vacating-cases/{caseId}/key-return": {
+      "patch": {
+        "operationId": "TenantAccountController_submitVacatingKeyReturn",
+        "parameters": [
+          {
+            "name": "caseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantSubmitKeyReturnDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantVacatingCaseResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Submit key-return proof photos after returning keys to the agent location.",
         "tags": [
           "tenant"
         ]
@@ -5587,6 +5913,16 @@
               ],
               "type": "string"
             }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Case-insensitive property search (address or suburb). When set, only matching pool jobs are returned.",
+            "schema": {
+              "maxLength": 120,
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -5613,6 +5949,230 @@
           }
         ],
         "summary": "List active unassigned inspections in the job pool.",
+        "tags": [
+          "inspector"
+        ]
+      }
+    },
+    "/inspector/inspections/open-batch": {
+      "get": {
+        "description": "The weekly batch: its Wednesday cutoffs, which state it is in, what is still unclaimed, and what this inspector already holds. Readable in every state — before Wednesday noon `selectable` is false and the list is a preview. Times are ISO instants; render them in Australia/Sydney, never the handset zone.",
+        "operationId": "InspectorInspectionsController_openBatch",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenBatchOverviewDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller is not an INSPECTOR, or has no inspector roster record."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The OPEN TASK POOL for the Saturday currently being planned.",
+        "tags": [
+          "inspector"
+        ]
+      }
+    },
+    "/inspector/inspections/open-batch/plan": {
+      "get": {
+        "description": "Step 5 of the open flow. Returns the persisted plan — the same times the selection returned, never re-planned on read, so what is confirmed is exactly what was shown. Null-bodied 200 when the inspector has selected nothing.",
+        "operationId": "InspectorInspectionsController_openBatchPlan",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenBatchPlanDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller is not an INSPECTOR, or has no inspector roster record."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The routed Saturday this inspector is being asked to confirm.",
+        "tags": [
+          "inspector"
+        ]
+      }
+    },
+    "/inspector/inspections/open-batch/select": {
+      "post": {
+        "description": "Steps 3 and 4 in one call. Send every pick together — the route, and therefore every suggested time, is a property of the whole selection, so claiming one at a time would suggest the same start for all of them. Picks that do not fit the day come back under `overflow` and are returned to the pool; surface them.",
+        "operationId": "InspectorInspectionsController_selectOpenBatch",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SelectOpenBatchDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenBatchPlanDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Empty selection, more than the per-inspector limit, or a non-UUID id."
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller is not an INSPECTOR, or has no inspector roster record."
+          },
+          "404": {
+            "description": "One or more ids is no longer an unclaimed OPEN pool job."
+          },
+          "409": {
+            "description": "Before Wednesday 12:00pm (selection is not open yet), receiving jobs is off, or another inspector took every pick first."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Select the properties to open on Saturday, and get the routed day back.",
+        "tags": [
+          "inspector"
+        ]
+      }
+    },
+    "/inspector/inspections/open-batch/confirm": {
+      "post": {
+        "description": "Step 6, both halves of the OR in one call: omit `overrides` to accept every suggestion, or include only the stops being moved. On success the schedule becomes real (pool job, viewing session and letting move together) and the agent is emailed the confirmed time — step 7, and the first notice in the flow that carries a time at all. An edited start must stay on the batch’s Saturday and must not overlap another of this inspector’s opens.",
+        "operationId": "InspectorInspectionsController_confirmOpenBatch",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmOpenBatchDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenBatchPlanDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "An override names an open this inspector does not hold, falls on another day, or overlaps another stop."
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller is not an INSPECTOR, or has no inspector roster record."
+          },
+          "404": {
+            "description": "This inspector has selected nothing for the current batch."
+          },
+          "409": {
+            "description": "A selected open has no suggested time yet, or its viewing was already closed."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Confirm the suggested open times — or edit them and confirm.",
+        "tags": [
+          "inspector"
+        ]
+      }
+    },
+    "/inspector/inspections/open-batch/release": {
+      "post": {
+        "description": "Returns them for anyone else in the same batch and re-plans whatever this inspector still holds — dropping a stop changes every time after it. Null-bodied 200 when nothing is left. A confirmed open cannot be released this way.",
+        "operationId": "InspectorInspectionsController_releaseOpenBatch",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReleaseOpenBatchDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenBatchPlanDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Empty list or a non-UUID id."
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller is not an INSPECTOR, or has no inspector roster record."
+          },
+          "409": {
+            "description": "One of the ids is already confirmed — release it from the job instead."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Hand selected opens back to the pool before confirming.",
         "tags": [
           "inspector"
         ]
@@ -7192,6 +7752,43 @@
         ]
       }
     },
+    "/agent/voice/session": {
+      "post": {
+        "description": "Mints a short-lived LiveKit join token and dispatches the voice agent into a fresh room as a spoken front-end for Gii. The signed-in staff identity is passed to the worker server-side, so Gii runs under this agent’s own scoping. POST because it creates a room and a dispatch; it is not cacheable and not idempotent.",
+        "operationId": "AgentPortalController_createVoiceSession",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceSessionResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller is not an ACCOUNT_MANAGER."
+          },
+          "503": {
+            "description": "In-app calling is not configured on this environment, or the voice worker could not be dispatched."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Open an in-app voice call with Gii.",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
     "/agent/agencies": {
       "get": {
         "operationId": "AgentPortalController_listAgencies",
@@ -8371,6 +8968,110 @@
         ]
       }
     },
+    "/agent/properties/{propertyId}/contacts": {
+      "get": {
+        "operationId": "AgentPortalController_listPropertyContacts",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentPropertyContactsResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller is not an ACCOUNT_MANAGER."
+          },
+          "404": {
+            "description": "propertyId does not exist or is not within an assigned agency."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List live tenant and landlord contacts on a property.",
+        "tags": [
+          "agent"
+        ]
+      },
+      "post": {
+        "description": "TENANT contacts are capped at 5. Adding a TENANT with an email automatically emails Tenant app login credentials.",
+        "operationId": "AgentPortalController_addPropertyContact",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAgentPropertyContactDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateAgentPropertyContactResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body, or the property already has 5 tenants."
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller is not an ACCOUNT_MANAGER."
+          },
+          "404": {
+            "description": "propertyId does not exist or is not within an assigned agency."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a tenant or landlord contact on a property.",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
     "/agent/properties/{propertyId}/assigned-agent": {
       "patch": {
         "operationId": "AgentPortalController_assignPropertyAgent",
@@ -8742,6 +9443,53 @@
         ]
       }
     },
+    "/agent/properties/{propertyId}/workflows/open-inspection/{inspectionId}/confirm-schedule": {
+      "post": {
+        "description": "The agent accepts the time CROSSUB scheduled. Only available once an inspector is on the job and a time is set — confirming earlier would promise a viewing nobody has agreed to attend. Until it is confirmed, staff see the job as PENDING.",
+        "operationId": "AgentPortalController_confirmOpenInspectionSchedule",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "inspectionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentOpenInspectionConfirmResultDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Confirm the scheduled time of an open inspection.",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
     "/agent/properties/{propertyId}/workflows/open-inspection/{inspectionId}/cancel": {
       "post": {
         "operationId": "AgentPortalController_cancelOpenInspection",
@@ -9052,6 +9800,56 @@
           }
         ],
         "summary": "Complete a rent review and sync the new rent to the system.",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/agent/properties/{propertyId}/workflows/rent-review/{reviewId}/recommended-rent": {
+      "patch": {
+        "description": "Send `weekly` to recommend your own figure instead of the researched one; omit it or send null to go back to the research. The landlord pack, the report and the notice draft all quote this rate, so they follow the change.",
+        "operationId": "AgentPortalController_setRentReviewRecommendedRent",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "reviewId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetRecommendedRentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Adjust the recommended rent, or clear the adjustment.",
         "tags": [
           "agent"
         ]
@@ -10107,8 +10905,57 @@
         ]
       }
     },
+    "/agent/properties/{propertyId}/workflows/inspection/routine": {
+      "post": {
+        "description": "Puts the property on the routine cadence. The agent names no date: the cadence comes from the property’s state (NSW 3/yr, VIC 2/yr) and each instance date is set by the account manager. Idempotent — a property already on routine returns its existing schedule with the request recorded against it.",
+        "operationId": "AgentPortalController_requestRoutineInspection",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentRequestRoutineInspectionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentWorkflowCreateResultDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Request routine inspections for a property.",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
     "/agent/properties/{propertyId}/workflows/inspection/ingoing": {
       "post": {
+        "description": "The agent names no time — CROSSUB confirms it and emails them (CRS-0068). A `scheduledTime` in the body is accepted and ignored, so an older build of the agent app keeps working.",
         "operationId": "AgentPortalController_createIngoingInspection",
         "parameters": [
           {
@@ -10148,7 +10995,55 @@
             "bearer": []
           }
         ],
-        "summary": "Schedule an ingoing (move-in) inspection.",
+        "summary": "Request an ingoing (move-in) inspection.",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/agent/properties/{propertyId}/workflows/inspection/outgoing": {
+      "post": {
+        "description": "The agent names no time and no inspector — CROSSUB confirms both and emails them (CRS-0068). `scheduledTime` and `inspectorName` are accepted and ignored.",
+        "operationId": "AgentPortalController_createOutgoingInspection",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentCreateOutgoingInspectionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentWorkflowCreateResultDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Request an outgoing (move-out) inspection without an end-leasing case (Level 1 / standalone).",
         "tags": [
           "agent"
         ]
@@ -11330,6 +12225,43 @@
         ]
       }
     },
+    "/agent/documents/{documentId}/file": {
+      "get": {
+        "description": "Proxies stored media (R2 / object storage) through the API so the browser can preview without cross-origin fetch failures. Accepts `portal:<uuid>`, bare portal uuid, and aggregated ids (`inspection:`, `inspection-report:`, `lease:`, `maintenance:`).",
+        "operationId": "AgentPortalController_streamDocumentFile",
+        "parameters": [
+          {
+            "name": "documentId",
+            "required": true,
+            "in": "path",
+            "description": "Document id from list/detail (`portal:<uuid>`, `lease:<uuid>`, …). URL-encode colons.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller is not an ACCOUNT_MANAGER."
+          },
+          "404": {
+            "description": "Document not found or not within the agent’s assigned book."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Stream a managed property document for in-app preview.",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
     "/agent/documents/upload-session": {
       "post": {
         "description": "Returns a presigned PUT URL for large files so bytes never pass through the API. Local dev without R2 returns `{ mode: \"inline\" }` — use POST /agent/documents with base64.",
@@ -12418,6 +13350,30 @@
           "mode",
           "uploadUrl",
           "storageKey"
+        ]
+      },
+      "VoiceSessionResponseDto": {
+        "type": "object",
+        "properties": {
+          "serverUrl": {
+            "type": "string",
+            "example": "wss://crossub-abc123.livekit.cloud",
+            "description": "The LiveKit server to dial. Public URL — connect the client straight to this."
+          },
+          "token": {
+            "type": "string",
+            "description": "Short-lived join JWT scoped to this room only. Bounds how long the app has to START the call; an established call is unaffected by its expiry."
+          },
+          "roomName": {
+            "type": "string",
+            "example": "crossub-tenant-3f7c1b2a-0000-4000-8000-000000000001",
+            "description": "The room to join. Also the voice agent’s call id, which is what the end-of-call Comm Hub record is keyed by."
+          }
+        },
+        "required": [
+          "serverUrl",
+          "token",
+          "roomName"
         ]
       },
       "TenantTenancyResponseDto": {
@@ -14077,6 +15033,66 @@
         "type": "object",
         "properties": {}
       },
+      "TenantVacatingRepairQuoteItemDto": {
+        "type": "object",
+        "properties": {
+          "area": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "quote": {
+            "type": "object",
+            "nullable": true
+          },
+          "bondDeductible": {
+            "type": "boolean",
+            "description": "When true, this item may be deducted from the bond."
+          },
+          "maintenanceRequestId": {
+            "type": "object",
+            "nullable": true,
+            "format": "uuid",
+            "description": "Linked End of Lease maintenance job for this responsibility item, when spawned."
+          }
+        },
+        "required": [
+          "area",
+          "description"
+        ]
+      },
+      "TenantVacatingSettlementSummaryDto": {
+        "type": "object",
+        "properties": {
+          "unpaidRent": {
+            "type": "number"
+          },
+          "unpaidBills": {
+            "type": "number"
+          },
+          "maintenanceCost": {
+            "type": "number"
+          },
+          "bondHeld": {
+            "type": "number"
+          },
+          "netRefund": {
+            "type": "number"
+          },
+          "debtAmount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "unpaidRent",
+          "unpaidBills",
+          "maintenanceCost",
+          "bondHeld",
+          "netRefund",
+          "debtAmount"
+        ]
+      },
       "TenantVacatingCaseResponseDto": {
         "type": "object",
         "properties": {
@@ -14098,9 +15114,10 @@
             "type": "string",
             "enum": [
               "open",
+              "completed",
               "cancelled"
             ],
-            "description": "Whether the vacating case is active or has been withdrawn."
+            "description": "Whether the vacating case is active, fully completed, or has been withdrawn."
           },
           "currentStage": {
             "type": "string",
@@ -14131,6 +15148,24 @@
           "keysReturned": {
             "type": "boolean",
             "description": "Whether keys have been returned to the agent."
+          },
+          "keysReturnAddress": {
+            "type": "string",
+            "nullable": true,
+            "description": "Where the tenant should return keys (set by the managing agent)."
+          },
+          "keyReturnPhotoUrls": {
+            "description": "Tenant-uploaded proof photos when keys were returned.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tenantKeyReturnSubmittedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "When the tenant submitted their key return report in the app."
           },
           "inspectionDate": {
             "type": "string",
@@ -14203,6 +15238,51 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "tenantResponsibilityReviewStatus": {
+            "type": "string",
+            "enum": [
+              "none",
+              "pending",
+              "accepted",
+              "declined"
+            ],
+            "description": "Tenant review of the compare-step responsibility list (make-good step, before quotes)."
+          },
+          "tenantResponsibilityDeclineReason": {
+            "type": "string",
+            "nullable": true,
+            "description": "Why the tenant disagreed with the responsibility list, when declined."
+          },
+          "tenantRepairQuoteStatus": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "accepted",
+              "declined",
+              "none"
+            ],
+            "description": "Tenant response to bond-deduction acknowledgement on the quote step."
+          },
+          "tenantBondAckSentAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "When the bond-deduction acknowledgement was sent to the tenant."
+          },
+          "tenantResponsibilityItems": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenantVacatingRepairQuoteItemDto"
+            }
+          },
+          "repairQuoteSettlementSummary": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TenantVacatingSettlementSummaryDto"
+              }
+            ]
           }
         },
         "required": [
@@ -14215,6 +15295,9 @@
           "initialVacatingDate",
           "vacateDateChanged",
           "keysReturned",
+          "keysReturnAddress",
+          "keyReturnPhotoUrls",
+          "tenantKeyReturnSubmittedAt",
           "inspectionDate",
           "outgoingInspectionId",
           "tenantOutgoingAttendance",
@@ -14227,7 +15310,13 @@
           "terminationReason",
           "cancellationReason",
           "createdAt",
-          "updatedAt"
+          "updatedAt",
+          "tenantResponsibilityReviewStatus",
+          "tenantResponsibilityDeclineReason",
+          "tenantRepairQuoteStatus",
+          "tenantBondAckSentAt",
+          "tenantResponsibilityItems",
+          "repairQuoteSettlementSummary"
         ]
       },
       "CancelTenantVacatingCaseDto": {
@@ -14257,6 +15346,32 @@
       "TenantDeclineVacatingSettlementDto": {
         "type": "object",
         "properties": {}
+      },
+      "TenantDeclineVacatingRepairQuoteDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "TenantDeclineVacatingResponsibilitiesDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "TenantSubmitKeyReturnDto": {
+        "type": "object",
+        "properties": {
+          "photoUrls": {
+            "description": "Public URLs of uploaded key-return proof photos (1–5).",
+            "example": [
+              "https://cdn.example.com/tenant-key-return/uuid/keys.jpg"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "photoUrls"
+        ]
       },
       "TenantThreadMessageResponseDto": {
         "type": "object",
@@ -14334,7 +15449,9 @@
               "INSPECTION",
               "ACCOUNTING",
               "TRIBUNAL",
-              "GENERAL"
+              "GENERAL",
+              "RENT_REVIEW",
+              "COMPLAINT"
             ],
             "example": "MAINTENANCE"
           },
@@ -14404,7 +15521,9 @@
               "INSPECTION",
               "ACCOUNTING",
               "TRIBUNAL",
-              "GENERAL"
+              "GENERAL",
+              "RENT_REVIEW",
+              "COMPLAINT"
             ],
             "default": "GENERAL",
             "description": "Staff queue to route the thread to. Defaults to GENERAL."
@@ -15157,6 +16276,16 @@
             "items": {
               "type": "string"
             }
+          },
+          "listingHeadline": {
+            "type": "string",
+            "example": "2 bedroom apartment in Chatswood",
+            "description": "One-line listing headline."
+          },
+          "description": {
+            "type": "string",
+            "example": "An apartment at 12 Smith Street, Chatswood NSW 2067. The property has 2 bedrooms and 1 bathroom. Rent is $650 per week. Available from 1 September 2026.",
+            "description": "The listing description. States only what the property record holds — see leasing-listing-description.constants.ts."
           }
         },
         "required": [
@@ -15165,7 +16294,9 @@
           "status",
           "acceptingApplications",
           "propertyType",
-          "features"
+          "features",
+          "listingHeadline",
+          "description"
         ]
       },
       "PublicListingsResponseDto": {
@@ -15236,6 +16367,26 @@
           "contentBase64"
         ]
       },
+      "PublicApplicationCoApplicantDto": {
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "type": "string",
+            "example": "Jessica Morris"
+          },
+          "email": {
+            "type": "string",
+            "example": "jessica.m@email.com"
+          },
+          "phone": {
+            "type": "string",
+            "example": "+61 400 333 444"
+          }
+        },
+        "required": [
+          "fullName"
+        ]
+      },
       "SubmitPublicApplicationDto": {
         "type": "object",
         "properties": {
@@ -15290,6 +16441,13 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/PublicApplicationDocumentDto"
+            }
+          },
+          "coApplicants": {
+            "description": "Other adults who will be parties to the lease, named on this same application. They reach the tenancy agreement with the applicant they were named alongside — approve the application and they are on it, decline it and none of them are.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicApplicationCoApplicantDto"
             }
           }
         },
@@ -16297,7 +17455,9 @@
               "INSPECTION",
               "ACCOUNTING",
               "TRIBUNAL",
-              "GENERAL"
+              "GENERAL",
+              "RENT_REVIEW",
+              "COMPLAINT"
             ],
             "example": "ACCOUNTING"
           },
@@ -16367,7 +17527,9 @@
               "INSPECTION",
               "ACCOUNTING",
               "TRIBUNAL",
-              "GENERAL"
+              "GENERAL",
+              "RENT_REVIEW",
+              "COMPLAINT"
             ],
             "default": "GENERAL",
             "description": "Staff queue to route the thread to. Defaults to GENERAL."
@@ -17512,6 +18674,16 @@
             "type": "string",
             "nullable": true,
             "description": "When an agent declined the last submitted report — inspector must redo and resubmit."
+          },
+          "awaitingAgentPayment": {
+            "type": "boolean",
+            "example": false,
+            "description": "Level 1 prepaid: true until the agency pays at order create — inspector cannot start while this is true. Always false for Level 2 (postpaid)."
+          },
+          "assignedByStaff": {
+            "type": "boolean",
+            "example": false,
+            "description": "True when CROSSUB staff manually assigned this job (no accept step) — surface under “Assigned by CROSSUB” in the inspector app."
           }
         },
         "required": [
@@ -17529,7 +18701,9 @@
           "urgent",
           "availableInspectorCount",
           "createdAt",
-          "reportDeclineReason"
+          "reportDeclineReason",
+          "awaitingAgentPayment",
+          "assignedByStaff"
         ]
       },
       "PaginatedInspectorInspectionsDto": {
@@ -17568,6 +18742,392 @@
           "pageSize",
           "hasMore",
           "items"
+        ]
+      },
+      "OpenBatchPoolItemDto": {
+        "type": "object",
+        "properties": {
+          "inspectionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "address": {
+            "type": "string",
+            "description": "Display address — street plus suburb where both exist."
+          },
+          "suburb": {
+            "type": "string",
+            "nullable": true
+          },
+          "postcode": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasCoordinates": {
+            "type": "boolean",
+            "description": "The property is geocoded, so any leg touching it is a real measurement rather than a suburb-level inference."
+          },
+          "agentPreferredStart": {
+            "type": "string",
+            "nullable": true,
+            "description": "The time the agent asked for, if any. A hint the route weighs — never a booking."
+          },
+          "timeProvisional": {
+            "type": "boolean",
+            "description": "TRUE means this property has NO open time yet — the stored time is a placeholder. Never render a provisional time as an open time; show \"time to be confirmed\"."
+          },
+          "routeSequence": {
+            "type": "number",
+            "nullable": true,
+            "description": "Position in the selecting inspector’s route (1-based)."
+          },
+          "suggestedStart": {
+            "type": "string",
+            "nullable": true,
+            "description": "Suggested start (ISO instant)."
+          },
+          "confirmedAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "Set once the inspector confirmed this open time."
+          },
+          "weekKey": {
+            "type": "string",
+            "description": "YYYY-MM-DD of the batch Wednesday this job belongs to."
+          }
+        },
+        "required": [
+          "inspectionId",
+          "address",
+          "hasCoordinates",
+          "timeProvisional",
+          "weekKey"
+        ]
+      },
+      "OpenBatchOverviewDto": {
+        "type": "object",
+        "properties": {
+          "weekKey": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "ACCUMULATING",
+              "SELECTING",
+              "PAST_DEADLINE"
+            ],
+            "description": "ACCUMULATING = before Wednesday noon, list visible but nothing selectable. SELECTING = the Wednesday 12:00–17:00 window. PAST_DEADLINE = late; the office is assigning what is left, but confirmations are still accepted."
+          },
+          "stateLabel": {
+            "type": "string",
+            "description": "Ready-to-render banner text for the current state."
+          },
+          "intakeClosesAt": {
+            "type": "string",
+            "description": "Wednesday 12:00pm Sydney — intake closes (note 1)."
+          },
+          "selectionOpensAt": {
+            "type": "string",
+            "description": "Wednesday 12:00pm Sydney — selection opens (note 2)."
+          },
+          "finalizeBy": {
+            "type": "string",
+            "description": "Wednesday 5:00pm Sydney — finalize by here (note 3)."
+          },
+          "viewingDate": {
+            "type": "string",
+            "description": "The Saturday this batch is planning — ISO instant."
+          },
+          "viewingDateLabel": {
+            "type": "string",
+            "description": "Sydney-rendered label for the viewing day."
+          },
+          "selectable": {
+            "type": "boolean",
+            "description": "False before Wednesday noon. The list is still readable — show it, and say when selection opens rather than hiding it behind an unexplained disabled button."
+          },
+          "maxSelectable": {
+            "type": "number",
+            "description": "Most opens one inspector may hold for one Saturday."
+          },
+          "available": {
+            "description": "Unclaimed in this batch.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpenBatchPoolItemDto"
+            }
+          },
+          "mine": {
+            "description": "Already taken by the signed-in inspector, in route order.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpenBatchPoolItemDto"
+            }
+          },
+          "takenByOthers": {
+            "type": "number",
+            "description": "How many other inspectors’ picks are in this batch."
+          }
+        },
+        "required": [
+          "weekKey",
+          "state",
+          "stateLabel",
+          "intakeClosesAt",
+          "selectionOpensAt",
+          "finalizeBy",
+          "viewingDate",
+          "viewingDateLabel",
+          "selectable",
+          "maxSelectable",
+          "available",
+          "mine",
+          "takenByOthers"
+        ]
+      },
+      "OpenBatchPlannedStopDto": {
+        "type": "object",
+        "properties": {
+          "inspectionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "address": {
+            "type": "string"
+          },
+          "suburb": {
+            "type": "string",
+            "nullable": true
+          },
+          "sequence": {
+            "type": "number",
+            "description": "1-based position in the drive."
+          },
+          "startTime": {
+            "type": "string",
+            "description": "Suggested (or confirmed) start — ISO instant."
+          },
+          "endTime": {
+            "type": "string",
+            "description": "End of the viewing window — ISO instant."
+          },
+          "startTimeLabel": {
+            "type": "string",
+            "description": "Server-rendered Sydney wall clock for the start, e.g. \"15 Aug 2026, 9:00 am AEST\". Use it when the client cannot guarantee a Sydney-zoned formatter."
+          },
+          "travelMinutesFromPrevious": {
+            "type": "number",
+            "description": "Travel allowance from the previous stop, in minutes."
+          },
+          "distanceKmFromPrevious": {
+            "type": "number",
+            "nullable": true,
+            "description": "Estimated road distance from the previous stop. NULL when either end lacks coordinates — the gap was inferred, not measured, and must not be shown as a number."
+          },
+          "basis": {
+            "type": "string",
+            "enum": [
+              "COORDINATES",
+              "SUBURB",
+              "UNPLACED"
+            ],
+            "description": "How this position was arrived at. COORDINATES = measured; SUBURB = placed by its suburb’s geocoded siblings; UNPLACED = nothing to order on, appended at the end."
+          },
+          "agentPreferenceOffsetMinutes": {
+            "type": "number",
+            "nullable": true,
+            "description": "Minutes between the planned start and the agent’s requested time. Negative = earlier."
+          },
+          "agentPreferenceHonoured": {
+            "type": "boolean",
+            "description": "False only when an agent asked for a time and the route could not get close to it."
+          },
+          "confirmedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "edited": {
+            "type": "boolean",
+            "description": "The inspector moved this stop off its suggested time."
+          },
+          "agentNotifiedAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "When the agent was told the confirmed time (step 7)."
+          },
+          "weekKey": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "inspectionId",
+          "address",
+          "sequence",
+          "startTime",
+          "endTime",
+          "startTimeLabel",
+          "travelMinutesFromPrevious",
+          "basis",
+          "agentPreferenceHonoured",
+          "edited",
+          "weekKey"
+        ]
+      },
+      "OpenBatchOverflowDto": {
+        "type": "object",
+        "properties": {
+          "inspectionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "address": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "description": "DAY_FULL — the route ran past the last permitted start."
+          }
+        },
+        "required": [
+          "inspectionId",
+          "address",
+          "reason"
+        ]
+      },
+      "OpenBatchPlanDto": {
+        "type": "object",
+        "properties": {
+          "submissionId": {
+            "type": "string",
+            "description": "Groups this inspector’s picks into one planned day."
+          },
+          "weekKey": {
+            "type": "string",
+            "description": "YYYY-MM-DD of the batch Wednesday."
+          },
+          "viewingDate": {
+            "type": "string",
+            "description": "The Saturday being planned — ISO instant of its midnight."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "ACCUMULATING",
+              "SELECTING",
+              "PAST_DEADLINE"
+            ]
+          },
+          "finalizeBy": {
+            "type": "string",
+            "description": "Wednesday 5:00pm Sydney — confirm by here (note 3)."
+          },
+          "confirmed": {
+            "type": "boolean",
+            "description": "Every stop has a confirmed time."
+          },
+          "stops": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpenBatchPlannedStopDto"
+            }
+          },
+          "overflow": {
+            "description": "Picks that did not fit the day and were returned to the pool. Surface these — a silently dropped selection is a property nobody covers on Saturday.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpenBatchOverflowDto"
+            }
+          },
+          "totalDistanceKm": {
+            "type": "number",
+            "nullable": true
+          },
+          "totalTravelMinutes": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "submissionId",
+          "weekKey",
+          "viewingDate",
+          "state",
+          "finalizeBy",
+          "confirmed",
+          "stops",
+          "overflow",
+          "totalTravelMinutes"
+        ]
+      },
+      "SelectOpenBatchDto": {
+        "type": "object",
+        "properties": {
+          "inspectionIds": {
+            "maxItems": 14,
+            "description": "Pool inspection ids to take. Sent together — the route is planned across the whole set, not per property. Ids already held by this inspector are re-planned alongside the new ones rather than rejected.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "inspectionIds"
+        ]
+      },
+      "OpenBatchTimeOverrideDto": {
+        "type": "object",
+        "properties": {
+          "inspectionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "startTime": {
+            "type": "string",
+            "description": "Replacement start, ISO instant. Must fall on the batch’s Saturday (Sydney) and must not overlap another of this inspector’s opens."
+          }
+        },
+        "required": [
+          "inspectionId",
+          "startTime"
+        ]
+      },
+      "ConfirmOpenBatchDto": {
+        "type": "object",
+        "properties": {
+          "overrides": {
+            "description": "Omit or leave empty to accept every suggested time as-is. Include only the stops being moved — unlisted stops keep their suggestion.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpenBatchTimeOverrideDto"
+            }
+          }
+        }
+      },
+      "ReleaseOpenBatchDto": {
+        "type": "object",
+        "properties": {
+          "inspectionIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "inspectionIds"
         ]
       },
       "InspectorKeyCustodyDto": {
@@ -17736,6 +19296,11 @@
             "type": "boolean",
             "description": "Inspector may POST /open-viewing/start while accepted and not yet live."
           },
+          "awaitingAgentPayment": {
+            "type": "boolean",
+            "example": false,
+            "description": "Level 1 prepaid: true until the agent pays — Start stays disabled while awaiting payment. Always false for Level 2 (postpaid monthly invoice)."
+          },
           "canCompleteEarly": {
             "type": "boolean",
             "description": "Inspector may POST /inspections/:id/complete while the viewing is live (early finish)."
@@ -17761,6 +19326,7 @@
           "sessionStatus",
           "startedEarly",
           "canStart",
+          "awaitingAgentPayment",
           "canCompleteEarly",
           "checkInUrl",
           "applyUrl",
@@ -18352,6 +19918,26 @@
               "PUSH"
             ],
             "example": "APP"
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "fileName": {
+                  "type": "string"
+                },
+                "mimeType": {
+                  "type": "string"
+                },
+                "sizeBytes": {
+                  "type": "number"
+                },
+                "url": {
+                  "type": "string"
+                }
+              }
+            }
           }
         },
         "required": [
@@ -18436,6 +20022,36 @@
           "messages"
         ]
       },
+      "InspectorMessageAttachmentUploadDto": {
+        "type": "object",
+        "properties": {
+          "fileName": {
+            "type": "string",
+            "maxLength": 255,
+            "example": "access-notes.pdf"
+          },
+          "mimeType": {
+            "type": "string",
+            "maxLength": 150,
+            "example": "application/pdf"
+          },
+          "sizeBytes": {
+            "type": "number",
+            "example": 184321,
+            "description": "Decoded byte size (≤ 10 MB)."
+          },
+          "contentBase64": {
+            "type": "string",
+            "description": "The file contents, base64-encoded (no data: URI prefix)."
+          }
+        },
+        "required": [
+          "fileName",
+          "mimeType",
+          "sizeBytes",
+          "contentBase64"
+        ]
+      },
       "CreateInspectorMessageThreadDto": {
         "type": "object",
         "properties": {
@@ -18447,12 +20063,19 @@
           "body": {
             "type": "string",
             "maxLength": 4000,
-            "example": "Can the tenant confirm access for Friday 9am?"
+            "example": "Can the tenant confirm access for Friday 9am?",
+            "description": "Message body. May be empty when attachments are provided."
           },
           "inspectionId": {
             "type": "string",
             "format": "uuid",
             "description": "An assigned inspection the thread is about. Omit for a general enquiry."
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InspectorMessageAttachmentUploadDto"
+            }
           }
         },
         "required": [
@@ -18466,7 +20089,14 @@
           "body": {
             "type": "string",
             "maxLength": 4000,
-            "example": "Thanks — I will attend Friday morning."
+            "example": "Thanks — I will attend Friday morning.",
+            "description": "Message body. May be empty when attachments are provided."
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InspectorMessageAttachmentUploadDto"
+            }
           }
         },
         "required": [
@@ -20146,7 +21776,7 @@
         "properties": {
           "eligible": {
             "type": "boolean",
-            "description": "True when at least one assigned agency has completed Sales onboarding (platform access granted, training, listings, handover complete) or is an active client without a sales handover."
+            "description": "True when at least one assigned agency has completed Sales onboarding, or is an active/onboarding client (including self-registration) without a blocking sales handover."
           },
           "dismissed": {
             "type": "boolean",
@@ -20809,6 +22439,10 @@
             "nullable": true,
             "description": "Rent payment reference the tenant quotes on bank transfers (agency initials + property ref).",
             "example": "DS633468"
+          },
+          "tenantPortalInvite": {
+            "type": "object",
+            "description": "Present on PATCH when a newly saved tenant email triggered an automatic Tenant app invite."
           }
         },
         "required": [
@@ -20904,6 +22538,113 @@
           "items"
         ]
       },
+      "AgentPropertyContactDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "TENANT",
+              "LANDLORD"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "isPrimary": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "role",
+          "name",
+          "email",
+          "phone",
+          "isPrimary",
+          "sortOrder"
+        ]
+      },
+      "AgentPropertyContactsResponseDto": {
+        "type": "object",
+        "properties": {
+          "contacts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentPropertyContactDto"
+            }
+          }
+        },
+        "required": [
+          "contacts"
+        ]
+      },
+      "CreateAgentPropertyContactDto": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "TENANT",
+              "LANDLORD"
+            ],
+            "example": "TENANT"
+          },
+          "name": {
+            "type": "string",
+            "example": "Alex Tenant"
+          },
+          "email": {
+            "type": "string",
+            "example": "alex@example.com"
+          },
+          "phone": {
+            "type": "string",
+            "example": "+61 400 000 000"
+          },
+          "isPrimary": {
+            "type": "boolean",
+            "description": "When true, becomes the statutory-notice recipient for this role."
+          }
+        },
+        "required": [
+          "role"
+        ]
+      },
+      "CreateAgentPropertyContactResponseDto": {
+        "type": "object",
+        "properties": {
+          "contacts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentPropertyContactDto"
+            }
+          },
+          "tenantPortalInvite": {
+            "type": "object",
+            "description": "Present when a TENANT contact with an email triggered an automatic Tenant app invite."
+          }
+        },
+        "required": [
+          "contacts"
+        ]
+      },
       "CreateAgentPropertyDto": {
         "type": "object",
         "properties": {}
@@ -20974,6 +22715,10 @@
         "type": "object",
         "properties": {}
       },
+      "AgentOpenInspectionConfirmResultDto": {
+        "type": "object",
+        "properties": {}
+      },
       "CancelAgentOpenInspectionDto": {
         "type": "object",
         "properties": {}
@@ -20994,6 +22739,10 @@
         "required": [
           "reason"
         ]
+      },
+      "SetRecommendedRentDto": {
+        "type": "object",
+        "properties": {}
       },
       "SetProposedRentDto": {
         "type": "object",
@@ -21192,7 +22941,29 @@
           "url"
         ]
       },
+      "AgentRequestRoutineInspectionDto": {
+        "type": "object",
+        "properties": {
+          "flow": {
+            "type": "string",
+            "enum": [
+              "self",
+              "in_person"
+            ],
+            "description": "Self-conducted by the tenant, or attended in person by a CROSSUB inspector. Defaults to in-person."
+          },
+          "note": {
+            "type": "string",
+            "description": "Anything CROSSUB should know when scheduling — access, tenant availability, urgency. Read by a person; never parsed into a date.",
+            "maxLength": 2000
+          }
+        }
+      },
       "AgentCreateIngoingInspectionDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "AgentCreateOutgoingInspectionDto": {
         "type": "object",
         "properties": {}
       },
@@ -21447,6 +23218,12 @@
             "type": "string",
             "nullable": true,
             "example": "Ivy Inspector"
+          },
+          "previousInspectorName": {
+            "type": "string",
+            "nullable": true,
+            "description": "Prior inspector when staff reassigned this DRAFT job before work started.",
+            "example": "Alex Chen"
           },
           "scheduledDate": {
             "type": "string",
@@ -22681,7 +24458,9 @@
               "INSPECTION",
               "ACCOUNTING",
               "TRIBUNAL",
-              "GENERAL"
+              "GENERAL",
+              "RENT_REVIEW",
+              "COMPLAINT"
             ],
             "example": "INSPECTION"
           },
@@ -22891,7 +24670,9 @@
               "INSPECTION",
               "ACCOUNTING",
               "TRIBUNAL",
-              "GENERAL"
+              "GENERAL",
+              "RENT_REVIEW",
+              "COMPLAINT"
             ],
             "default": "GENERAL",
             "description": "Staff queue to route the thread to. Defaults to GENERAL."
@@ -23027,12 +24808,17 @@
           "awaitingSalesApproval": {
             "type": "boolean",
             "description": "True when the agent has returned a signed copy and is waiting for the salesperson to confirm."
+          },
+          "selfRegistration": {
+            "type": "boolean",
+            "description": "True for self-registered Full Service agents — upload signed copy only; admin reviews later."
           }
         },
         "required": [
           "blocked",
           "pendingCount",
-          "awaitingSalesApproval"
+          "awaitingSalesApproval",
+          "selfRegistration"
         ]
       },
       "AgentSalesAgreementDto": {
@@ -23106,6 +24892,10 @@
           "salesRejectionReason": {
             "type": "string",
             "nullable": true
+          },
+          "selfRegistration": {
+            "type": "boolean",
+            "description": "True for self-registered Full Service agents — upload only, no salesperson return step."
           }
         },
         "required": [
@@ -23122,7 +24912,8 @@
           "agentReturnNotes",
           "assignedSalesperson",
           "salesRejectedAt",
-          "salesRejectionReason"
+          "salesRejectionReason",
+          "selfRegistration"
         ]
       },
       "ReturnAgentSalesAgreementDto": {
@@ -23636,6 +25427,27 @@
           "content"
         ]
       },
+      "GiiPendingPropertyCandidateDto": {
+        "type": "object",
+        "properties": {
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "label": {
+            "type": "string",
+            "example": "1A Lucy Street, Merrylands West NSW 2160"
+          },
+          "tenantName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "propertyId",
+          "label"
+        ]
+      },
       "GiiChatContextDto": {
         "type": "object",
         "properties": {
@@ -23658,6 +25470,17 @@
           "pageLabel": {
             "type": "string",
             "example": "Property Portal · 66 Berry Street"
+          },
+          "propertyChanged": {
+            "type": "boolean",
+            "example": true
+          },
+          "pendingPropertyCandidates": {
+            "description": "Echo back `pendingPropertyCandidates` from the previous response when the user is picking from an ambiguous list.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GiiPendingPropertyCandidateDto"
+            }
           }
         }
       },
@@ -23978,6 +25801,41 @@
           "caseRef"
         ]
       },
+      "GiiJobCaseLinkDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "maintenance",
+              "rent_review",
+              "inspection"
+            ],
+            "example": "maintenance"
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true,
+            "example": "Q20227",
+            "description": "Business reference when one exists (order number / tracking)."
+          },
+          "label": {
+            "type": "string",
+            "example": "Q20227 · Entrance hallway window cannot lock",
+            "description": "Short button label for the chat UI."
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "reference",
+          "label"
+        ]
+      },
       "GiiChatResponseDto": {
         "type": "object",
         "properties": {
@@ -24002,6 +25860,20 @@
               }
             ]
           },
+          "jobCases": {
+            "description": "Job cases from tools on this turn (maintenance, rent review, inspection) for Open buttons in chat.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GiiJobCaseLinkDto"
+            }
+          },
+          "pendingPropertyCandidates": {
+            "description": "When find_property was ambiguous this turn, echo these back as `context.pendingPropertyCandidates` so the next reply can pick by number or address fragment.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GiiPendingPropertyCandidateDto"
+            }
+          },
           "stoppedOn": {
             "type": "string",
             "enum": [
@@ -24016,6 +25888,8 @@
           "reply",
           "assessment",
           "lodged",
+          "jobCases",
+          "pendingPropertyCandidates",
           "stoppedOn"
         ]
       },
