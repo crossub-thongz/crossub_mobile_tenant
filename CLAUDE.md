@@ -142,10 +142,8 @@ Render deploy steps are still accurate — trust those, not its feature/demo cla
   `app/repairs/*` and `app/accounting/*`. Grep hits in the alias dirs are almost always the
   wrong file to edit; check the line count first (a stub is ~7 lines).
 - `constants/feature-flags.ts` is a real kill switch, not scaffolding: `APPLICATION_FORM_ENABLED`
-  is currently **`false`**, so `/properties/[id]/apply` short-circuits before rendering the NSW
-  tenancy application wizard. `nsw-tenancy-application-form.tsx`, `application-form-wizard.tsx`
-  and `lib/nsw-tenancy-application.ts` are all live code reachable only by flipping it back on —
-  don't conclude the apply flow is broken or dead from the UI alone.
+  gates the NSW tenancy application wizard on `/properties/[id]/apply`. Set it `false` only to
+  short-circuit to the open-inspection check-in–linked one-tap apply panel for testing.
 - Shared logic lives in `apps/tenant/lib/*` as small single-purpose modules
   (`rent-calculations`, `ingoing-inspection`, `routine-inspection`, `end-leasing`,
   `back-navigation`, …). Prefer extending one of those over adding logic to a page.

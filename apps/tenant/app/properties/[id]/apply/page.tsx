@@ -178,7 +178,7 @@ export default function ApplyPage() {
     );
   }
 
-  // TESTING: NSW wizard disabled — one-tap apply from open inspection check-in.
+  // TESTING: one-tap apply from open inspection check-in when the NSW wizard is off.
   if (!APPLICATION_FORM_ENABLED) {
     return (
       <TenantShell title="Apply" backHref={`/properties/${id}`}>

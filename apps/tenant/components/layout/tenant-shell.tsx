@@ -69,7 +69,9 @@ export function TenantShell({
   const unreadNotifications = notifications.filter((n) => !n.read).length;
   const unreadMessages = messages.reduce((s, m) => s + m.unread, 0);
 
-  const applicantMode = status === 'guest' && isApplicantRoute(pathname);
+  // Guest listing / check-in / apply must not show the signed-in bottom nav while
+  // `/auth/me` is still resolving — that chrome routes people into /dashboard → login.
+  const applicantMode = isApplicantRoute(pathname) && status !== 'authed';
   const showRentReviewAlert =
     !applicantMode && status === 'authed' && !pathname.startsWith('/rent-review');
 
