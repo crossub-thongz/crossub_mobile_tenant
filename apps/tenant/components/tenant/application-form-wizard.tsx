@@ -13,11 +13,15 @@ import {
 import {
   APPLICANT_SUMMARY_STEP,
   APPLICATION_FORM_STEPS,
+  EMPTY_CO_APPLICANT,
   findFirstInvalidWizardStep,
+  isBlankCoApplicant,
+  MAX_CO_APPLICANTS,
   validateApplicantSummary,
   validateApplicationFormStep,
   type ApplicantSummaryInput,
   type ApplicationFormStepId,
+  type CoApplicantInput,
   type NswTenancyApplicationFormData,
   type WizardStepId,
 } from '@/lib/nsw-tenancy-application';
@@ -243,6 +247,11 @@ export function ApplicationFormWizard({
               onChange={(e) => onApplicantChange({ ...applicant, moveInDate: e.target.value })}
             />
           </div>
+
+          <CoApplicantFields
+            rows={applicant.coApplicants}
+            onChange={(coApplicants) => onApplicantChange({ ...applicant, coApplicants })}
+          />
         </section>
       ) : (
         <NswTenancyApplicationForm
@@ -261,6 +270,7 @@ export function ApplicationFormWizard({
             Back
           </Button>
         )}
+
         {isLast ? (
           <Button type="submit" disabled={submitting} className="flex-1">
             {submitting ? 'Submitting…' : 'Submit application'}
@@ -272,5 +282,101 @@ export function ApplicationFormWizard({
         )}
       </div>
     </form>
+  );
+}
+
+/**
+ * Everyone else who will be on the lease (CRS-0069).
+ *
+ * Deliberately here on the applicant step and not beside section C's "Adults" count: that
+ * box is how many people will LIVE in the property, children included, and this list is who
+ * will SIGN. Merging them is what left CROSSUB with "2 adults" and one name.
+ *
+ * Only the name is required. Someone with no email of their own is still a tenant, and a row
+ * that never gets filled in is dropped on submit rather than blocking the form.
+ */
+function CoApplicantFields({
+  rows,
+  onChange,
+}: {
+  rows: CoApplicantInput[];
+  onChange: (next: CoApplicantInput[]) => void;
+}) {
+  const namedCount = rows.filter((row) => !isBlankCoApplicant(row)).length;
+  const canAdd = namedCount < MAX_CO_APPLICANTS;
+
+  const patch = (index: number, next: Partial<CoApplicantInput>) => {
+    onChange(rows.map((row, i) => (i === index ? { ...row, ...next } : row)));
+  };
+
+  return (
+    <div className="space-y-3 border-t pt-4">
+      <div className="space-y-1">
+        <h3 className="text-sm font-semibold">Others on the lease</h3>
+        <p className="text-muted-foreground text-xs">
+          Anyone else who will sign the tenancy agreement with you — a partner or a
+          housemate. Their details go straight onto the agreement, so you will not be asked
+          for them again. Leave this empty if you are applying on your own.
+        </p>
+      </div>
+
+      {rows.map((row, index) => (
+        <div key={index} className="space-y-2 rounded-lg border p-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium">Person {index + 2}</span>
+            <button
+              type="button"
+              className="text-muted-foreground hover:text-destructive text-xs underline"
+              onClick={() => onChange(rows.filter((_, i) => i !== index))}
+            >
+              Remove
+            </button>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor={`coApplicantName-${index}`}>Full name</Label>
+            <Input
+              id={`coApplicantName-${index}`}
+              placeholder="Jessica Morris"
+              value={row.fullName}
+              onChange={(e) => patch(index, { fullName: e.target.value })}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor={`coApplicantEmail-${index}`}>Email (optional)</Label>
+            <Input
+              id={`coApplicantEmail-${index}`}
+              type="email"
+              value={row.email}
+              onChange={(e) => patch(index, { email: e.target.value })}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor={`coApplicantPhone-${index}`}>Phone (optional)</Label>
+            <Input
+              id={`coApplicantPhone-${index}`}
+              type="tel"
+              value={row.phone}
+              onChange={(e) => patch(index, { phone: e.target.value })}
+            />
+          </div>
+        </div>
+      ))}
+
+      {canAdd ? (
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          onClick={() => onChange([...rows, { ...EMPTY_CO_APPLICANT }])}
+        >
+          {rows.length === 0 ? 'Add someone else on the lease' : 'Add another person'}
+        </Button>
+      ) : (
+        <p className="text-muted-foreground text-xs">
+          You can name up to {MAX_CO_APPLICANTS} other people here. Tell us about anyone
+          further in your message to the agent.
+        </p>
+      )}
+    </div>
   );
 }

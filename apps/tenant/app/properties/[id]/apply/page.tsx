@@ -25,6 +25,7 @@ import { fileToBase64 } from '@/lib/utils';
 import {
   defaultNswApplicationForm,
   NSW_APPLICATION_DOCUMENT_SLOTS,
+  submittableCoApplicants,
   type ApplicantSummaryInput,
   type NswTenancyApplicationFormData,
 } from '@/lib/nsw-tenancy-application';
@@ -46,6 +47,7 @@ export default function ApplyPage() {
     annualIncome: 0,
     employmentStatus: 'employed',
     moveInDate: '',
+    coApplicants: [],
   });
   const [nswForm, setNswForm] = useState<NswTenancyApplicationFormData | null>(null);
   const [documentFiles, setDocumentFiles] = useState<Record<string, File | null>>({});
@@ -125,6 +127,8 @@ export default function ApplyPage() {
         });
       }
 
+      const coApplicants = submittableCoApplicants(applicant.coApplicants ?? []);
+
       const payload: SubmitGuestApplicationInput = {
         fullName: applicant.fullName,
         email: applicant.email,
@@ -134,6 +138,9 @@ export default function ApplyPage() {
         moveInDate: applicant.moveInDate,
         formData: nswForm as unknown as Record<string, unknown>,
         documents,
+        // Omitted entirely when nobody was named, so a solo application posts exactly the
+        // body it always did.
+        ...(coApplicants.length > 0 ? { coApplicants } : {}),
         ...(viewingSessionId ? { viewingSessionId } : {}),
       };
 

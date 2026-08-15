@@ -46,6 +46,21 @@ export interface SubmitGuestApplicationInput {
   viewingSessionId?: string;
   formData?: Record<string, unknown>;
   documents?: SubmitGuestApplicationDocument[];
+  /**
+   * Other adults who will be parties to the lease, named on this same application.
+   *
+   * Optional on the API too, so an older build of this app that sends nothing is still
+   * accepted. They reach the tenancy agreement behind the applicant they were named
+   * alongside, and inherit that application's decision — approve it and they are tenants,
+   * decline it and none of them are.
+   */
+  coApplicants?: SubmitGuestApplicationCoApplicant[];
+}
+
+export interface SubmitGuestApplicationCoApplicant {
+  fullName: string;
+  email?: string;
+  phone?: string;
 }
 
 export interface SubmitGuestApplicationDocument {

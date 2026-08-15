@@ -295,6 +295,39 @@ export type ApplicationFormStepId =
   | 'documents'
   | 'declaration';
 
+/**
+ * Another adult who will be on the lease, named on this same application (CRS-0069).
+ *
+ * Until this existed a rental application was single-applicant by construction — one name,
+ * one email, one phone — and section C recorded "adults" as a COUNT with no names. A couple
+ * applying together therefore never sent the second person at all, so the agreement CROSSUB
+ * drafted could only ever carry one of them, and an officer had to type the other in by hand.
+ *
+ * Only the name is required. A partner or housemate with no email of their own is still a
+ * party to the lease, and refusing the row for a missing address would send the household
+ * back to naming nobody — which is the state this replaces. A blank costs one empty contact
+ * line on the contract; a missing person costs a tenant.
+ */
+export type CoApplicantInput = {
+  fullName: string;
+  email: string;
+  phone: string;
+};
+
+/** Matches `MAX_APPLICATION_CO_APPLICANTS` on the API, which rejects a longer array. */
+export const MAX_CO_APPLICANTS = 5;
+
+export const EMPTY_CO_APPLICANT: CoApplicantInput = {
+  fullName: '',
+  email: '',
+  phone: '',
+};
+
+/** True for a row the applicant opened and never filled in — dropped, not rejected. */
+export function isBlankCoApplicant(row: CoApplicantInput): boolean {
+  return !row.fullName.trim() && !row.email.trim() && !row.phone.trim();
+}
+
 export type ApplicantSummaryInput = {
   fullName: string;
   email: string;
@@ -302,6 +335,8 @@ export type ApplicantSummaryInput = {
   annualIncome: number;
   employmentStatus: string;
   moveInDate: string;
+  /** Everyone else who will sign the lease. Empty for a solo application. */
+  coApplicants: CoApplicantInput[];
 };
 
 export const APPLICATION_FORM_STEPS: { id: ApplicationFormStepId; title: string; letter: string }[] =
@@ -327,16 +362,74 @@ function isBlank(value: string | undefined): boolean {
   return !value?.trim();
 }
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * Check the other adults on the lease.
+ *
+ * A blank row is skipped rather than rejected — "Add another" creates one on click, and an
+ * applicant who opens one and changes their mind should not be blocked by it. What is
+ * rejected is a row with contact details and no name, because that is a tenant nobody can
+ * name, and it would reach the agreement as an empty slot on a document people sign.
+ */
+export function validateCoApplicants(
+  rows: CoApplicantInput[],
+  applicantEmail: string,
+): string | null {
+  const named = rows.filter((row) => !isBlankCoApplicant(row));
+  if (named.length > MAX_CO_APPLICANTS) {
+    return `You can name up to ${MAX_CO_APPLICANTS} other people on this application.`;
+  }
+
+  const seen = new Set<string>([applicantEmail.trim().toLowerCase()].filter(Boolean));
+  const seenNames = new Set<string>();
+  for (const row of named) {
+    const fullName = row.fullName.trim();
+    if (!fullName) {
+      return 'Enter the full name of everyone you have added, or clear the row.';
+    }
+    if (fullName.length < 2) return `"${fullName}" is too short to be a full name.`;
+
+    const email = row.email.trim().toLowerCase();
+    if (email && !EMAIL_PATTERN.test(email)) {
+      return `Enter a valid email address for ${fullName}, or leave it blank.`;
+    }
+    if (email && seen.has(email)) {
+      return `${fullName} has the same email address as someone else on this application.`;
+    }
+    if (email) seen.add(email);
+
+    const nameKey = fullName.toLowerCase().replace(/\s+/g, ' ');
+    if (seenNames.has(nameKey)) return `${fullName} is on this application twice.`;
+    seenNames.add(nameKey);
+  }
+  return null;
+}
+
 export function validateApplicantSummary(input: ApplicantSummaryInput): string | null {
   if (!input.fullName.trim()) return 'Enter your full name.';
   if (!input.email.trim()) return 'Enter your email address.';
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email.trim())) {
+  if (!EMAIL_PATTERN.test(input.email.trim())) {
     return 'Enter a valid email address.';
   }
   if (!input.phone.trim()) return 'Enter your phone number.';
   if (!input.moveInDate) return 'Select your preferred move-in date.';
   if (!input.annualIncome || input.annualIncome <= 0) return 'Enter your annual income.';
-  return null;
+  return validateCoApplicants(input.coApplicants ?? [], input.email);
+}
+
+/** The rows worth sending — blank ones dropped, values trimmed. */
+export function submittableCoApplicants(
+  rows: CoApplicantInput[],
+): { fullName: string; email?: string; phone?: string }[] {
+  return rows
+    .filter((row) => !isBlankCoApplicant(row))
+    .map((row) => ({
+      fullName: row.fullName.trim(),
+      ...(row.email.trim() ? { email: row.email.trim() } : {}),
+      ...(row.phone.trim() ? { phone: row.phone.trim() } : {}),
+    }))
+    .filter((row) => row.fullName.length > 0);
 }
 
 export function validateApplicationFormStep(

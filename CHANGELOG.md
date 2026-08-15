@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-08-15
+
+### Added
+- **A household applying together can finally say so — until now the application form could only describe one person, and section C asked how many adults without ever asking who they were.** CRS-0069 (Angel, 13 Aug, P1) was filed against CROSSUB's Leasing screen as *"joint tenant unable to auto fill into the contract"*, and the half of it that lived here is the half nothing downstream could work around: the request body carried exactly one `fullName`/`email`/`phone`, `occupancy.adults` was a **count with no names**, and a grep of this repo for `joint`/`coTenant`/`coApplicant` returned nothing at all. A couple applying as one household never transmitted the second person, so **their details never left the phone** and an officer had to retype them from an email before the tenancy agreement could name both.
+
+  The applicant step now takes "Others on the lease" — a repeatable name / email / phone block, capped at five, sent as `coApplicants` on the same application. Their details go onto the agreement behind the applicant who named them, so the household is asked once and never again.
+
+  **Only the name is required, and that is the decision the rest follows from.** A partner or housemate with no email of their own is still a party to the lease; refusing the row for a missing address would send the household back to naming nobody, which is precisely the state being replaced. A blank costs one empty contact line on the contract — a missing person costs a tenant. A row opened and never filled in is **dropped on submit rather than rejected**, because "Add another person" creates one on click and an applicant who changes their mind must not be stuck behind it. What is rejected is a row with contact details and no name: that is a tenant nobody can name, and it would reach the agreement as an empty slot on a document people sign.
+
+  **The list sits on the applicant step, deliberately not beside section C's "Adults" box.** That box is how many people will *live* in the property, children included; this list is who will *sign*. Merging them is exactly what left CROSSUB with "2 adults" and one name. The cap matches the API's, which answers 400 to a longer array — better to say so here than to lose a completed application, documents and all, to a server rejection at the last step.
+
+  **Nothing changes for someone applying alone**: the field is omitted from the request entirely when nobody is named, so a solo application posts the body it always did. The request type is hand-written rather than generated, so this does not wait on a contract publish — worth knowing, because the vendored `@crossub-thongz/api-contract` in this repo is still 0.10.0 against the API's 0.13.0.
+
 ## 2026-08-11
 
 ### Fixed
