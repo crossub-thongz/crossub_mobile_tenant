@@ -427,7 +427,7 @@ export interface RentReviewCase {
   rentNegotiable?: boolean | null;
   counterHistory: { at: string; amount: number; by: 'tenant' | 'agent' }[];
   moveOutDate?: string;
-  noticeDispatchedAt?: string;
+  noticeDispatchedAt?: string | null;
   noticeTerms?: RentReviewNoticeTerms | null;
   nextRentReviewOpensOn?: string | null;
   emails: RentReviewEmail[];

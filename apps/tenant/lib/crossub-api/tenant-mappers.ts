@@ -42,6 +42,7 @@ import type {
   OutgoingReport,
   RentReceipt,
   RentReviewCase,
+  RentReviewNoticeTerms,
   RentReviewTenantStatus,
   RentalApplication,
   TenantNotification,
@@ -733,13 +734,15 @@ export function toTenantRentReviews(
     const createdAt = asString(r.createdAt) ?? effectiveDate;
     const rawEmails = (r as { emails?: Array<Record<string, unknown>> }).emails ?? [];
     const rawNoticeTerms = (r as { noticeTerms?: Record<string, unknown> | null }).noticeTerms;
-    const noticeTerms = rawNoticeTerms
+    // Annotated, and narrowed through asString first. Without the annotation the object
+    // literal is not contextually typed, so the narrowed 'fixed' widens straight back to
+    // `string` and no longer satisfies RentReviewNoticeTerms' union.
+    const rawLeaseType = rawNoticeTerms ? asString(rawNoticeTerms.leaseType) : null;
+    const noticeTerms: RentReviewNoticeTerms | null = rawNoticeTerms
       ? {
           newRentWeekly: asNumber(rawNoticeTerms.newRentWeekly) ?? 0,
           leaseType:
-            rawNoticeTerms.leaseType === 'fixed' || rawNoticeTerms.leaseType === 'periodic'
-              ? rawNoticeTerms.leaseType
-              : null,
+            rawLeaseType === 'fixed' || rawLeaseType === 'periodic' ? rawLeaseType : null,
           leaseTerm: asString(rawNoticeTerms.leaseTerm) ?? '—',
           rentIncreaseOn: asString(rawNoticeTerms.rentIncreaseOn),
           newLeaseStart: asString(rawNoticeTerms.newLeaseStart),

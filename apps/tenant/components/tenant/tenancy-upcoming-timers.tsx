@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ClipboardList, TrendingUp } from 'lucide-react';
+import { ClipboardList, TrendingUp, type LucideIcon } from 'lucide-react';
 
 import { InfoCard } from '@/components/tenant/info-card';
 import { ROUTES } from '@/constants/routes';
@@ -34,7 +34,7 @@ function TimerCard({
   href,
   accent,
 }: {
-  icon: typeof CalendarClock;
+  icon: LucideIcon;
   label: string;
   targetDate: string;
   detail: string;
