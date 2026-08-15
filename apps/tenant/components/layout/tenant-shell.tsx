@@ -72,6 +72,8 @@ export function TenantShell({
   // Guest listing / check-in / apply must not show the signed-in bottom nav while
   // `/auth/me` is still resolving — that chrome routes people into /dashboard → login.
   const applicantMode = isApplicantRoute(pathname) && status !== 'authed';
+  const openInspectionGuestPath =
+    pathname.includes('/check-in') || pathname.includes('/apply');
   const showRentReviewAlert =
     !applicantMode && status === 'authed' && !pathname.startsWith('/rent-review');
 
@@ -126,9 +128,11 @@ export function TenantShell({
             </Link>
           )}
           {applicantMode ? (
-            <Button asChild variant="outline" size="sm" className="h-8 text-xs">
-              <Link href={ROUTES.LOGIN}>Sign in</Link>
-            </Button>
+            openInspectionGuestPath ? null : (
+              <Button asChild variant="outline" size="sm" className="h-8 text-xs">
+                <Link href={ROUTES.LOGIN}>Sign in</Link>
+              </Button>
+            )
           ) : (
             <div className="flex items-center gap-1">
               <Link

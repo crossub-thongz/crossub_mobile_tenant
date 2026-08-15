@@ -1,4 +1,4 @@
-import { ROUTES } from '@/constants/routes';
+import { ROUTES, isPublicRoute } from '@/constants/routes';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? '/api';
 
@@ -21,6 +21,16 @@ const shouldSkipSessionRefresh = (path: string): boolean =>
   path === '/auth/logout' ||
   path === '/auth/forgot-password' ||
   path.startsWith('/auth/reset-password');
+
+/** Guest listing / check-in / apply — a 401 here means "not signed in", not "go to login". */
+function isBrowserPublicPath(): boolean {
+  return typeof window !== 'undefined' && isPublicRoute(window.location.pathname);
+}
+
+function shouldForceLoginOnUnauthorized(path: string): boolean {
+  if (path === '/auth/me') return false;
+  return !isBrowserPublicPath();
+}
 
 let refreshInFlight: Promise<boolean> | null = null;
 
@@ -101,7 +111,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   ) {
     if (await tryRefreshSession()) {
       res = await doFetch(path, init);
-    } else {
+    } else if (shouldForceLoginOnUnauthorized(path)) {
       return clearSessionAndRedirectToLogin();
     }
   }
@@ -146,7 +156,7 @@ export async function fetchAuthenticatedBlob(url: string): Promise<Blob> {
   if (res.status === 401 && typeof window !== 'undefined') {
     if (await tryRefreshSession()) {
       res = await load();
-    } else {
+    } else if (shouldForceLoginOnUnauthorized(url)) {
       return clearSessionAndRedirectToLogin();
     }
   }
