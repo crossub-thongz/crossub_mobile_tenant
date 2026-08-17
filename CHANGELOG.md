@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-08-18
+
+### Fixed
+- CRS-0082 — the "Upcoming rent review" timer now dates the review from the day the rent was last set (the most recent accepted increase, or the lease start on a first tenancy period) instead of reading the agent registry's `Property.nextRentReviewAt` snapshot, which could sit two years out and showed "in 655 days" against a June 2026 increase.
+
+### Added
+- `constants/rent-review.ts` mirrors the API's rent-review cycle (12 months) and advance-order lead (80 days) so the tenant app and the agent registry put the same day on screen.
+
 ## 2026-08-15
 
 ### Fixed

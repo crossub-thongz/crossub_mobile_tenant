@@ -1,3 +1,7 @@
+import {
+  RENT_REVIEW_ADVANCE_ORDER_DAYS,
+  RENT_REVIEW_CYCLE_YEARS,
+} from '@/constants/rent-review';
 import type { LeaseSummary, RentReviewCase, VacatingCase } from '@/lib/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
@@ -102,17 +106,95 @@ export function resolveUpcomingRentHint(
   return change ? formatUpcomingRentChangeHint(change) : undefined;
 }
 
+/** Calendar date at local noon — stable day arithmetic that ignores the clock. */
+function calendarDate(iso: string | null | undefined): Date | null {
+  const day = iso?.trim().slice(0, 10) ?? '';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+  const parsed = new Date(`${day}T12:00:00`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function toIsoDay(date: Date): string {
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+function addYears(date: Date, years: number): Date {
+  const next = new Date(date.getTime());
+  const dayOfMonth = next.getDate();
+  next.setFullYear(next.getFullYear() + years);
+  // 29 February has no counterpart in a non-leap year — setFullYear rolls it forward to
+  // 1 March. Step back to the last day of the target month so the anniversary lands right.
+  if (next.getDate() !== dayOfMonth) next.setDate(0);
+  return next;
+}
+
+function subtractDays(date: Date, days: number): Date {
+  const next = new Date(date.getTime());
+  next.setDate(next.getDate() - days);
+  return next;
+}
+
 /**
- * Next rent review date for the property page — prefers the lease snapshot, then
- * the accepted review's scheduled follow-up.
+ * The day the rent was last set — CRS-0082.
+ *
+ * The most recent accepted rent increase, or the lease start when the tenant has not been
+ * through a review yet (their first tenancy period). This is the anchor NSW counts the
+ * twelve-month rent-increase period from, so it is what the next review date hangs off.
+ */
+export function resolveLastRentSetDate(
+  lease: LeaseSummary | null,
+  reviews: RentReviewCase[],
+): string | null {
+  const increases = reviews
+    .filter(isAcceptedRentReview)
+    .map((review) =>
+      calendarDate(review.effectiveDate || review.noticeTerms?.rentIncreaseOn),
+    )
+    .filter((date): date is Date => date != null)
+    .map(toIsoDay)
+    .sort();
+
+  const lastIncrease = increases[increases.length - 1];
+  if (lastIncrease) return lastIncrease;
+
+  const leaseStart = calendarDate(lease?.leaseStart);
+  return leaseStart ? toIsoDay(leaseStart) : null;
+}
+
+/**
+ * When the next review order opens: twelve months after the rent was last set, less the
+ * eighty days of run-up the agent needs to serve a sixty-day notice.
+ */
+export function deriveNextRentReviewDate(lastRentSetOn: string | null): string | null {
+  const anchor = calendarDate(lastRentSetOn);
+  if (!anchor) return null;
+  return toIsoDay(
+    subtractDays(addYears(anchor, RENT_REVIEW_CYCLE_YEARS), RENT_REVIEW_ADVANCE_ORDER_DAYS),
+  );
+}
+
+/**
+ * Next rent review date for the property page — CRS-0082.
+ *
+ * Derived from the day the rent was last set rather than read off the lease snapshot.
+ * `lease.nextRentReviewAt` is the agent registry's `Property.nextRentReviewAt`, which is
+ * only rewritten when the property or a review is saved; on a property whose column still
+ * held the date implied by a long lease end it put the review two years out — the reported
+ * "next rent review in 655 days" against a June 2026 increase. The anchor the tenant can
+ * actually see (their last accepted increase, else their lease start) always dates the
+ * cycle correctly, so the stored column is only a fallback for a lease with neither.
  */
 export function resolveNextRentReviewDate(
   lease: LeaseSummary | null,
   reviews: RentReviewCase[],
 ): string | null {
-  if (lease?.nextRentReviewAt) return lease.nextRentReviewAt;
+  const derived = deriveNextRentReviewDate(resolveLastRentSetDate(lease, reviews));
+  if (derived) return derived;
+
   const accepted = findAcceptedRentReview(reviews);
-  return accepted?.nextRentReviewOpensOn ?? null;
+  return accepted?.nextRentReviewOpensOn ?? lease?.nextRentReviewAt ?? null;
 }
 
 /** Show the next rent review countdown when a target date is on file. */
