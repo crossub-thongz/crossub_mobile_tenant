@@ -1,26 +1,18 @@
 import type { OnboardingStep } from '@/lib/types';
 import { onboardingStep } from '@/constants/routes';
 import {
-  fileToBase64WithProgress,
-  mapNetworkUploadProgress,
-} from '@/lib/file-upload';
-import { fileToBase64 } from '@/lib/utils';
+  postJson,
+  postJsonWithUploadProgress,
+  uploadFileDirectToR2,
+  type DirectUploadSession,
+} from '@/lib/direct-upload';
+import { resolveEvidenceMimeType } from '@/lib/utils';
 
 const API_BASE = `${process.env.NEXT_PUBLIC_API_URL ?? '/api'}/v1`;
 
 export const TENANT_LEASING_AGREEMENT_PDF_URL = `${API_BASE}/tenant/leasing/onboarding/agreement.pdf`;
 
 type PaymentProofKind = 'deposit' | 'bond';
-
-type AgreementUploadMeta = {
-  fileName: string;
-  mimeType: string;
-  sizeBytes: number;
-};
-
-type AgreementUploadSession =
-  | { mode: 'inline' }
-  | { mode: 'direct'; uploadUrl: string; storageKey: string };
 
 export interface TenantLeasingContractRevisionDto {
   version: number;
@@ -123,67 +115,6 @@ async function readApiError(res: Response, fallback: string): Promise<string> {
   return message ?? fallback;
 }
 
-function parseXhrError(xhr: XMLHttpRequest, fallback: string): string {
-  try {
-    const body = JSON.parse(xhr.responseText) as { message?: string | string[] };
-    const raw = body.message;
-    if (typeof raw === 'string') return raw;
-    if (Array.isArray(raw) && raw[0]) return raw[0];
-  } catch {
-    // ignore
-  }
-  return fallback;
-}
-
-/** POST JSON through the BFF with XMLHttpRequest so uploads stay POST and report progress. */
-function postJsonWithUploadProgress<T>(
-  path: string,
-  body: unknown,
-  fallback: string,
-  onNetworkProgress?: (networkPercent: number) => void,
-): Promise<T> {
-  const url = `${API_BASE}${path}`;
-
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', url);
-    xhr.withCredentials = true;
-    xhr.setRequestHeader('Content-Type', 'application/json');
-
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable && onNetworkProgress) {
-        onNetworkProgress(Math.round((event.loaded / event.total) * 100));
-      }
-    };
-
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        onNetworkProgress?.(100);
-        try {
-          resolve(JSON.parse(xhr.responseText) as T);
-        } catch {
-          reject(new Error(fallback));
-        }
-        return;
-      }
-      reject(new Error(parseXhrError(xhr, fallback)));
-    };
-
-    xhr.onerror = () => reject(new Error(fallback));
-    xhr.send(JSON.stringify(body));
-  });
-}
-
-type PaymentProofUploadMeta = {
-  fileName: string;
-  mimeType: string;
-  sizeBytes: number;
-};
-
-type PaymentProofUploadSession =
-  | { mode: 'inline' }
-  | { mode: 'direct'; uploadUrl: string; storageKey: string };
-
 function paymentProofPaths(kind: PaymentProofKind): {
   session: string;
   complete: string;
@@ -197,74 +128,8 @@ function paymentProofPaths(kind: PaymentProofKind): {
   };
 }
 
-async function postJson<T>(path: string, body: unknown, fallback: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    throw new Error(await readApiError(res, fallback));
-  }
-  return res.json() as Promise<T>;
-}
-
-async function beginPaymentProofUploadSession(
-  kind: PaymentProofKind,
-  meta: PaymentProofUploadMeta,
-): Promise<PaymentProofUploadSession> {
-  try {
-    return await postJson<PaymentProofUploadSession>(
-      paymentProofPaths(kind).session,
-      meta,
-      'Failed to start payment proof upload',
-    );
-  } catch {
-    // API not deployed yet — fall back to legacy base64-through-BFF upload.
-    return { mode: 'inline' };
-  }
-}
-
-function putFileToPresignedUrl(
-  uploadUrl: string,
-  file: File,
-  mimeType: string,
-  onProgress?: (percent: number) => void,
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('PUT', uploadUrl);
-    xhr.setRequestHeader('Content-Type', mimeType);
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable && onProgress) {
-        onProgress(Math.round((event.loaded / event.total) * 100));
-      }
-    };
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        onProgress?.(100);
-        resolve();
-        return;
-      }
-      reject(new Error(`Direct upload failed: ${xhr.status}`));
-    };
-    xhr.onerror = () => reject(new Error('Direct upload failed'));
-    xhr.send(file);
-  });
-}
-
-async function completePaymentProofUploadSession(
-  kind: PaymentProofKind,
-  storageKey: string,
-  meta: PaymentProofUploadMeta,
-): Promise<string> {
-  const data = await postJson<{ url: string }>(
-    paymentProofPaths(kind).complete,
-    { storageKey, ...meta },
-    'Failed to finalize payment proof upload',
-  );
-  return data.url;
+function leasingPostJson<T>(path: string, body: unknown, fallback: string): Promise<T> {
+  return postJson<T>(`${API_BASE}${path}`, body, fallback);
 }
 
 /**
@@ -277,55 +142,35 @@ export async function uploadPaymentProofFileWithProgress(
   mimeType: string,
   onProgress?: (percent: number) => void,
 ): Promise<string> {
-  const meta: PaymentProofUploadMeta = {
-    fileName: file.name,
+  const paths = paymentProofPaths(kind);
+  return uploadFileDirectToR2({
+    file,
     mimeType,
-    sizeBytes: file.size,
-  };
-
-  const session = await beginPaymentProofUploadSession(kind, meta);
-  if (session.mode === 'direct') {
-    onProgress?.(0);
-    await putFileToPresignedUrl(session.uploadUrl, file, mimeType, (pct) =>
-      onProgress?.(Math.min(90, Math.round(pct * 0.9))),
-    );
-    onProgress?.(95);
-    const url = await completePaymentProofUploadSession(kind, session.storageKey, meta);
-    onProgress?.(100);
-    return url;
-  }
-
-  const contentBase64 = await fileToBase64WithProgress(file, (readPct) => onProgress?.(readPct));
-  const uploadBody: UploadTenantPhotoInput = { ...meta, contentBase64 };
-  return kind === 'deposit'
-    ? uploadDepositProofPhotoWithProgress(uploadBody, onProgress)
-    : uploadBondProofPhotoWithProgress(uploadBody, onProgress);
-}
-
-async function beginAgreementSignedUploadSession(
-  meta: AgreementUploadMeta,
-): Promise<AgreementUploadSession> {
-  try {
-    return await postJson<AgreementUploadSession>(
-      agreementSignedPaths.session,
-      meta,
-      'Failed to start signed agreement upload',
-    );
-  } catch {
-    return { mode: 'inline' };
-  }
-}
-
-async function completeAgreementSignedUploadSession(
-  storageKey: string,
-  meta: AgreementUploadMeta,
-): Promise<string> {
-  const data = await postJson<{ url: string }>(
-    agreementSignedPaths.complete,
-    { storageKey, ...meta },
-    'Failed to finalize signed agreement upload',
-  );
-  return data.url;
+    onProgress,
+    beginSession: (meta) =>
+      leasingPostJson<DirectUploadSession>(
+        paths.session,
+        meta,
+        'Failed to start payment proof upload',
+      ),
+    completeSession: async (storageKey, meta) => {
+      const data = await leasingPostJson<{ url: string }>(
+        paths.complete,
+        { storageKey, ...meta },
+        'Failed to finalize payment proof upload',
+      );
+      return data.url;
+    },
+    inlineUpload: async (contentBase64, meta, networkProgress) => {
+      const data = await postJsonWithUploadProgress<{ url: string }>(
+        `${API_BASE}${paths.inlineUpload}`,
+        { ...meta, contentBase64 },
+        kind === 'deposit' ? 'Failed to upload deposit proof' : 'Failed to upload bond proof',
+        networkProgress,
+      );
+      return data.url;
+    },
+  });
 }
 
 export async function uploadAgreementSignedFileWithProgress(
@@ -333,34 +178,34 @@ export async function uploadAgreementSignedFileWithProgress(
   mimeType: string,
   onProgress?: (percent: number) => void,
 ): Promise<string> {
-  const meta: AgreementUploadMeta = {
-    fileName: file.name,
+  return uploadFileDirectToR2({
+    file,
     mimeType,
-    sizeBytes: file.size,
-  };
-
-  const session = await beginAgreementSignedUploadSession(meta);
-  if (session.mode === 'direct') {
-    onProgress?.(0);
-    await putFileToPresignedUrl(session.uploadUrl, file, mimeType, (pct) =>
-      onProgress?.(Math.min(90, Math.round(pct * 0.9))),
-    );
-    onProgress?.(95);
-    const url = await completeAgreementSignedUploadSession(session.storageKey, meta);
-    onProgress?.(100);
-    return url;
-  }
-
-  const contentBase64 = await fileToBase64WithProgress(file, (readPct) => onProgress?.(readPct));
-  const data = await postJsonWithUploadProgress<{ url: string }>(
-    agreementSignedPaths.upload,
-    { ...meta, contentBase64 },
-    'Failed to upload signed agreement',
-    onProgress
-      ? (networkPct) => onProgress(mapNetworkUploadProgress(networkPct))
-      : undefined,
-  );
-  return data.url;
+    onProgress,
+    beginSession: (meta) =>
+      leasingPostJson<DirectUploadSession>(
+        agreementSignedPaths.session,
+        meta,
+        'Failed to start signed agreement upload',
+      ),
+    completeSession: async (storageKey, meta) => {
+      const data = await leasingPostJson<{ url: string }>(
+        agreementSignedPaths.complete,
+        { storageKey, ...meta },
+        'Failed to finalize signed agreement upload',
+      );
+      return data.url;
+    },
+    inlineUpload: async (contentBase64, meta, networkProgress) => {
+      const data = await postJsonWithUploadProgress<{ url: string }>(
+        `${API_BASE}${agreementSignedPaths.upload}`,
+        { ...meta, contentBase64 },
+        'Failed to upload signed agreement',
+        networkProgress,
+      );
+      return data.url;
+    },
+  });
 }
 
 /** Submit a signed lease agreement for agent confirmation. */
@@ -456,37 +301,50 @@ export async function fetchLeasingOnboarding(): Promise<TenantLeasingOnboardingD
   return normalizeLeasingOnboarding(dto);
 }
 
-/** Stage a key-collection proof photo (`POST /tenant/leasing/onboarding/key-collection/photos/upload`). */
+/** Stage a key-collection proof photo (direct-to-R2, with base64 fallback). */
 export async function uploadKeyCollectionPhoto(
   body: UploadTenantPhotoInput,
 ): Promise<string> {
   const data = await postJsonWithUploadProgress<{ url: string }>(
-    '/tenant/leasing/onboarding/key-collection/photos/upload',
+    `${API_BASE}/tenant/leasing/onboarding/key-collection/photos/upload`,
     body,
     'Failed to upload key collection photo',
   );
   return data.url;
 }
 
+export async function uploadKeyCollectionPhotoFile(file: File): Promise<string> {
+  const mimeType = resolveEvidenceMimeType(file);
+  return uploadFileDirectToR2({
+    file,
+    mimeType,
+    beginSession: (meta) =>
+      leasingPostJson<DirectUploadSession>(
+        '/tenant/leasing/onboarding/key-collection/photos/upload-session',
+        meta,
+        'Failed to start key collection upload',
+      ),
+    completeSession: async (storageKey, meta) => {
+      const data = await leasingPostJson<{ url: string }>(
+        '/tenant/leasing/onboarding/key-collection/photos/upload-complete',
+        { storageKey, ...meta },
+        'Failed to finalize key collection upload',
+      );
+      return data.url;
+    },
+    inlineUpload: (contentBase64, meta) =>
+      uploadKeyCollectionPhoto({ ...meta, contentBase64 }),
+  });
+}
+
 /** Stage a deposit proof file (`POST /tenant/leasing/onboarding/deposit/proof/upload`). */
 export async function uploadDepositProofPhoto(
   body: UploadTenantPhotoInput,
 ): Promise<string> {
-  return uploadDepositProofPhotoWithProgress(body);
-}
-
-/** Stage a deposit proof file with upload progress (40–100% of caller scale). */
-export async function uploadDepositProofPhotoWithProgress(
-  body: UploadTenantPhotoInput,
-  onProgress?: (percent: number) => void,
-): Promise<string> {
   const data = await postJsonWithUploadProgress<{ url: string }>(
-    '/tenant/leasing/onboarding/deposit/proof/upload',
+    `${API_BASE}/tenant/leasing/onboarding/deposit/proof/upload`,
     body,
     'Failed to upload deposit proof',
-    onProgress
-      ? (networkPct) => onProgress(mapNetworkUploadProgress(networkPct))
-      : undefined,
   );
   return data.url;
 }
@@ -515,21 +373,10 @@ export async function submitDepositProof(body: {
 export async function uploadBondProofPhoto(
   body: UploadTenantPhotoInput,
 ): Promise<string> {
-  return uploadBondProofPhotoWithProgress(body);
-}
-
-/** Stage a bond proof file with upload progress (40–100% of caller scale). */
-export async function uploadBondProofPhotoWithProgress(
-  body: UploadTenantPhotoInput,
-  onProgress?: (percent: number) => void,
-): Promise<string> {
   const data = await postJsonWithUploadProgress<{ url: string }>(
-    '/tenant/leasing/onboarding/bond/proof/upload',
+    `${API_BASE}/tenant/leasing/onboarding/bond/proof/upload`,
     body,
     'Failed to upload bond proof',
-    onProgress
-      ? (networkPct) => onProgress(mapNetworkUploadProgress(networkPct))
-      : undefined,
   );
   return data.url;
 }
@@ -558,14 +405,7 @@ export async function submitBondProof(body: {
 export async function uploadKeyCollectionPhotos(files: File[]): Promise<string[]> {
   const urls: string[] = [];
   for (const file of files.slice(0, 5)) {
-    const contentBase64 = await fileToBase64(file);
-    const url = await uploadKeyCollectionPhoto({
-      fileName: file.name,
-      mimeType: file.type || 'application/octet-stream',
-      sizeBytes: file.size,
-      contentBase64,
-    });
-    urls.push(url);
+    urls.push(await uploadKeyCollectionPhotoFile(file));
   }
   return urls;
 }

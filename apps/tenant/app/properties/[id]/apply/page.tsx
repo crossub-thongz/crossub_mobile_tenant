@@ -14,6 +14,7 @@ import { useTenantData } from '@/components/providers/tenant-data-provider';
 import {
   fetchPublicListing,
   submitGuestApplication,
+  uploadGuestApplicationDocument,
   type SubmitGuestApplicationDocument,
   type SubmitGuestApplicationInput,
 } from '@/lib/crossub-api/public-listings-client';
@@ -21,7 +22,6 @@ import type { ListingProperty } from '@/lib/types';
 import { propertyApplySuccess, ROUTES } from '@/constants/routes';
 import { APPLICATION_FORM_ENABLED } from '@/constants/feature-flags';
 import { apiErrorMessage } from '@/lib/api-error-message';
-import { fileToBase64 } from '@/lib/utils';
 import {
   defaultNswApplicationForm,
   NSW_APPLICATION_DOCUMENT_SLOTS,
@@ -115,15 +115,17 @@ export default function ApplyPage() {
       for (const slot of NSW_APPLICATION_DOCUMENT_SLOTS) {
         const file = documentFiles[slot.documentType];
         if (!file) continue;
+        const uploaded = await uploadGuestApplicationDocument(
+          property.id,
+          file,
+          viewingSessionId,
+        );
         documents.push({
           category: slot.category,
           documentType: slot.documentType,
           label: slot.label,
           points: slot.points,
-          fileName: file.name,
-          mimeType: file.type || 'application/octet-stream',
-          sizeBytes: file.size,
-          contentBase64: await fileToBase64(file),
+          ...uploaded,
         });
       }
 

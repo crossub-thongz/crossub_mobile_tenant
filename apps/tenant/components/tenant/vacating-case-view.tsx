@@ -20,7 +20,7 @@ import { hrefWithFrom } from '@/lib/back-navigation';
 import { OUTGOING_STATUS_LABEL } from '@/lib/tenant-labels';
 import { needsVacatingRepairQuoteAction, needsVacatingResponsibilityReviewAction, needsVacatingSettlementAction, maxAccessibleVacatingStageIndex, resolveVacatingViewStage, shouldAdvanceVacatingViewStage } from '@/lib/end-leasing';
 import type { VacatingCase, VacatingRepairQuoteItem, VacatingRepairQuoteSettlement } from '@/lib/types';
-import { cn, formatCurrency, formatDate, fileToBase64 } from '@/lib/utils';
+import { cn, formatCurrency, formatDate, resolveEvidenceMimeType } from '@/lib/utils';
 import { uploadTenantKeyReturnPhoto } from '@/lib/crossub-api/tenant-account-client';
 
 function vacateDateLabel(date: string, changed?: boolean): string {
@@ -106,7 +106,7 @@ function KeyReturnProofUpload({
     try {
       const urls: string[] = [];
       for (const file of Array.from(files).slice(0, remaining)) {
-        const mime = file.type || 'image/jpeg';
+        const mime = resolveEvidenceMimeType(file);
         if (!mime.startsWith('image/')) {
           toast.error(`${file.name} must be a photo`);
           continue;
@@ -115,13 +115,10 @@ function KeyReturnProofUpload({
           toast.error(`${file.name} exceeds the 25 MB limit`);
           continue;
         }
-        const contentBase64 = await fileToBase64(file);
         const url = await uploadTenantKeyReturnPhoto({
           caseId,
-          fileName: file.name,
+          file,
           mimeType: mime,
-          sizeBytes: file.size,
-          contentBase64,
         });
         urls.push(url);
       }

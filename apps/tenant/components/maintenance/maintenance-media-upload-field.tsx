@@ -5,9 +5,8 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { Label } from '@/components/ui/label';
-import { uploadMaintenancePhoto } from '@/lib/crossub-api/tenant-account-client';
-import { fileToBase64 } from '@/lib/utils';
-import { cn } from '@/lib/utils';
+import { uploadMaintenancePhotoFile } from '@/lib/crossub-api/tenant-account-client';
+import { cn, resolveEvidenceMimeType } from '@/lib/utils';
 
 const MAX_FILES = 5;
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
@@ -40,7 +39,7 @@ export function MaintenanceMediaUploadField({
     try {
       const urls: string[] = [];
       for (const file of Array.from(files).slice(0, remaining)) {
-        const mime = file.type || 'image/jpeg';
+        const mime = resolveEvidenceMimeType(file);
         if (!mime.startsWith('image/') && !mime.startsWith('video/')) {
           toast.error(`${file.name} must be a photo or video`);
           continue;
@@ -49,13 +48,7 @@ export function MaintenanceMediaUploadField({
           toast.error(`${file.name} exceeds the ${MAX_FILE_LABEL} limit`);
           continue;
         }
-        const contentBase64 = await fileToBase64(file);
-        const url = await uploadMaintenancePhoto({
-          fileName: file.name,
-          mimeType: mime,
-          sizeBytes: file.size,
-          contentBase64,
-        });
+        const url = await uploadMaintenancePhotoFile(file, mime);
         urls.push(url);
       }
       if (urls.length) {

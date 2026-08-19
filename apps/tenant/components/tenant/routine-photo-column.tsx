@@ -6,12 +6,9 @@ import { toast } from 'sonner';
 
 import { RoutineCameraCapture } from '@/components/tenant/routine-camera-capture';
 import { Button } from '@/components/ui/button';
-import { uploadMaintenancePhoto } from '@/lib/crossub-api/tenant-account-client';
-import {
-  compressImageForUpload,
-  dataUrlToUploadParts,
-} from '@/lib/compress-image';
-import { cn, fileToBase64 } from '@/lib/utils';
+import { uploadMaintenancePhotoFile } from '@/lib/crossub-api/tenant-account-client';
+import { dataUrlToFile } from '@/lib/compress-image';
+import { cn, resolveEvidenceMimeType } from '@/lib/utils';
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 
@@ -38,39 +35,23 @@ export function RoutinePhotoColumn({
   const primaryUrl = photoUrls[0];
 
   const uploadDataUrl = async (dataUrl: string) => {
-    const parts = dataUrlToUploadParts(dataUrl);
-    if (!parts) {
+    const file = dataUrlToFile(dataUrl, `routine-${Date.now()}.jpg`);
+    if (!file) {
       toast.error('Could not process photo');
       return null;
     }
-    return uploadMaintenancePhoto({
-      fileName: `routine-${Date.now()}.jpg`,
-      mimeType: parts.mimeType,
-      sizeBytes: parts.sizeBytes,
-      contentBase64: parts.contentBase64,
-    });
+    return uploadMaintenancePhotoFile(file);
   };
 
   const uploadFile = async (file: File) => {
-    const mime = file.type || 'image/jpeg';
+    const mime = resolveEvidenceMimeType(file);
     if (!mime.startsWith('image/') && !mime.startsWith('video/')) return null;
     if (file.size > MAX_FILE_BYTES) {
       toast.error('Photo is too large. Please choose a smaller image.');
       return null;
     }
 
-    if (mime.startsWith('image/')) {
-      const dataUrl = await compressImageForUpload(file);
-      return uploadDataUrl(dataUrl);
-    }
-
-    const contentBase64 = await fileToBase64(file);
-    return uploadMaintenancePhoto({
-      fileName: file.name,
-      mimeType: mime,
-      sizeBytes: file.size,
-      contentBase64,
-    });
+    return uploadMaintenancePhotoFile(file, mime);
   };
 
   const addFiles = async (files: File[]) => {

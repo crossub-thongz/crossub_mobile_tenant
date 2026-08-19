@@ -1,6 +1,12 @@
 import type { ListingProperty } from '@/lib/types';
 import { formatFullAddress } from '@/lib/format-address';
 import { parseApiErrorMessage } from '@/lib/api-error-message';
+import {
+  postJson,
+  putFileToPresignedUrl,
+  type DirectUploadSession,
+} from '@/lib/direct-upload';
+import { fileToBase64, resolvePaymentProofMimeType } from '@/lib/utils';
 
 /** Browser → tenant Next proxy → crossub API (see apps/tenant/.env API_INTERNAL_URL). */
 export const PUBLIC_LISTINGS_ENDPOINT = '/api/v1/public/listings';
@@ -71,7 +77,8 @@ export interface SubmitGuestApplicationDocument {
   fileName: string;
   mimeType: string;
   sizeBytes: number;
-  contentBase64: string;
+  contentBase64?: string;
+  storageKey?: string;
 }
 
 export interface GuestApplicationResult {
@@ -163,9 +170,70 @@ export async function fetchPublicListing(
   return mapPublicListingToProperty(dto);
 }
 
-/** Soft client cap — keeps the JSON+base64 POST under common proxy limits. */
+/** Soft client cap — keeps leftover inline fallbacks under common proxy limits. */
 export const MAX_APPLICATION_DOCUMENT_BYTES = 8 * 1024 * 1024;
 export const MAX_APPLICATION_TOTAL_DOCUMENT_BYTES = 40 * 1024 * 1024;
+
+/** Stage one application document via direct-to-R2; falls back to base64 for submit. */
+export async function uploadGuestApplicationDocument(
+  propertyId: string,
+  file: File,
+  viewingSessionId?: string,
+): Promise<Pick<SubmitGuestApplicationDocument, 'fileName' | 'mimeType' | 'sizeBytes' | 'storageKey' | 'contentBase64'>> {
+  const mimeType = resolvePaymentProofMimeType(file) || file.type || 'application/octet-stream';
+  const meta = {
+    fileName: file.name,
+    mimeType,
+    sizeBytes: file.size,
+    ...(viewingSessionId ? { viewingSessionId } : {}),
+  };
+  const sessionUrl = `${PUBLIC_API_V1}/public/listings/${propertyId}/documents/upload-session`;
+  const completeUrl = `${PUBLIC_API_V1}/public/listings/${propertyId}/documents/upload-complete`;
+
+  let session: DirectUploadSession = { mode: 'inline' };
+  try {
+    session = await postJson<DirectUploadSession>(
+      sessionUrl,
+      meta,
+      'Failed to start document upload',
+      'omit',
+    );
+  } catch {
+    session = { mode: 'inline' };
+  }
+
+  if (session.mode === 'direct') {
+    try {
+      await putFileToPresignedUrl(session.uploadUrl, file, mimeType);
+      await postJson(
+        completeUrl,
+        {
+          storageKey: session.storageKey,
+          fileName: meta.fileName,
+          mimeType: meta.mimeType,
+          sizeBytes: meta.sizeBytes,
+        },
+        'Failed to finalize document upload',
+        'omit',
+      );
+      return {
+        fileName: file.name,
+        mimeType,
+        sizeBytes: file.size,
+        storageKey: session.storageKey,
+      };
+    } catch {
+      // CORS-blocked PUT — fall back to inline base64 on submit.
+    }
+  }
+
+  return {
+    fileName: file.name,
+    mimeType,
+    sizeBytes: file.size,
+    contentBase64: await fileToBase64(file),
+  };
+}
 
 /** Guest application submit (`POST /api/v1/public/listings/:id/applications`). */
 export async function submitGuestApplication(

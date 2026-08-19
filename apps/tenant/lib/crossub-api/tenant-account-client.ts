@@ -1,8 +1,15 @@
 import type { components } from '@crossub-thongz/api-contract';
 
-import { fileToBase64 } from '@/lib/utils';
-
 import { fetchAuthenticatedBlob } from '@/lib/api';
+import {
+  postJson,
+  postJsonWithUploadProgress,
+  uploadFileDirectToR2,
+  type DirectUploadMeta,
+  type DirectUploadSession,
+} from '@/lib/direct-upload';
+import { resolveEvidenceMimeType } from '@/lib/utils';
+
 import { crossub } from './client';
 import { collectPages } from './paged';
 import { parseApiErrorMessage } from '@/lib/api-error-message';
@@ -559,40 +566,43 @@ export async function declineTenantVacatingRepairQuote(
   return (await response.json()) as TenantVacatingCase;
 }
 
-/** Upload proof photo for key return (`POST .../key-return/photos/upload`). */
+/** Upload a key-return proof photo (direct-to-R2, with base64 fallback). */
 export async function uploadTenantKeyReturnPhoto(input: {
   caseId: string;
-  fileName: string;
-  mimeType: string;
-  sizeBytes: number;
-  contentBase64: string;
+  file: File;
+  mimeType?: string;
 }): Promise<string> {
-  const response = await fetch(
-    `${API_BASE}/tenant/vacating-cases/${encodeURIComponent(input.caseId)}/key-return/photos/upload`,
-    {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        fileName: input.fileName,
-        mimeType: input.mimeType,
-        sizeBytes: input.sizeBytes,
-        contentBase64: input.contentBase64,
-      }),
+  const mimeType = input.mimeType || resolveEvidenceMimeType(input.file);
+  const caseId = encodeURIComponent(input.caseId);
+  const sessionPath = `${API_BASE}/tenant/vacating-cases/${caseId}/key-return/photos/upload-session`;
+  const completePath = `${API_BASE}/tenant/vacating-cases/${caseId}/key-return/photos/upload-complete`;
+  const inlinePath = `${API_BASE}/tenant/vacating-cases/${caseId}/key-return/photos/upload`;
+
+  return uploadFileDirectToR2({
+    file: input.file,
+    mimeType,
+    beginSession: (meta) =>
+      postJson<DirectUploadSession>(sessionPath, meta, 'Failed to start key return upload'),
+    completeSession: async (storageKey, meta) => {
+      const data = await postJson<{ url?: string }>(
+        completePath,
+        { storageKey, ...meta },
+        'Failed to finalize key return upload',
+      );
+      if (!data.url) throw new Error('Upload succeeded but no URL returned');
+      return data.url;
     },
-  );
-  if (!response.ok) {
-    let errBody: unknown;
-    try {
-      errBody = await response.json();
-    } catch {
-      errBody = undefined;
-    }
-    throwTenantApiError(errBody, response, 'Failed to upload key return photo');
-  }
-  const data = (await response.json()) as { url?: string };
-  if (!data.url) throw new Error('Upload succeeded but no URL returned');
-  return data.url;
+    inlineUpload: async (contentBase64, meta, onProgress) => {
+      const data = await postJsonWithUploadProgress<{ url?: string }>(
+        inlinePath,
+        { ...meta, contentBase64 },
+        'Failed to upload key return photo',
+        onProgress,
+      );
+      if (!data.url) throw new Error('Upload succeeded but no URL returned');
+      return data.url;
+    },
+  });
 }
 
 /** Submit key return proof (`PATCH .../key-return`). */
@@ -774,9 +784,8 @@ export async function submitMaintenanceRequest(
 }
 
 /**
- * Stage a single repair photo before creating the request
- * (`POST /api/v1/tenant/maintenance-requests/photos/upload`). Returns the stored file's
- * public url; the caller collects the urls and passes them to `submitMaintenanceRequest`.
+ * Stage a single repair photo before creating the request.
+ * Uses direct-to-R2 on staging/production; falls back to base64 JSON locally.
  */
 export async function uploadMaintenancePhoto(
   body: UploadTenantPhoto,
@@ -789,22 +798,41 @@ export async function uploadMaintenancePhoto(
   return data.url;
 }
 
+export async function uploadMaintenancePhotoFile(
+  file: File,
+  mimeType = resolveEvidenceMimeType(file),
+): Promise<string> {
+  return uploadFileDirectToR2({
+    file,
+    mimeType,
+    beginSession: (meta) =>
+      postJson<DirectUploadSession>(
+        `${API_BASE}/tenant/maintenance-requests/photos/upload-session`,
+        meta,
+        'Failed to start photo upload',
+      ),
+    completeSession: async (storageKey, meta: DirectUploadMeta) => {
+      const data = await postJson<{ url?: string }>(
+        `${API_BASE}/tenant/maintenance-requests/photos/upload-complete`,
+        { storageKey, ...meta },
+        'Failed to finalize photo upload',
+      );
+      if (!data.url) throw new Error('Upload succeeded but no URL returned');
+      return data.url;
+    },
+    inlineUpload: async (contentBase64, meta) =>
+      uploadMaintenancePhoto({ ...meta, contentBase64 }),
+  });
+}
+
 /**
- * Stage up to 5 repair photos in order, returning their public urls. Each file is read to
- * base64 and uploaded individually; the first failure rejects so the caller can block the
- * submit and keep the evidence on the form (never lost). Returns [] for no files.
+ * Stage up to 5 repair photos in order, returning their public urls. Direct-to-R2
+ * when configured; the first failure rejects so evidence stays on the form.
  */
 export async function uploadRepairPhotos(files: File[]): Promise<string[]> {
   const urls: string[] = [];
   for (const file of files.slice(0, 5)) {
-    const contentBase64 = await fileToBase64(file);
-    const url = await uploadMaintenancePhoto({
-      fileName: file.name,
-      mimeType: file.type || 'application/octet-stream',
-      sizeBytes: file.size,
-      contentBase64,
-    });
-    urls.push(url);
+    urls.push(await uploadMaintenancePhotoFile(file));
   }
   return urls;
 }

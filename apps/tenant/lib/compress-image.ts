@@ -1,8 +1,8 @@
 /**
- * Downscale + re-encode proof photos before base64 upload.
- * Staging (and default Express) JSON bodies cap at ~100 KB — we target ~80 KB base64.
+ * Downscale large photos before upload. Direct-to-R2 no longer needs the old ~80 KB
+ * JSON-body cap — keep a reasonable JPEG so camera snaps stay under a few hundred KB.
  */
-const MAX_BASE64_CHARS = 80_000;
+const JPEG_QUALITY = 0.82;
 
 export function dataUrlToUploadParts(
   dataUrl: string,
@@ -15,11 +15,6 @@ export function dataUrlToUploadParts(
     contentBase64,
     sizeBytes: Math.floor((contentBase64.length * 3) / 4),
   };
-}
-
-function dataUrlBase64Length(dataUrl: string): number {
-  const comma = dataUrl.indexOf(',');
-  return comma >= 0 ? dataUrl.length - comma - 1 : dataUrl.length;
 }
 
 export async function compressImageForUpload(
@@ -53,25 +48,16 @@ export async function compressImageForUpload(
 }
 
 export function compressCanvasToDataUrl(canvas: HTMLCanvasElement): string {
-  let quality = 0.82;
-  let dataUrl = canvas.toDataURL('image/jpeg', quality);
+  return canvas.toDataURL('image/jpeg', JPEG_QUALITY);
+}
 
-  while (dataUrlBase64Length(dataUrl) > MAX_BASE64_CHARS && quality > 0.35) {
-    quality -= 0.08;
-    dataUrl = canvas.toDataURL('image/jpeg', quality);
-  }
-
-  if (dataUrlBase64Length(dataUrl) <= MAX_BASE64_CHARS) {
-    return dataUrl;
-  }
-
-  const smaller = document.createElement('canvas');
-  smaller.width = Math.max(1, Math.round(canvas.width * 0.72));
-  smaller.height = Math.max(1, Math.round(canvas.height * 0.72));
-  const ctx = smaller.getContext('2d');
-  if (!ctx) return dataUrl;
-  ctx.drawImage(canvas, 0, 0, smaller.width, smaller.height);
-  return compressCanvasToDataUrl(smaller);
+export function dataUrlToFile(dataUrl: string, fileName: string): File | null {
+  const parts = dataUrlToUploadParts(dataUrl);
+  if (!parts) return null;
+  const binary = atob(parts.contentBase64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return new File([bytes], fileName, { type: parts.mimeType });
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {

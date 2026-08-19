@@ -124,3 +124,21 @@ export function resolvePaymentProofMimeType(file: File): string {
 export function isAllowedPaymentProofMimeType(mimeType: string): boolean {
   return mimeType.startsWith('image/') || mimeType === 'application/pdf';
 }
+
+/** MIME for repair/inspection/key photos — images and short clips. */
+export function resolveEvidenceMimeType(file: File): string {
+  if (file.type.startsWith('image/') || file.type.startsWith('video/')) return file.type;
+
+  const lower = file.name.toLowerCase();
+  if (/\.(jpe?g)$/.test(lower)) return 'image/jpeg';
+  if (lower.endsWith('.png')) return 'image/png';
+  if (lower.endsWith('.gif')) return 'image/gif';
+  if (lower.endsWith('.webp')) return 'image/webp';
+  if (lower.endsWith('.heic')) return 'image/heic';
+  if (lower.endsWith('.mp4')) return 'video/mp4';
+  if (lower.endsWith('.mov')) return 'video/quicktime';
+  if (lower.endsWith('.webm')) return 'video/webm';
+  if (lower.endsWith('.m4v')) return 'video/mp4';
+
+  return file.type || 'image/jpeg';
+}
