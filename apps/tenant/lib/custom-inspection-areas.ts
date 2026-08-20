@@ -9,11 +9,27 @@ export type CustomAreaSectionMode = 'standard' | 'manual';
 export type CustomAreaDefinition = {
   name: string;
   sectionMode: CustomAreaSectionMode;
+  defaultSections?: string[];
+  optionalSections?: string[];
 };
 
 export function customAreaToDefinition(
   custom: CustomAreaDefinition,
 ): InspectionAreaDefinition {
+  if (custom.defaultSections || custom.optionalSections) {
+    return {
+      name: custom.name,
+      defaultSections:
+        custom.defaultSections && custom.defaultSections.length > 0
+          ? [...custom.defaultSections]
+          : custom.sectionMode === 'standard'
+            ? [...COMMON_DEFAULT_SECTIONS]
+            : [],
+      optionalSections: custom.optionalSections?.length
+        ? [...custom.optionalSections]
+        : ['Custom / Other'],
+    };
+  }
   if (custom.sectionMode === 'standard') {
     return {
       name: custom.name,

@@ -79,9 +79,90 @@ export function sectionsForAvailableArea(
   ingoingAreaPlan: IngoingAreaPlan | null,
 ): string[] {
   if (isCustomAreaName(areaName, customAreas)) {
+    const custom = customAreas.find(
+      (area) =>
+        area.name.trim().toLowerCase() === areaName.trim().toLowerCase(),
+    );
+    if (custom?.defaultSections?.length) return [...custom.defaultSections];
     return [...resolveAreaDefinition(areaName, customAreas).defaultSections];
   }
   return outgoingSectionsForRoom(ingoingAreaPlan, areaName);
+}
+
+type AreaRecordBase = {
+  available: boolean | null;
+  activeSections: string[];
+  photosBySection: Record<string, unknown>;
+};
+
+/** After Start, every selected room is available with its items pre-seeded. */
+export function seedAreasForInspectionStart<T extends AreaRecordBase>(
+  record: Record<string, T>,
+  areaNames: string[],
+  options: {
+    sectionsFor: (name: string) => string[];
+    emptyEntry: (name: string) => T;
+    emptyPhotos: () => T['photosBySection'][string];
+  },
+): { record: Record<string, T>; changed: boolean } {
+  let changed = false;
+  const next = { ...record };
+
+  for (const name of areaNames) {
+    const current = next[name] ?? options.emptyEntry(name);
+    if (current.available === false) {
+      if (!next[name]) {
+        next[name] = current;
+        changed = true;
+      }
+      continue;
+    }
+
+    const needsActivate = current.available !== true;
+    const needsSections = current.activeSections.length === 0;
+    if (!needsActivate && !needsSections && next[name]) continue;
+
+    const activeSections = needsSections
+      ? options.sectionsFor(name)
+      : [...current.activeSections];
+    const photosBySection = { ...current.photosBySection };
+    for (const section of activeSections) {
+      if (photosBySection[section] == null) {
+        photosBySection[section] = options.emptyPhotos();
+      }
+    }
+
+    next[name] = {
+      ...current,
+      available: true,
+      activeSections,
+      photosBySection,
+    };
+    changed = true;
+  }
+
+  return { record: next, changed };
+}
+
+export function layoutFromIngoingPlan(
+  plan: IngoingAreaPlan | null | undefined,
+): { names: string[]; customAreas: CustomAreaDefinition[] } | null {
+  if (!plan?.rooms.length) return null;
+  const names: string[] = [];
+  const customAreas: CustomAreaDefinition[] = [];
+  for (const room of plan.rooms) {
+    const name = room.name.trim();
+    if (!name) continue;
+    names.push(name);
+    customAreas.push({
+      name,
+      sectionMode: room.sections.length > 0 ? 'standard' : 'manual',
+      defaultSections: [...room.sections],
+      optionalSections: ['Custom / Other'],
+    });
+  }
+  if (names.length === 0) return null;
+  return { names, customAreas };
 }
 
 export function setupStartLabel(continuing: boolean): string {

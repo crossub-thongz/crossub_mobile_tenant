@@ -4,21 +4,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { AreaAvailablePrompt } from '@/components/tenant/area-available-prompt';
 import { InspectionAreaNav } from '@/components/tenant/inspection-area-nav';
 import { InspectionAreaSetupPanel } from '@/components/tenant/inspection-area-setup-panel';
 import { ResetInspectionDialog } from '@/components/tenant/reset-inspection-dialog';
-import {
-  RoutineSectionPhotoGrid,
-  type SectionPhotos,
-} from '@/components/tenant/routine-section-photo-grid';
+import { RoutinePhotoColumn } from '@/components/tenant/routine-photo-column';
+import { RoutineSectionItems } from '@/components/tenant/routine-section-items';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import {
-  INSPECTION_AREA_CATALOG,
-  sectionAreaName,
-} from '@/constants/inspection-areas';
 import {
   buildExecutionAreaCatalog,
   inferSelectedAreaNamesFromDraft,
@@ -32,14 +25,24 @@ import {
   submitTenantRoutineSelfInspection,
 } from '@/lib/crossub-api/tenant-account-client';
 import {
+  applyColumnMark,
+  firstIncompleteSection,
+  serializeItemMarks,
+  type ItemConditionKey,
+  type ItemConditionMarks,
+} from '@/lib/item-condition-marks';
+import { moveIndex, rekeyRecord } from '@/lib/inspection-layout-edit';
+import { matchReferenceSectionPhotos } from '@/lib/outgoing-reference-photos';
+import {
   clearRoutineSelfInspectionDraft,
   loadRoutineSelfInspectionDraft,
   persistRoutineSelfInspectionDraft,
 } from '@/lib/routine-self-inspection-draft';
 import {
   existingAreaNamesFromPlan,
-  findIngoingPlanRoom,
+  layoutFromIngoingPlan,
   resolveIngoingAreaPlan,
+  seedAreasForInspectionStart,
   sectionsForAvailableArea,
   type IngoingAreaPlan,
 } from '@/lib/inspection-area-workflow';
@@ -48,12 +51,13 @@ type AreaIssue = {
   available: boolean | null;
   notes: string;
   activeSections: string[];
-  photosBySection: Record<string, SectionPhotos>;
+  photosBySection: Record<string, { routinePhotoUrls: string[] }>;
+  areaPhotos?: string[];
+  itemMarks?: Record<string, ItemConditionMarks>;
+  itemComments?: Record<string, string>;
 };
 
-const emptySectionPhotos = (): SectionPhotos => ({
-  routinePhotoUrls: [],
-});
+const emptySectionPhotos = () => ({ routinePhotoUrls: [] as string[] });
 
 function emptyAreaIssue(): AreaIssue {
   return {
@@ -61,7 +65,34 @@ function emptyAreaIssue(): AreaIssue {
     notes: '',
     activeSections: [],
     photosBySection: {},
+    areaPhotos: [],
+    itemMarks: {},
+    itemComments: {},
   };
+}
+
+function mergeCustomAreas(
+  existing: CustomAreaDefinition[],
+  extras: CustomAreaDefinition[],
+): CustomAreaDefinition[] {
+  const next = [...existing];
+  const indexByKey = new Map(
+    next.map((area, index) => [area.name.trim().toLowerCase(), index] as const),
+  );
+  for (const extra of extras) {
+    const key = extra.name.trim().toLowerCase();
+    if (!key) continue;
+    const index = indexByKey.get(key);
+    if (index == null) {
+      indexByKey.set(key, next.length);
+      next.push(extra);
+      continue;
+    }
+    if (extra.defaultSections?.length) {
+      next[index] = { ...next[index], ...extra, name: extra.name.trim() || next[index].name };
+    }
+  }
+  return next;
 }
 
 export function RoutineSelfInspectionWizard({
@@ -87,19 +118,24 @@ export function RoutineSelfInspectionWizard({
   const [ingoingAreaPlan, setIngoingAreaPlan] = useState<IngoingAreaPlan | null>(null);
   const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const referenceIngoingAreas = useMemo(
+    () =>
+      (
+        inspection as {
+          referenceIngoingAreas?: Array<{ name: string; photos: string[] }>;
+        }
+      ).referenceIngoingAreas ?? [],
+    [inspection],
+  );
+
   useEffect(() => {
-    const referenceIngoingAreas = (
-      inspection as {
-        referenceIngoingAreas?: Array<{ name: string; photos: string[] }>;
-      }
-    ).referenceIngoingAreas;
     const refAreas =
-      referenceIngoingAreas?.map((area) => ({
+      referenceIngoingAreas.map((area) => ({
         name: area.name,
         photos: area.photos.map((url: string) => ({ url })),
       })) ?? [];
     setIngoingAreaPlan(resolveIngoingAreaPlan(refAreas));
-  }, [inspection]);
+  }, [referenceIngoingAreas]);
 
   useEffect(() => {
     const saved = loadRoutineSelfInspectionDraft(scheduleKey);
@@ -178,6 +214,21 @@ export function RoutineSelfInspectionWizard({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- start once per schedule after draft restore
   }, [scheduleKey, restoredDraft]);
 
+  useEffect(() => {
+    if (areaSetupComplete || selectedAreaNames.length > 0) return;
+    const copied = layoutFromIngoingPlan(ingoingAreaPlan);
+    if (!copied) return;
+    setCustomAreas((prev) => mergeCustomAreas(prev, copied.customAreas));
+    setSelectedAreaNames(copied.names);
+    setIssues((prev) => {
+      const next = { ...prev };
+      for (const name of copied.names) {
+        if (!next[name]) next[name] = emptyAreaIssue();
+      }
+      return next;
+    });
+  }, [areaSetupComplete, ingoingAreaPlan, selectedAreaNames.length]);
+
   const resolvedSelectedAreaNames =
     selectedAreaNames.length > 0
       ? selectedAreaNames
@@ -189,6 +240,19 @@ export function RoutineSelfInspectionWizard({
         : [],
     [areaSetupComplete, resolvedSelectedAreaNames, customAreas],
   );
+
+  useEffect(() => {
+    if (!areaSetupComplete || resolvedSelectedAreaNames.length === 0) return;
+    setIssues((prev) => {
+      const { record, changed } = seedAreasForInspectionStart(prev, resolvedSelectedAreaNames, {
+        sectionsFor: (name) => sectionsForAvailableArea(name, customAreas, ingoingAreaPlan),
+        emptyEntry: () => emptyAreaIssue(),
+        emptyPhotos: emptySectionPhotos,
+      });
+      return changed ? record : prev;
+    });
+  }, [areaSetupComplete, customAreas, ingoingAreaPlan, resolvedSelectedAreaNames]);
+
   const safeAreaIndex = Math.min(
     Math.max(areaIndex, 0),
     Math.max(areaCatalog.length - 1, 0),
@@ -197,17 +261,18 @@ export function RoutineSelfInspectionWizard({
   const area = areaDef?.name ?? areaCatalog[0]?.name ?? 'Area';
   const issue = issues[area] ?? emptyAreaIssue();
   const isLast = safeAreaIndex === areaCatalog.length - 1;
-
   const ingoingExistingAreas = existingAreaNamesFromPlan(ingoingAreaPlan);
 
   const addAllFromIngoing = () => {
-    const names = ingoingExistingAreas.filter(
+    const copied = layoutFromIngoingPlan(ingoingAreaPlan);
+    const names = (copied?.names ?? ingoingExistingAreas).filter(
       (name) =>
         !resolvedSelectedAreaNames.some(
           (selected) => selected.toLowerCase() === name.toLowerCase(),
         ),
     );
     if (names.length === 0) return;
+    if (copied) setCustomAreas((prev) => mergeCustomAreas(prev, copied.customAreas));
     setSelectedAreaNames((prev) => [...prev, ...names]);
     setIssues((prev) => {
       const next = { ...prev };
@@ -241,23 +306,6 @@ export function RoutineSelfInspectionWizard({
     });
   };
 
-  /**
-   * Patch the current area's record. Pass a FUNCTION whenever the new value is derived from
-   * the old one — an object built from the render-time `issues` is a stale snapshot.
-   *
-   * This is not theoretical. Photo uploads resolve asynchronously and independently per
-   * section, so two can land between renders. The per-section handler used to build its
-   * whole `photosBySection` map from the closure's `issues[area]` and hand it over as a
-   * plain patch; whichever upload resolved second therefore spread a map that did not
-   * contain the first one's photo, and erased it. The tenant saw a section they had just
-   * photographed sitting empty, with no error — the upload itself had succeeded, only the
-   * state write was lost. Reproduced twice on the 7.3 capture run: 3 of 8 photos dropped in
-   * one area, 2 of 8 in another, and the only thing that caught it was the next-area
-   * validation refusing to advance.
-   *
-   * Same defect class as the API's stale-`workflowMeta` clobber. The rule that kills it:
-   * read `prev` inside the updater, never from the closure.
-   */
   const updateIssue = (
     patch: Partial<AreaIssue> | ((current: AreaIssue) => Partial<AreaIssue>),
   ) => {
@@ -279,23 +327,17 @@ export function RoutineSelfInspectionWizard({
       if (!isLast) setAreaIndex(safeAreaIndex + 1);
       return;
     }
-
     const sections = sectionsForAvailableArea(area, customAreas, ingoingAreaPlan);
     updateIssue((current) => {
-      const photosBySection: Record<string, SectionPhotos> = {
-        ...(current.photosBySection ?? {}),
-      };
+      const photosBySection = { ...(current.photosBySection ?? {}) };
       for (const section of sections) {
-        if (!photosBySection[section]) {
-          photosBySection[section] = { routinePhotoUrls: [] };
-        }
+        if (!photosBySection[section]) photosBySection[section] = emptySectionPhotos();
       }
       return { available: true, activeSections: sections, photosBySection };
     });
   };
 
   const addSection = (section: string) => {
-    if ((issues[area] ?? emptyAreaIssue()).activeSections.includes(section)) return;
     updateIssue((current) => {
       if (current.activeSections.includes(section)) return {};
       return {
@@ -309,35 +351,88 @@ export function RoutineSelfInspectionWizard({
   };
 
   const removeSection = (section: string) => {
-    const planSections = findIngoingPlanRoom(ingoingAreaPlan, area)?.sections ?? [];
-    if (planSections.includes(section)) return;
-    if (areaDef?.defaultSections.includes(section)) return;
     updateIssue((current) => {
       const nextPhotos = { ...current.photosBySection };
       delete nextPhotos[section];
+      const nextMarks = { ...(current.itemMarks ?? {}) };
+      delete nextMarks[section];
+      const nextComments = { ...(current.itemComments ?? {}) };
+      delete nextComments[section];
       return {
         activeSections: current.activeSections.filter((item) => item !== section),
         photosBySection: nextPhotos,
+        itemMarks: nextMarks,
+        itemComments: nextComments,
       };
     });
   };
 
+  const renameSection = (from: string, to: string) => {
+    if (from === to) return;
+    updateIssue((current) => ({
+      activeSections: current.activeSections.map((name) => (name === from ? to : name)),
+      photosBySection: rekeyRecord(current.photosBySection, from, to),
+      itemMarks: rekeyRecord(current.itemMarks ?? {}, from, to),
+      itemComments: rekeyRecord(current.itemComments ?? {}, from, to),
+    }));
+  };
+
+  const moveSection = (from: number, to: number) => {
+    updateIssue((current) => ({
+      activeSections: moveIndex(current.activeSections, from, to),
+    }));
+  };
+
+  const changeMarks = (section: string, marks: ItemConditionMarks) => {
+    updateIssue((current) => ({
+      itemMarks: { ...(current.itemMarks ?? {}), [section]: marks },
+    }));
+  };
+
+  const fillColumn = (key: ItemConditionKey, value: boolean) => {
+    updateIssue((current) => ({
+      itemMarks: applyColumnMark(current.itemMarks, current.activeSections, key, value),
+    }));
+  };
+
+  const changeItemComment = (section: string, comment: string) => {
+    updateIssue((current) => ({
+      itemComments: { ...(current.itemComments ?? {}), [section]: comment },
+    }));
+  };
+
   const buildSubmission = (finalIssues: Record<string, AreaIssue>) => {
-    const sections: Array<{ areaName: string; comment?: string; photoUrls: string[] }> = [];
+    const sections: Array<{
+      areaName: string;
+      itemName?: string;
+      comment?: string;
+      photoUrls: string[];
+      conditionTags?: string[];
+    }> = [];
     for (const def of areaCatalog) {
       const rec = finalIssues[def.name];
       if (rec?.available !== true) continue;
-      let notesUsed = false;
+      if ((rec.areaPhotos ?? []).length > 0) {
+        sections.push({
+          areaName: def.name,
+          comment: rec.notes.trim() || undefined,
+          photoUrls: rec.areaPhotos ?? [],
+        });
+      }
       for (const section of rec.activeSections) {
         const photos = rec.photosBySection[section]?.routinePhotoUrls ?? [];
-        if (photos.length === 0) continue;
+        const comment = rec.itemComments?.[section]?.trim();
+        const conditionTags = serializeItemMarks(rec.itemMarks?.[section]);
+        if (photos.length === 0 && !comment && conditionTags.length === 0) continue;
         sections.push({
-          areaName: sectionAreaName(def.name, section),
-          comment:
-            !notesUsed && rec.notes.trim() ? rec.notes.trim() : undefined,
+          areaName: def.name,
+          itemName: section,
+          comment: comment || (!sections.some((row) => row.areaName === def.name && !row.itemName)
+            ? rec.notes.trim() || undefined
+            : undefined),
           photoUrls: photos,
+          conditionTags,
         });
-        notesUsed = true;
       }
     }
     return sections;
@@ -346,7 +441,7 @@ export function RoutineSelfInspectionWizard({
   const submitAll = async (finalIssues: Record<string, AreaIssue>) => {
     const sections = buildSubmission(finalIssues);
     if (sections.length === 0) {
-      toast.error('Photograph at least one section before submitting');
+      toast.error('Mark and photograph at least one area before submitting');
       return;
     }
     setBusy(true);
@@ -364,19 +459,25 @@ export function RoutineSelfInspectionWizard({
 
   const nextArea = async () => {
     if (issue.available !== true) {
-      toast.error('Confirm whether this area is available');
+      toast.error('This area is skipped — tap next, or mark it available');
       return;
     }
     if (issue.activeSections.length === 0) {
-      toast.error('Add at least one section to photograph, or skip this area');
+      toast.error('Add at least one item, or skip this area');
       return;
     }
-    for (const section of issue.activeSections) {
-      const photos = issue.photosBySection[section]?.routinePhotoUrls ?? [];
-      if (photos.length === 0) {
-        toast.error(`Add at least one routine photo for “${section}”`);
-        return;
-      }
+    const incomplete = firstIncompleteSection(issue.activeSections, issue.itemMarks);
+    if (incomplete) {
+      toast.error(`Mark Clean, Undamaged and Working for “${incomplete}”`);
+      return;
+    }
+    const hasAreaPhotos = (issue.areaPhotos?.length ?? 0) > 0;
+    const hasItemPhotos = issue.activeSections.some(
+      (section) => (issue.photosBySection[section]?.routinePhotoUrls.length ?? 0) > 0,
+    );
+    if (!hasAreaPhotos && !hasItemPhotos) {
+      toast.error('Snap at least one photo for this area');
+      return;
     }
 
     if (isLast) {
@@ -476,17 +577,26 @@ export function RoutineSelfInspectionWizard({
     );
   }
 
-  if (areaCatalog.length === 0) {
+  if (areaCatalog.length === 0 || !areaDef) {
     return (
       <p className="text-muted-foreground text-sm">No areas selected for this self-inspection.</p>
     );
   }
 
+  const ingoingPhotosBySection = Object.fromEntries(
+    issue.activeSections.map((section) => [
+      section,
+      matchReferenceSectionPhotos(area, section, referenceIngoingAreas),
+    ]),
+  );
+
   return (
     <div className="space-y-4">
       {resetControls}
       <p className="text-muted-foreground text-xs">
-        Walk through each area and upload current condition photos for each section.
+        Each room opens with its items ready. Hold Yes / No on Clean, Undamaged or
+        Working to mark every item in the room. Photograph exceptions beside the
+        latest ingoing baseline.
       </p>
 
       <InspectionAreaNav
@@ -496,15 +606,7 @@ export function RoutineSelfInspectionWizard({
         onGoToArea={goToArea}
       />
 
-      {issue.available == null ? (
-        <AreaAvailablePrompt
-          areaName={area}
-          areaIndex={safeAreaIndex}
-          totalAreas={areaCatalog.length}
-          onYes={() => markAvailable(true)}
-          onNo={() => markAvailable(false)}
-        />
-      ) : issue.available === false ? (
+      {issue.available === false ? (
         <Card>
           <CardHeader>
             <CardTitle>
@@ -521,12 +623,7 @@ export function RoutineSelfInspectionWizard({
               Mark available & photograph
             </Button>
             <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                className="flex-1"
-                onClick={goBackArea}
-              >
+              <Button type="button" variant="outline" className="flex-1" onClick={goBackArea}>
                 <ChevronLeft className="size-4" />
                 Back
               </Button>
@@ -559,16 +656,30 @@ export function RoutineSelfInspectionWizard({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <RoutineSectionPhotoGrid
+            <RoutinePhotoColumn
+              title="Area photos"
+              photoUrls={issue.areaPhotos ?? []}
+              uploading={busy}
+              disabled={busy}
+              onPhotosChange={(urls) => updateIssue({ areaPhotos: urls })}
+            />
+
+            <RoutineSectionItems
               definition={areaDef}
               activeSections={issue.activeSections}
               photosBySection={issue.photosBySection}
+              itemMarks={issue.itemMarks}
+              itemComments={issue.itemComments}
+              ingoingPhotosBySection={ingoingPhotosBySection}
               busy={busy}
               onAddSection={addSection}
               onRemoveSection={removeSection}
+              onRenameSection={renameSection}
+              onMoveSection={moveSection}
+              onChangeMarks={changeMarks}
+              onFillColumn={fillColumn}
+              onChangeComment={changeItemComment}
               onRoutinePhotosChange={(section, urls) => {
-                // Derived from `current`, never from the render-time `issues` — see
-                // `updateIssue`. Two sections uploading at once used to lose one of them.
                 updateIssue((current) => {
                   const existing = current.photosBySection[section] ?? emptySectionPhotos();
                   return {
@@ -610,15 +721,20 @@ export function RoutineSelfInspectionWizard({
                 disabled={busy}
                 onClick={() => void nextArea()}
               >
-                {busy ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : isLast ? (
-                  'Complete inspection'
-                ) : (
-                  'Next area'
-                )}
+                {busy ? <Loader2 className="size-4 animate-spin" /> : isLast ? 'Complete inspection' : 'Next area'}
               </Button>
             </div>
+
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground w-full"
+              disabled={busy}
+              onClick={() => markAvailable(false)}
+            >
+              Skip this area instead
+            </Button>
           </CardContent>
         </Card>
       )}

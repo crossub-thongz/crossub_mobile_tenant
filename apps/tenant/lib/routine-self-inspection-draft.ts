@@ -1,4 +1,5 @@
 import type { CustomAreaDefinition } from '@/lib/custom-inspection-areas';
+import type { ItemConditionMarks } from '@/lib/item-condition-marks';
 
 const STORAGE_PREFIX = 'crossub-tenant-routine-self:';
 
@@ -11,6 +12,9 @@ export type RoutineSelfAreaIssueDraft = {
   notes: string;
   activeSections: string[];
   photosBySection: Record<string, RoutineSelfSectionPhotos>;
+  areaPhotos?: string[];
+  itemMarks?: Record<string, ItemConditionMarks>;
+  itemComments?: Record<string, string>;
 };
 
 export type RoutineSelfInspectionDraft = {

@@ -46,10 +46,9 @@ export function AddSectionControl({
 
   return (
     <div className="space-y-2 rounded-lg border border-dashed border-border p-3">
-      <Label htmlFor="section-name">Add section</Label>
+      <Label htmlFor="section-name">Add item</Label>
       <p className="text-muted-foreground text-xs">
-        Name the section, then snap or upload photos on the card above before moving
-        to the next area.
+        Name the item, then mark Clean / Undamaged / Working on the card above.
       </p>
       <div className="flex gap-2">
         <Input

@@ -140,6 +140,8 @@ export type TenantRoutineInspection =
 export type TenantRoutineSelfInspectionSectionSubmission =
   components['schemas']['SubmitTenantRoutineSelfInspectionSectionDto'] & {
     areaName?: string;
+    itemName?: string;
+    conditionTags?: string[];
   };
 export type TenantDeclineVacatingSettlement =
   components['schemas']['TenantDeclineVacatingSettlementDto'];
