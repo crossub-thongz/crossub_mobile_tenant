@@ -1,34 +1,24 @@
-import type { CustomAreaDefinition } from '@/lib/custom-inspection-areas';
-import type { ItemConditionMarks } from '@/lib/item-condition-marks';
+const STORAGE_PREFIX = 'crossub-tenant-routine-self-v2:';
 
-const STORAGE_PREFIX = 'crossub-tenant-routine-self:';
-
-export type RoutineSelfSectionPhotos = {
-  routinePhotoUrls: string[];
-};
-
-export type RoutineSelfAreaIssueDraft = {
-  available: boolean | null;
+export type RoutineSelfAreaDraft = {
+  skipped: boolean;
   notes: string;
-  activeSections: string[];
-  photosBySection: Record<string, RoutineSelfSectionPhotos>;
-  areaPhotos?: string[];
-  itemMarks?: Record<string, ItemConditionMarks>;
-  itemComments?: Record<string, string>;
+  photoUrls: string[];
 };
 
 export type RoutineSelfInspectionDraft = {
   scheduleKey: string;
   areaIndex: number;
-  issues: Record<string, RoutineSelfAreaIssueDraft>;
-  customAreas: CustomAreaDefinition[];
-  selectedAreaNames: string[];
-  areaSetupComplete: boolean;
+  areas: Record<string, RoutineSelfAreaDraft>;
   started: boolean;
 };
 
 function storageKey(scheduleKey: string): string {
   return `${STORAGE_PREFIX}${scheduleKey}`;
+}
+
+export function emptyRoutineSelfAreaDraft(): RoutineSelfAreaDraft {
+  return { skipped: false, notes: '', photoUrls: [] };
 }
 
 export function loadRoutineSelfInspectionDraft(

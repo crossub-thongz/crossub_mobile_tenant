@@ -33,6 +33,31 @@ export function matchReferenceIngoingPhotos(
   return contains ? contains.photos.filter(Boolean) : [];
 }
 
+/** Every ingoing photo that belongs to this room (room-level or section-named). */
+export function matchAllReferencePhotosForRoom(
+  roomName: string,
+  referenceAreas: Array<{ name: string; photos: string[] }>,
+): string[] {
+  const target = normalizeAreaKey(roomName);
+  if (!target) return [];
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const area of referenceAreas) {
+    const raw = area.name.replace(INGOING_SUFFIX, '').trim();
+    const parsed = parseSectionAreaName(raw);
+    const room = parsed?.area ?? raw;
+    if (normalizeAreaKey(room) !== target && normalizeAreaKey(raw) !== target) {
+      continue;
+    }
+    for (const url of area.photos.filter(Boolean)) {
+      if (seen.has(url)) continue;
+      seen.add(url);
+      out.push(url);
+    }
+  }
+  return out;
+}
+
 export function matchReferenceSectionPhotos(
   roomName: string,
   section: string,
