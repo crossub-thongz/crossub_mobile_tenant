@@ -4,9 +4,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { DraggableNamedList } from '@/components/tenant/draggable-named-list';
 import { InspectionAreaNav } from '@/components/tenant/inspection-area-nav';
 import { ResetInspectionDialog } from '@/components/tenant/reset-inspection-dialog';
-import { RoutinePhotoColumn } from '@/components/tenant/routine-photo-column';
+import { TenantAreaPhotosField } from '@/components/tenant/tenant-area-photos-field';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -20,11 +21,13 @@ import {
   existingAreaNamesFromPlan,
   resolveIngoingAreaPlan,
 } from '@/lib/inspection-area-workflow';
+import { moveIndex } from '@/lib/inspection-layout-edit';
 import { matchAllReferencePhotosForRoom } from '@/lib/outgoing-reference-photos';
 import {
   clearRoutineSelfInspectionDraft,
   emptyRoutineSelfAreaDraft,
   loadRoutineSelfInspectionDraft,
+  mergeAreaOrder,
   persistRoutineSelfInspectionDraft,
   type RoutineSelfAreaDraft,
 } from '@/lib/routine-self-inspection-draft';
@@ -54,6 +57,7 @@ export function RoutineSelfInspectionWizard({
   const [restoredDraft, setRestoredDraft] = useState(false);
   const [resumingFromDraft, setResumingFromDraft] = useState(false);
   const [areaIndex, setAreaIndex] = useState(0);
+  const [areaOrder, setAreaOrder] = useState<string[]>([]);
   const [areas, setAreas] = useState<Record<string, RoutineSelfAreaDraft>>({});
   const [resetOpen, setResetOpen] = useState(false);
   const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -68,7 +72,7 @@ export function RoutineSelfInspectionWizard({
     [inspection],
   );
 
-  const areaNames = useMemo(() => {
+  const sourceAreaNames = useMemo(() => {
     const plan = resolveIngoingAreaPlan(
       referenceIngoingAreas.map((area) => ({ name: area.name })),
     );
@@ -81,6 +85,11 @@ export function RoutineSelfInspectionWizard({
     return unique.length > 0 ? unique : FALLBACK_AREAS;
   }, [inspection.sections, referenceIngoingAreas]);
 
+  const areaNames = useMemo(
+    () => mergeAreaOrder(areaOrder, sourceAreaNames),
+    [areaOrder, sourceAreaNames],
+  );
+
   const areaCatalog = useMemo(() => areaCatalogFromNames(areaNames), [areaNames]);
 
   useEffect(() => {
@@ -91,6 +100,7 @@ export function RoutineSelfInspectionWizard({
     }
     setResumingFromDraft(true);
     setAreaIndex(saved.areaIndex);
+    setAreaOrder(saved.areaOrder ?? []);
     setAreas(saved.areas);
     setStarted(saved.started);
     setRestoredDraft(true);
@@ -100,9 +110,13 @@ export function RoutineSelfInspectionWizard({
     if (!started || !restoredDraft) return;
     if (persistTimer.current) clearTimeout(persistTimer.current);
     persistTimer.current = setTimeout(() => {
-      const hasProgress = Object.values(areas).some(
-        (area) => area.skipped || area.photoUrls.length > 0 || area.notes.trim(),
-      );
+      const resolvedOrder = mergeAreaOrder(areaOrder, sourceAreaNames);
+      const orderChanged = resolvedOrder.join('\0') !== sourceAreaNames.join('\0');
+      const hasProgress =
+        orderChanged ||
+        Object.values(areas).some(
+          (area) => area.skipped || area.photoUrls.length > 0 || area.notes.trim(),
+        );
       if (!hasProgress) {
         clearRoutineSelfInspectionDraft(scheduleKey);
         return;
@@ -110,6 +124,7 @@ export function RoutineSelfInspectionWizard({
       persistRoutineSelfInspectionDraft({
         scheduleKey,
         areaIndex,
+        areaOrder: resolvedOrder,
         areas,
         started: true,
       });
@@ -117,7 +132,7 @@ export function RoutineSelfInspectionWizard({
     return () => {
       if (persistTimer.current) clearTimeout(persistTimer.current);
     };
-  }, [started, restoredDraft, scheduleKey, areaIndex, areas]);
+  }, [started, restoredDraft, scheduleKey, areaIndex, areaOrder, sourceAreaNames, areas]);
 
   useEffect(() => {
     if (!restoredDraft) return;
@@ -219,11 +234,20 @@ export function RoutineSelfInspectionWizard({
     setAreaIndex(index);
   };
 
+  const handleMoveArea = (from: number, to: number) => {
+    const currentName = areaNames[safeAreaIndex];
+    const next = moveIndex(areaNames, from, to);
+    setAreaOrder(next);
+    const nextIndex = currentName ? next.indexOf(currentName) : to;
+    setAreaIndex(nextIndex >= 0 ? nextIndex : 0);
+  };
+
   const resetInspection = () => {
     setResetOpen(false);
     if (persistTimer.current) clearTimeout(persistTimer.current);
     clearRoutineSelfInspectionDraft(scheduleKey);
     setAreaIndex(0);
+    setAreaOrder([]);
     setAreas({});
     setResumingFromDraft(false);
     toast.success('Self-inspection reset — start again from the first area');
@@ -236,6 +260,15 @@ export function RoutineSelfInspectionWizard({
     if ((row?.photoUrls.length ?? 0) > 0) return 'bg-primary/70';
     if (index < safeAreaIndex) return 'bg-primary/40';
     return 'bg-secondary';
+  };
+
+  const areaStatusLabel = (index: number, name: string) => {
+    if (index === safeAreaIndex) return 'Current area';
+    const row = areas[name];
+    if (row?.skipped) return 'Skipped';
+    const count = row?.photoUrls.length ?? 0;
+    if (count > 0) return `${count} photo${count === 1 ? '' : 's'}`;
+    return 'Not photographed';
   };
 
   if (starting || !started || !restoredDraft) {
@@ -276,9 +309,30 @@ export function RoutineSelfInspectionWizard({
       />
 
       <p className="text-muted-foreground text-xs">
-        Rooms come from the last ingoing inspection. Photograph each area as it is
-        now — you do not need to add rooms or tick sections.
+        Rooms come from the last ingoing inspection. Drag the handle to change the
+        order, then photograph each area as it is now — you can snap or upload several
+        photos per room.
       </p>
+
+      <ul className="divide-y rounded-lg border bg-card">
+        <DraggableNamedList
+          items={areaNames}
+          disabled={busy}
+          onReorder={handleMoveArea}
+          renderItem={(name, index) => (
+            <button
+              type="button"
+              className="min-w-0 flex-1 py-1 text-left"
+              onClick={() => goToArea(index)}
+            >
+              <p className="font-medium">{name}</p>
+              <p className="text-muted-foreground text-xs">
+                {areaStatusLabel(index, name)}
+              </p>
+            </button>
+          )}
+        />
+      </ul>
 
       <InspectionAreaNav
         areaCatalog={areaCatalog}
@@ -343,20 +397,20 @@ export function RoutineSelfInspectionWizard({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <RoutinePhotoColumn
-                title="Ingoing"
-                photoUrls={ingoingPhotos}
-                disabled
-              />
-              <RoutinePhotoColumn
-                title="Now"
-                photoUrls={rec.photoUrls}
-                uploading={busy}
-                disabled={busy}
-                onPhotosChange={(urls) => updateArea({ photoUrls: urls })}
-              />
-            </div>
+            <TenantAreaPhotosField
+              label="Ingoing"
+              photoUrls={ingoingPhotos}
+              disabled
+              emptyLabel="No ingoing photos for this area."
+            />
+            <TenantAreaPhotosField
+              label="Now"
+              photoUrls={rec.photoUrls}
+              uploading={busy}
+              disabled={busy}
+              emptyLabel={`Add at least one photo of ${area}.`}
+              onPhotosChange={(urls) => updateArea({ photoUrls: urls })}
+            />
 
             <div className="space-y-1.5">
               <label htmlFor={`notes-${area}`} className="text-sm font-medium">

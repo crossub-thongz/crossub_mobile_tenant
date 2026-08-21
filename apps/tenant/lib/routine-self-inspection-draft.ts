@@ -11,7 +11,27 @@ export type RoutineSelfInspectionDraft = {
   areaIndex: number;
   areas: Record<string, RoutineSelfAreaDraft>;
   started: boolean;
+  /** Tenant-sorted walk order. Missing on older drafts. */
+  areaOrder?: string[];
 };
+
+export function mergeAreaOrder(saved: string[] | undefined, source: string[]): string[] {
+  if (!source.length) return [];
+  if (!saved?.length) return source;
+  const canonicalByKey = new Map(source.map((name) => [name.trim().toLowerCase(), name]));
+  const used = new Set<string>();
+  const ordered: string[] = [];
+  for (const name of saved) {
+    const canonical = canonicalByKey.get(name.trim().toLowerCase());
+    if (!canonical || used.has(canonical.toLowerCase())) continue;
+    used.add(canonical.toLowerCase());
+    ordered.push(canonical);
+  }
+  for (const name of source) {
+    if (!used.has(name.toLowerCase())) ordered.push(name);
+  }
+  return ordered;
+}
 
 function storageKey(scheduleKey: string): string {
   return `${STORAGE_PREFIX}${scheduleKey}`;
