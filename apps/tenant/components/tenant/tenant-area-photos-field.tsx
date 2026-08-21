@@ -19,7 +19,7 @@ type TenantAreaPhotosFieldProps = {
   uploading?: boolean;
   disabled?: boolean;
   emptyLabel?: string;
-  onPhotosChange?: (urls: string[]) => void;
+  onPhotosChange?: (updater: (prev: string[]) => string[]) => void;
 };
 
 export function TenantAreaPhotosField({
@@ -66,7 +66,7 @@ export function TenantAreaPhotosField({
         const url = await uploadFile(file);
         if (url) urls.push(url);
       }
-      if (urls.length) onPhotosChange?.([...photoUrls, ...urls]);
+      if (urls.length) onPhotosChange?.((prev) => [...prev, ...urls]);
     } catch {
       toast.error('Could not upload photo');
     } finally {
@@ -83,7 +83,7 @@ export function TenantAreaPhotosField({
         const url = await uploadDataUrl(dataUrl, index);
         if (url) urls.push(url);
       }
-      if (urls.length) onPhotosChange?.([...photoUrls, ...urls]);
+      if (urls.length) onPhotosChange?.((prev) => [...prev, ...urls]);
     } catch {
       toast.error('Could not upload photo');
     } finally {
@@ -210,7 +210,7 @@ export function TenantAreaPhotosField({
                 <button
                   type="button"
                   onClick={() =>
-                    onPhotosChange(photoUrls.filter((_, i) => i !== index))
+                    onPhotosChange((prev) => prev.filter((_, i) => i !== index))
                   }
                   className={cn(
                     'absolute top-1 right-1 flex size-6 items-center justify-center',

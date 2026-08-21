@@ -41,6 +41,118 @@ export function emptyRoutineSelfAreaDraft(): RoutineSelfAreaDraft {
   return { skipped: false, notes: '', photoUrls: [] };
 }
 
+function hostedPhotoUrls(urls: string[] | undefined): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const url of urls ?? []) {
+    const trimmed = url.trim();
+    if (!/^https?:\/\//i.test(trimmed) || seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    out.push(trimmed);
+  }
+  return out;
+}
+
+function mergeAreaDrafts(
+  base: RoutineSelfAreaDraft | undefined,
+  overlay: RoutineSelfAreaDraft | undefined,
+): RoutineSelfAreaDraft {
+  const left = base ?? emptyRoutineSelfAreaDraft();
+  const right = overlay ?? emptyRoutineSelfAreaDraft();
+  return {
+    skipped: left.skipped || right.skipped,
+    notes: right.notes.trim() || left.notes,
+    photoUrls: hostedPhotoUrls([...left.photoUrls, ...right.photoUrls]),
+  };
+}
+
+export type ServerRoutineSelfDraft = {
+  updatedAt?: string;
+  areaIndex?: number;
+  areaOrder?: string[];
+  areas: Array<{
+    areaName: string;
+    skipped?: boolean;
+    notes?: string;
+    photoUrls?: string[];
+  }>;
+};
+
+export function serverDraftToLocal(
+  scheduleKey: string,
+  server: ServerRoutineSelfDraft,
+): RoutineSelfInspectionDraft {
+  const areas: Record<string, RoutineSelfAreaDraft> = {};
+  for (const row of server.areas) {
+    const name = row.areaName.trim();
+    if (!name) continue;
+    areas[name] = mergeAreaDrafts(areas[name], {
+      skipped: row.skipped === true,
+      notes: row.notes?.trim() ?? '',
+      photoUrls: hostedPhotoUrls(row.photoUrls),
+    });
+  }
+  return {
+    scheduleKey,
+    areaIndex: typeof server.areaIndex === 'number' ? server.areaIndex : 0,
+    areas,
+    started: true,
+    areaOrder: server.areaOrder,
+  };
+}
+
+export function mergeRoutineSelfInspectionDrafts(
+  scheduleKey: string,
+  local: RoutineSelfInspectionDraft | null,
+  server: RoutineSelfInspectionDraft | null,
+): RoutineSelfInspectionDraft | null {
+  if (!local && !server) return null;
+  if (!local) return server;
+  if (!server) return local;
+  const names = new Set([
+    ...Object.keys(local.areas),
+    ...Object.keys(server.areas),
+  ]);
+  const areas: Record<string, RoutineSelfAreaDraft> = {};
+  for (const name of names) {
+    areas[name] = mergeAreaDrafts(local.areas[name], server.areas[name]);
+  }
+  const orderSource = [
+    ...(local.areaOrder ?? []),
+    ...(server.areaOrder ?? []),
+    ...names,
+  ];
+  return {
+    scheduleKey,
+    areaIndex: Math.max(local.areaIndex, server.areaIndex),
+    areas,
+    started: local.started || server.started,
+    areaOrder: mergeAreaOrder(local.areaOrder ?? server.areaOrder, orderSource),
+  };
+}
+
+export function toServerDraftPayload(draft: RoutineSelfInspectionDraft): {
+  areaIndex: number;
+  areaOrder?: string[];
+  areas: Array<{
+    areaName: string;
+    skipped: boolean;
+    notes: string;
+    photoUrls: string[];
+  }>;
+} {
+  return {
+    areaIndex: draft.areaIndex,
+    ...(draft.areaOrder?.length ? { areaOrder: draft.areaOrder } : {}),
+    areas: Object.entries(draft.areas).map(([areaName, row]) => ({
+      areaName,
+      skipped: row.skipped,
+      notes: row.notes,
+      photoUrls: hostedPhotoUrls(row.photoUrls),
+    })),
+  };
+}
+
 export function loadRoutineSelfInspectionDraft(
   scheduleKey: string,
 ): RoutineSelfInspectionDraft | null {

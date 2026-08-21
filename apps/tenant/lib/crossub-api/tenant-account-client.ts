@@ -376,6 +376,36 @@ export async function startTenantRoutineSelfInspection(
   return data;
 }
 
+/** Save in-progress self-inspection photos so they restore after logout or reconnect. */
+export async function saveTenantRoutineSelfInspectionDraft(
+  id: string,
+  body: {
+    areaIndex?: number;
+    areaOrder?: string[];
+    areas: Array<{
+      areaName: string;
+      skipped?: boolean;
+      notes?: string;
+      photoUrls: string[];
+    }>;
+  },
+): Promise<TenantRoutineInspection> {
+  const res = await fetch(
+    `${API_BASE}/tenant/routine-inspections/${encodeURIComponent(id)}/self-draft`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(body),
+    },
+  );
+  if (!res.ok) {
+    const error = await res.json().catch(() => null);
+    throwTenantApiError(error, res, 'Failed to save self-inspection progress');
+  }
+  return res.json() as Promise<TenantRoutineInspection>;
+}
+
 /** Submit tenant self-inspection (`POST .../submit-self`). */
 export async function submitTenantRoutineSelfInspection(
   id: string,

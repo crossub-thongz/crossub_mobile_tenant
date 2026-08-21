@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import type { InspectionAreaDefinition } from '@/constants/inspection-areas';
 import type { TenantRoutineInspection } from '@/lib/crossub-api/tenant-account-client';
 import {
+  saveTenantRoutineSelfInspectionDraft,
   startTenantRoutineSelfInspection,
   submitTenantRoutineSelfInspection,
 } from '@/lib/crossub-api/tenant-account-client';
@@ -28,8 +29,12 @@ import {
   emptyRoutineSelfAreaDraft,
   loadRoutineSelfInspectionDraft,
   mergeAreaOrder,
+  mergeRoutineSelfInspectionDrafts,
   persistRoutineSelfInspectionDraft,
+  serverDraftToLocal,
+  toServerDraftPayload,
   type RoutineSelfAreaDraft,
+  type ServerRoutineSelfDraft,
 } from '@/lib/routine-self-inspection-draft';
 
 const FALLBACK_AREAS = ['Kitchen', 'Bathroom', 'Bedroom', 'Lounge', 'Laundry'];
@@ -40,6 +45,39 @@ function areaCatalogFromNames(names: string[]): InspectionAreaDefinition[] {
     defaultSections: [],
     optionalSections: [],
   }));
+}
+
+function draftFromInspection(
+  scheduleKey: string,
+  inspection: TenantRoutineInspection,
+): ReturnType<typeof serverDraftToLocal> | null {
+  const selfDraft = (inspection as { selfDraft?: ServerRoutineSelfDraft }).selfDraft;
+  const fromMeta = selfDraft?.areas?.length
+    ? serverDraftToLocal(scheduleKey, selfDraft)
+    : null;
+  const fromSections: Record<string, RoutineSelfAreaDraft> = {};
+  for (const section of inspection.sections ?? []) {
+    const name = section.room.trim();
+    const photoUrls = (section.photos ?? []).filter((url) =>
+      /^https?:\/\//i.test(url),
+    );
+    if (!name || photoUrls.length === 0) continue;
+    fromSections[name] = {
+      skipped: false,
+      notes: '',
+      photoUrls,
+    };
+  }
+  const fromAreas =
+    Object.keys(fromSections).length > 0
+      ? {
+          scheduleKey,
+          areaIndex: 0,
+          areas: fromSections,
+          started: true as const,
+        }
+      : null;
+  return mergeRoutineSelfInspectionDrafts(scheduleKey, fromMeta, fromAreas);
 }
 
 export function RoutineSelfInspectionWizard({
@@ -61,6 +99,15 @@ export function RoutineSelfInspectionWizard({
   const [areas, setAreas] = useState<Record<string, RoutineSelfAreaDraft>>({});
   const [resetOpen, setResetOpen] = useState(false);
   const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const serverPersistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveGeneration = useRef(0);
+  const areasRef = useRef(areas);
+  const areaIndexRef = useRef(areaIndex);
+  const areaOrderRef = useRef(areaOrder);
+  const sourceAreaNamesRef = useRef<string[]>([]);
+  areasRef.current = areas;
+  areaIndexRef.current = areaIndex;
+  areaOrderRef.current = areaOrder;
 
   const referenceIngoingAreas = useMemo(
     () =>
@@ -91,6 +138,77 @@ export function RoutineSelfInspectionWizard({
   );
 
   const areaCatalog = useMemo(() => areaCatalogFromNames(areaNames), [areaNames]);
+  sourceAreaNamesRef.current = sourceAreaNames;
+
+  const buildLocalDraft = (
+    nextAreas = areasRef.current,
+    nextIndex = areaIndexRef.current,
+    nextOrder = areaOrderRef.current,
+  ) => {
+    const resolvedOrder = mergeAreaOrder(nextOrder, sourceAreaNamesRef.current);
+    return {
+      scheduleKey,
+      areaIndex: nextIndex,
+      areaOrder: resolvedOrder,
+      areas: nextAreas,
+      started: true as const,
+    };
+  };
+
+  const hasDraftProgress = (nextAreas: Record<string, RoutineSelfAreaDraft>, nextOrder: string[]) => {
+    const resolvedOrder = mergeAreaOrder(nextOrder, sourceAreaNamesRef.current);
+    const orderChanged = resolvedOrder.join('\0') !== sourceAreaNamesRef.current.join('\0');
+    return (
+      orderChanged ||
+      Object.values(nextAreas).some(
+        (area) => area.skipped || area.photoUrls.length > 0 || area.notes.trim(),
+      )
+    );
+  };
+
+  const flushLocalDraft = (
+    nextAreas = areasRef.current,
+    nextIndex = areaIndexRef.current,
+    nextOrder = areaOrderRef.current,
+  ) => {
+    if (!hasDraftProgress(nextAreas, nextOrder)) {
+      clearRoutineSelfInspectionDraft(scheduleKey);
+      return null;
+    }
+    const draft = buildLocalDraft(nextAreas, nextIndex, nextOrder);
+    persistRoutineSelfInspectionDraft(draft);
+    return draft;
+  };
+
+  const flushServerDraft = (
+    draft = flushLocalDraft(),
+    options?: { allowEmpty?: boolean },
+  ) => {
+    if (!draft && !options?.allowEmpty) return;
+    const generation = saveGeneration.current;
+    const payload = draft
+      ? toServerDraftPayload(draft)
+      : {
+          areaIndex: 0,
+          areaOrder: sourceAreaNamesRef.current,
+          areas: sourceAreaNamesRef.current.map((areaName) => ({
+            areaName,
+            skipped: false,
+            notes: '',
+            photoUrls: [] as string[],
+          })),
+        };
+    if (!payload.areas.length && !draft) return;
+    void saveTenantRoutineSelfInspectionDraft(scheduleKey, payload)
+      .catch(() => {
+        // Offline — local copy still has hosted photo URLs for this device.
+      })
+      .finally(() => {
+        if (generation === saveGeneration.current) return;
+        const latest = flushLocalDraft();
+        flushServerDraft(latest, { allowEmpty: !latest });
+      });
+  };
 
   useEffect(() => {
     const saved = loadRoutineSelfInspectionDraft(scheduleKey);
@@ -110,29 +228,32 @@ export function RoutineSelfInspectionWizard({
     if (!started || !restoredDraft) return;
     if (persistTimer.current) clearTimeout(persistTimer.current);
     persistTimer.current = setTimeout(() => {
-      const resolvedOrder = mergeAreaOrder(areaOrder, sourceAreaNames);
-      const orderChanged = resolvedOrder.join('\0') !== sourceAreaNames.join('\0');
-      const hasProgress =
-        orderChanged ||
-        Object.values(areas).some(
-          (area) => area.skipped || area.photoUrls.length > 0 || area.notes.trim(),
-        );
-      if (!hasProgress) {
-        clearRoutineSelfInspectionDraft(scheduleKey);
-        return;
-      }
-      persistRoutineSelfInspectionDraft({
-        scheduleKey,
-        areaIndex,
-        areaOrder: resolvedOrder,
-        areas,
-        started: true,
-      });
-    }, 350);
+      flushLocalDraft();
+    }, 200);
+    if (serverPersistTimer.current) clearTimeout(serverPersistTimer.current);
+    serverPersistTimer.current = setTimeout(() => {
+      flushServerDraft();
+    }, 600);
     return () => {
       if (persistTimer.current) clearTimeout(persistTimer.current);
+      if (serverPersistTimer.current) clearTimeout(serverPersistTimer.current);
     };
   }, [started, restoredDraft, scheduleKey, areaIndex, areaOrder, sourceAreaNames, areas]);
+
+  useEffect(() => {
+    const flush = () => flushServerDraft();
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') flush();
+    };
+    window.addEventListener('pagehide', flush);
+    window.addEventListener('online', flush);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('pagehide', flush);
+      window.removeEventListener('online', flush);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [scheduleKey]);
 
   useEffect(() => {
     if (!restoredDraft) return;
@@ -141,12 +262,27 @@ export function RoutineSelfInspectionWizard({
       setStarting(true);
       try {
         const next = await startTenantRoutineSelfInspection(scheduleKey);
-        if (!cancelled) {
-          onUpdated(next);
-          setStarted(true);
+        if (cancelled) return;
+        onUpdated(next);
+        const merged = mergeRoutineSelfInspectionDrafts(
+          scheduleKey,
+          loadRoutineSelfInspectionDraft(scheduleKey),
+          draftFromInspection(scheduleKey, next),
+        );
+        if (merged) {
+          setAreaIndex(merged.areaIndex);
+          setAreaOrder(merged.areaOrder ?? []);
+          setAreas(merged.areas);
+          persistRoutineSelfInspectionDraft(merged);
+          setResumingFromDraft(true);
         }
+        setStarted(true);
       } catch (err) {
         if (!cancelled) {
+          const local = loadRoutineSelfInspectionDraft(scheduleKey);
+          if (local?.started) {
+            setStarted(true);
+          }
           toast.error(err instanceof Error ? err.message : 'Could not start self-inspection');
         }
       } finally {
@@ -245,11 +381,14 @@ export function RoutineSelfInspectionWizard({
   const resetInspection = () => {
     setResetOpen(false);
     if (persistTimer.current) clearTimeout(persistTimer.current);
+    if (serverPersistTimer.current) clearTimeout(serverPersistTimer.current);
+    saveGeneration.current += 1;
     clearRoutineSelfInspectionDraft(scheduleKey);
     setAreaIndex(0);
     setAreaOrder([]);
     setAreas({});
     setResumingFromDraft(false);
+    flushServerDraft(null, { allowEmpty: true });
     toast.success('Self-inspection reset — start again from the first area');
   };
 
@@ -409,7 +548,9 @@ export function RoutineSelfInspectionWizard({
               uploading={busy}
               disabled={busy}
               emptyLabel={`Add at least one photo of ${area}.`}
-              onPhotosChange={(urls) => updateArea({ photoUrls: urls })}
+              onPhotosChange={(updater) =>
+                updateArea((current) => ({ photoUrls: updater(current.photoUrls) }))
+              }
             />
 
             <div className="space-y-1.5">
