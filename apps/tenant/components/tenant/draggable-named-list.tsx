@@ -12,6 +12,7 @@ type DraggableNamedListProps = {
   disabled?: boolean;
   /** Compact area rows, or tall item cards with the grip at the top. */
   variant?: 'row' | 'card';
+  itemClassName?: (name: string, index: number) => string | undefined;
   onReorder: (from: number, to: number) => void;
   renderItem: (name: string, index: number) => ReactNode;
 };
@@ -20,6 +21,7 @@ export function DraggableNamedList({
   items,
   disabled = false,
   variant = 'row',
+  itemClassName,
   onReorder,
   renderItem,
 }: DraggableNamedListProps) {
@@ -107,6 +109,7 @@ export function DraggableNamedList({
             variant === 'card'
               ? 'items-start rounded-lg border border-border p-3'
               : 'items-center px-1 py-2 text-sm',
+            itemClassName?.(name, index),
             activeIndex === index && 'bg-primary/15',
             overIndex === index &&
               activeIndex != null &&

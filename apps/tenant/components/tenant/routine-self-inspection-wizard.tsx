@@ -480,11 +480,16 @@ export function RoutineSelfInspectionWizard({
         several photos per area.
       </p>
 
-      <ul className="divide-y rounded-lg border bg-card">
+      <ul className="space-y-2">
         <DraggableNamedList
           items={areaNames}
           disabled={busy}
           onReorder={handleMoveArea}
+          itemClassName={(name) =>
+            isRoutineSelfAreaComplete(areas[name])
+              ? 'rounded-lg border border-primary/40 bg-primary/20 px-2'
+              : 'rounded-lg border bg-card px-2'
+          }
           renderItem={(name, index) => {
             const complete = isRoutineSelfAreaComplete(areas[name]);
             return (
