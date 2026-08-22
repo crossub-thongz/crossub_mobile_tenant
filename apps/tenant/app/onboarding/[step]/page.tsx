@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { TenantShell } from '@/components/layout/tenant-shell';
 import { DocumentUploadProgress } from '@/components/tenant/document-upload-progress';
 import { FileUploadField } from '@/components/tenant/file-upload-field';
+import { NoImageDialog } from '@/components/tenant/no-image-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -43,6 +44,7 @@ export default function OnboardingStepPage() {
   );
   const [agreementPreviewOpen, setAgreementPreviewOpen] = useState(false);
   const [signedPreviewOpen, setSignedPreviewOpen] = useState(false);
+  const [noImageOpen, setNoImageOpen] = useState(false);
 
   const isKeyPickup = stepId === 'key_pickup';
   const keyCollection = leasingOnboarding?.keyCollection;
@@ -245,6 +247,7 @@ export default function OnboardingStepPage() {
 
     const existingPhotos = keyCollection?.photos ?? [];
     if (!keyPhoto && existingPhotos.length === 0) {
+      setNoImageOpen(true);
       toast.error('Add a photo of the keys as proof of collection');
       return;
     }
@@ -740,9 +743,19 @@ export default function OnboardingStepPage() {
               <Label>Key collection photo</Label>
               <p className="text-muted-foreground text-xs">
                 {agentScheduled
-                  ? 'Snap or upload a photo of the keys as proof that you collected them.'
-                  : 'Snap or upload a photo of the keys as proof for your key collection report.'}
+                  ? 'Snap or upload a photo of the keys as proof that you collected them. At least one photo is required.'
+                  : 'Snap or upload a photo of the keys as proof for your key collection report. At least one photo is required.'}
               </p>
+              {!keyPhoto && (keyCollection?.photos?.length ?? 0) === 0 ? (
+                <button
+                  type="button"
+                  className="border-border text-muted-foreground flex w-full flex-col items-center justify-center gap-1 rounded-xl border border-dashed px-3 py-5"
+                  onClick={() => setNoImageOpen(true)}
+                >
+                  <span className="text-[10px] font-bold tracking-wide">NO IMAGE</span>
+                  <span className="text-[11px]">Add at least one photo</span>
+                </button>
+              ) : null}
               <FileUploadField
                 accept="image/*"
                 capture="environment"
@@ -761,7 +774,8 @@ export default function OnboardingStepPage() {
               disabled={
                 submitting ||
                 (!agentScheduled && (!keyTime || !keyLocation.trim())) ||
-                (agentScheduled && !scheduledTime && !scheduledLocation)
+                (agentScheduled && !scheduledTime && !scheduledLocation) ||
+                (!keyPhoto && (keyCollection?.photos?.length ?? 0) === 0)
               }
             >
               {submitting ? 'Saving…' : 'Submit key collection report'}
@@ -809,6 +823,11 @@ export default function OnboardingStepPage() {
         </form>
       )}
 
+      <NoImageDialog
+        open={noImageOpen}
+        onClose={() => setNoImageOpen(false)}
+        message="Add at least one photo of the keys before submitting your collection report."
+      />
     </TenantShell>
   );
 }
