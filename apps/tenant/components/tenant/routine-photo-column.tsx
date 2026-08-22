@@ -1,13 +1,12 @@
 'use client';
 
 import { useId, useRef, useState } from 'react';
-import { Camera, ImagePlus, Loader2, X } from 'lucide-react';
+import { ImagePlus, X } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { RoutineCameraCapture } from '@/components/tenant/routine-camera-capture';
-import { Button } from '@/components/ui/button';
+import { NativeCameraSnapButton } from '@/components/tenant/native-camera-snap-button';
 import { uploadMaintenancePhotoFile } from '@/lib/crossub-api/tenant-account-client';
-import { dataUrlToFile } from '@/lib/compress-image';
+import { IMAGE_UPLOAD_ACCEPT } from '@/lib/compress-image';
 import { cn, resolveEvidenceMimeType } from '@/lib/utils';
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
@@ -17,30 +16,32 @@ export function RoutinePhotoColumn({
   photoUrls,
   uploading = false,
   disabled = false,
+  sessionKey,
   onPhotosChange,
 }: {
   title: string;
   photoUrls: string[];
   uploading?: boolean;
   disabled?: boolean;
+  sessionKey?: string;
   onPhotosChange?: (urls: string[]) => void;
 }) {
   const uploadId = useId();
-  const nativeCameraId = useId();
-  const nativeCameraRef = useRef<HTMLInputElement>(null);
-  const [cameraOpen, setCameraOpen] = useState(false);
+  const inflight = useRef(0);
+  const latestUrls = useRef(photoUrls);
+  latestUrls.current = photoUrls;
   const [localUploading, setLocalUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const blocked = disabled || uploading || localUploading;
   const primaryUrl = photoUrls[0];
 
-  const uploadDataUrl = async (dataUrl: string) => {
-    const file = dataUrlToFile(dataUrl, `routine-${Date.now()}.jpg`);
-    if (!file) {
-      toast.error('Could not process photo');
-      return null;
-    }
-    return uploadMaintenancePhotoFile(file);
+  const beginUpload = () => {
+    inflight.current += 1;
+    setLocalUploading(true);
+  };
+
+  const endUpload = () => {
+    inflight.current = Math.max(0, inflight.current - 1);
+    if (inflight.current === 0) setLocalUploading(false);
   };
 
   const uploadFile = async (file: File) => {
@@ -55,46 +56,24 @@ export function RoutinePhotoColumn({
   };
 
   const addFiles = async (files: File[]) => {
-    if (!files.length || blocked || !onPhotosChange) return;
-    setLocalUploading(true);
+    if (!files.length || disabled || !onPhotosChange) return;
+    beginUpload();
     try {
       const urls: string[] = [];
       for (const file of files) {
         const url = await uploadFile(file);
         if (url) urls.push(url);
       }
-      if (urls.length) onPhotosChange([...photoUrls, ...urls]);
+      if (urls.length) onPhotosChange([...latestUrls.current, ...urls]);
     } catch {
       toast.error('Could not upload photo');
     } finally {
-      setLocalUploading(false);
+      endUpload();
     }
-  };
-
-  const addDataUrl = async (dataUrl: string) => {
-    if (blocked || !onPhotosChange) return;
-    setLocalUploading(true);
-    try {
-      const url = await uploadDataUrl(dataUrl);
-      if (url) onPhotosChange([...photoUrls, url]);
-    } catch {
-      toast.error('Could not upload photo');
-    } finally {
-      setLocalUploading(false);
-    }
-  };
-
-  const openSnap = () => {
-    if (blocked) return;
-    if (typeof navigator.mediaDevices?.getUserMedia === 'function') {
-      setCameraOpen(true);
-      return;
-    }
-    nativeCameraRef.current?.click();
   };
 
   const handleFiles = (files: FileList | null) => {
-    if (!files?.length || blocked) return;
+    if (!files?.length || disabled || !onPhotosChange) return;
     void addFiles(Array.from(files));
   };
 
@@ -149,21 +128,13 @@ export function RoutinePhotoColumn({
 
       {!disabled && onPhotosChange ? (
         <div className="flex flex-col gap-1.5">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="w-full gap-1.5 text-xs"
-            disabled={blocked}
-            onClick={openSnap}
-          >
-            {blocked ? (
-              <Loader2 className="size-3.5 animate-spin" />
-            ) : (
-              <Camera className="size-3.5" />
-            )}
-            {blocked ? 'Uploading…' : 'Snap photo'}
-          </Button>
+          <NativeCameraSnapButton
+            disabled={disabled}
+            uploading={localUploading || uploading}
+            sessionKey={sessionKey ?? title}
+            className="w-full flex-none"
+            onFiles={handleFiles}
+          />
           <label
             htmlFor={uploadId}
             className={cn(
@@ -171,7 +142,7 @@ export function RoutinePhotoColumn({
               'rounded-md border border-input bg-background px-3 text-xs font-medium',
               'shadow-xs hover:bg-accent hover:text-accent-foreground',
               'h-8',
-              blocked && 'pointer-events-none opacity-60',
+              disabled && 'pointer-events-none opacity-60',
             )}
           >
             <ImagePlus className="size-3.5" />
@@ -181,41 +152,17 @@ export function RoutinePhotoColumn({
       ) : null}
 
       <input
-        id={nativeCameraId}
-        ref={nativeCameraRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="sr-only"
-        tabIndex={-1}
-        disabled={blocked}
-        onChange={(event) => {
-          handleFiles(event.target.files);
-          event.target.value = '';
-        }}
-      />
-      <input
         id={uploadId}
         type="file"
-        accept="image/*"
+        accept={IMAGE_UPLOAD_ACCEPT}
         multiple
         className="sr-only"
         tabIndex={-1}
-        disabled={blocked}
+        disabled={disabled}
         onChange={(event) => {
           handleFiles(event.target.files);
           event.target.value = '';
         }}
-      />
-
-      <RoutineCameraCapture
-        open={cameraOpen}
-        onClose={() => setCameraOpen(false)}
-        onCapture={(dataUrl) => {
-          if (blocked) return;
-          void addDataUrl(dataUrl);
-        }}
-        nativeInputId={nativeCameraId}
       />
 
       {previewUrl ? (

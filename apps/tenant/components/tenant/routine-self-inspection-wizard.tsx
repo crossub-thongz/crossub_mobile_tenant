@@ -628,7 +628,7 @@ export function RoutineSelfInspectionWizard({
               label="Now"
               photoUrls={rec.photoUrls}
               uploading={busy}
-              disabled={busy}
+              sessionKey={area}
               emptyLabel={`Add at least one photo of ${area}.`}
               onPhotosChange={(updater) =>
                 updateArea((current) => ({ photoUrls: updater(current.photoUrls) }))

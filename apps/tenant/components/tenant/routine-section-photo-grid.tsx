@@ -69,7 +69,7 @@ export function RoutineSectionPhotoGrid({
                 title="Routine"
                 photoUrls={photos.routinePhotoUrls}
                 uploading={busy}
-                disabled={busy}
+                sessionKey={section}
                 onPhotosChange={(urls) => onRoutinePhotosChange(section, urls)}
               />
             </div>

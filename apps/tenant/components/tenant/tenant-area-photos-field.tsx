@@ -1,14 +1,13 @@
 'use client';
 
 import { useId, useRef, useState } from 'react';
-import { Camera, ImagePlus, X } from 'lucide-react';
+import { ImagePlus, X } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { RoutineCameraCapture } from '@/components/tenant/routine-camera-capture';
-import { Button } from '@/components/ui/button';
+import { NativeCameraSnapButton } from '@/components/tenant/native-camera-snap-button';
 import { Label } from '@/components/ui/label';
 import { uploadMaintenancePhotoFile } from '@/lib/crossub-api/tenant-account-client';
-import { dataUrlToFile } from '@/lib/compress-image';
+import { IMAGE_UPLOAD_ACCEPT } from '@/lib/compress-image';
 import { cn, resolveEvidenceMimeType } from '@/lib/utils';
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
@@ -19,6 +18,7 @@ type TenantAreaPhotosFieldProps = {
   uploading?: boolean;
   disabled?: boolean;
   emptyLabel?: string;
+  sessionKey?: string;
   onPhotosChange?: (updater: (prev: string[]) => string[]) => void;
 };
 
@@ -28,23 +28,23 @@ export function TenantAreaPhotosField({
   uploading = false,
   disabled = false,
   emptyLabel = 'Add at least one photo for this area.',
+  sessionKey,
   onPhotosChange,
 }: TenantAreaPhotosFieldProps) {
   const uploadId = useId();
-  const nativeCameraId = useId();
-  const nativeCameraRef = useRef<HTMLInputElement>(null);
-  const [cameraOpen, setCameraOpen] = useState(false);
+  const inflight = useRef(0);
   const [localUploading, setLocalUploading] = useState(false);
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
-  const blocked = disabled || uploading || localUploading || !onPhotosChange;
+  const readOnly = disabled || !onPhotosChange;
 
-  const uploadDataUrl = async (dataUrl: string, index = 0) => {
-    const file = dataUrlToFile(dataUrl, `routine-${Date.now()}-${index}.jpg`);
-    if (!file) {
-      toast.error('Could not process photo');
-      return null;
-    }
-    return uploadMaintenancePhotoFile(file);
+  const beginUpload = () => {
+    inflight.current += 1;
+    setLocalUploading(true);
+  };
+
+  const endUpload = () => {
+    inflight.current = Math.max(0, inflight.current - 1);
+    if (inflight.current === 0) setLocalUploading(false);
   };
 
   const uploadFile = async (file: File) => {
@@ -58,8 +58,8 @@ export function TenantAreaPhotosField({
   };
 
   const addFiles = async (files: File[]) => {
-    if (!files.length || blocked) return;
-    setLocalUploading(true);
+    if (!files.length || readOnly) return;
+    beginUpload();
     try {
       const urls: string[] = [];
       for (const file of files) {
@@ -70,38 +70,12 @@ export function TenantAreaPhotosField({
     } catch {
       toast.error('Could not upload photo');
     } finally {
-      setLocalUploading(false);
+      endUpload();
     }
-  };
-
-  const addDataUrls = async (dataUrls: string[]) => {
-    if (!dataUrls.length || blocked) return;
-    setLocalUploading(true);
-    try {
-      const urls: string[] = [];
-      for (const [index, dataUrl] of dataUrls.entries()) {
-        const url = await uploadDataUrl(dataUrl, index);
-        if (url) urls.push(url);
-      }
-      if (urls.length) onPhotosChange?.((prev) => [...prev, ...urls]);
-    } catch {
-      toast.error('Could not upload photo');
-    } finally {
-      setLocalUploading(false);
-    }
-  };
-
-  const openSnap = () => {
-    if (blocked) return;
-    if (typeof navigator.mediaDevices?.getUserMedia === 'function') {
-      setCameraOpen(true);
-      return;
-    }
-    nativeCameraRef.current?.click();
   };
 
   const handleFiles = (files: FileList | null) => {
-    if (!files?.length || blocked) return;
+    if (!files?.length || readOnly) return;
     void addFiles(Array.from(files));
   };
 
@@ -113,17 +87,12 @@ export function TenantAreaPhotosField({
 
       {!disabled && onPhotosChange ? (
         <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="flex-1"
-            disabled={blocked}
-            onClick={openSnap}
-          >
-            <Camera className="size-4" />
-            {localUploading || uploading ? 'Uploading…' : 'Snap photos'}
-          </Button>
+          <NativeCameraSnapButton
+            disabled={disabled}
+            uploading={localUploading || uploading}
+            sessionKey={sessionKey ?? label}
+            onFiles={handleFiles}
+          />
           <label
             htmlFor={uploadId}
             className={cn(
@@ -131,7 +100,7 @@ export function TenantAreaPhotosField({
               'rounded-md border border-input bg-background px-3 text-sm font-medium',
               'shadow-xs hover:bg-accent hover:text-accent-foreground',
               'h-8',
-              blocked && 'pointer-events-none opacity-60',
+              disabled && 'pointer-events-none opacity-60',
             )}
           >
             <ImagePlus className="size-4" />
@@ -141,47 +110,17 @@ export function TenantAreaPhotosField({
       ) : null}
 
       <input
-        id={nativeCameraId}
-        ref={nativeCameraRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        multiple
-        className="sr-only"
-        tabIndex={-1}
-        disabled={blocked}
-        onChange={(event) => {
-          handleFiles(event.target.files);
-          event.target.value = '';
-        }}
-      />
-      <input
         id={uploadId}
         type="file"
-        accept="image/*"
+        accept={IMAGE_UPLOAD_ACCEPT}
         multiple
         className="sr-only"
         tabIndex={-1}
-        disabled={blocked}
+        disabled={disabled}
         onChange={(event) => {
           handleFiles(event.target.files);
           event.target.value = '';
         }}
-      />
-
-      <RoutineCameraCapture
-        open={cameraOpen}
-        captureMode="burst"
-        onClose={() => setCameraOpen(false)}
-        onCapture={(dataUrl) => {
-          if (blocked) return;
-          void addDataUrls([dataUrl]);
-        }}
-        onBurstComplete={(dataUrls) => {
-          if (blocked || dataUrls.length === 0) return;
-          void addDataUrls(dataUrls);
-        }}
-        nativeInputId={nativeCameraId}
       />
 
       {photoUrls.length === 0 ? (

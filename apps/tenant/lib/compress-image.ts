@@ -4,6 +4,9 @@
  */
 const JPEG_QUALITY = 0.82;
 
+export const IMAGE_UPLOAD_ACCEPT =
+  'image/jpeg,image/png,image/webp,image/heic,image/heif,image/*,.heic,.heif';
+
 export function dataUrlToUploadParts(
   dataUrl: string,
 ): { mimeType: string; contentBase64: string; sizeBytes: number } | null {
