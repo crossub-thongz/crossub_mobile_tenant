@@ -4,6 +4,8 @@ export type RoutineSelfAreaDraft = {
   skipped: boolean;
   notes: string;
   photoUrls: string[];
+  /** null = not answered yet */
+  maintenanceRequest: boolean | null;
 };
 
 export type RoutineSelfInspectionDraft = {
@@ -11,26 +13,32 @@ export type RoutineSelfInspectionDraft = {
   areaIndex: number;
   areas: Record<string, RoutineSelfAreaDraft>;
   started: boolean;
-  /** Tenant-sorted walk order. Missing on older drafts. */
+  /** Tenant walk order, including added rooms and omitting deleted ones. */
   areaOrder?: string[];
 };
 
-export function mergeAreaOrder(saved: string[] | undefined, source: string[]): string[] {
-  if (!source.length) return [];
-  if (!saved?.length) return source;
-  const canonicalByKey = new Map(source.map((name) => [name.trim().toLowerCase(), name]));
+/**
+ * When the tenant has already set a walk order (reorder / add / delete), keep it.
+ * Otherwise seed from the bedroom-count template.
+ */
+export function resolveWalkOrder(
+  saved: string[] | undefined,
+  template: string[],
+): string[] {
+  if (!saved?.length) return template;
   const used = new Set<string>();
   const ordered: string[] = [];
   for (const name of saved) {
-    const canonical = canonicalByKey.get(name.trim().toLowerCase());
-    if (!canonical || used.has(canonical.toLowerCase())) continue;
-    used.add(canonical.toLowerCase());
-    ordered.push(canonical);
+    const trimmed = name.trim();
+    if (!trimmed || used.has(trimmed.toLowerCase())) continue;
+    used.add(trimmed.toLowerCase());
+    ordered.push(trimmed);
   }
-  for (const name of source) {
-    if (!used.has(name.toLowerCase())) ordered.push(name);
-  }
-  return ordered;
+  return ordered.length > 0 ? ordered : template;
+}
+
+export function mergeAreaOrder(saved: string[] | undefined, source: string[]): string[] {
+  return resolveWalkOrder(saved, source);
 }
 
 function storageKey(scheduleKey: string): string {
@@ -38,7 +46,13 @@ function storageKey(scheduleKey: string): string {
 }
 
 export function emptyRoutineSelfAreaDraft(): RoutineSelfAreaDraft {
-  return { skipped: false, notes: '', photoUrls: [] };
+  return { skipped: false, notes: '', photoUrls: [], maintenanceRequest: null };
+}
+
+export function isRoutineSelfAreaComplete(area: RoutineSelfAreaDraft | undefined): boolean {
+  if (!area) return false;
+  if (area.skipped) return true;
+  return area.photoUrls.length > 0 && area.maintenanceRequest != null;
 }
 
 function hostedPhotoUrls(urls: string[] | undefined): string[] {
@@ -53,6 +67,12 @@ function hostedPhotoUrls(urls: string[] | undefined): string[] {
   return out;
 }
 
+function parseMaintenanceRequest(value: unknown): boolean | null {
+  if (value === true) return true;
+  if (value === false) return false;
+  return null;
+}
+
 function mergeAreaDrafts(
   base: RoutineSelfAreaDraft | undefined,
   overlay: RoutineSelfAreaDraft | undefined,
@@ -63,6 +83,10 @@ function mergeAreaDrafts(
     skipped: left.skipped || right.skipped,
     notes: right.notes.trim() || left.notes,
     photoUrls: hostedPhotoUrls([...left.photoUrls, ...right.photoUrls]),
+    maintenanceRequest:
+      right.maintenanceRequest != null
+        ? right.maintenanceRequest
+        : left.maintenanceRequest,
   };
 }
 
@@ -74,6 +98,7 @@ export type ServerRoutineSelfDraft = {
     areaName: string;
     skipped?: boolean;
     notes?: string;
+    maintenanceRequest?: boolean | null;
     photoUrls?: string[];
   }>;
 };
@@ -90,6 +115,7 @@ export function serverDraftToLocal(
       skipped: row.skipped === true,
       notes: row.notes?.trim() ?? '',
       photoUrls: hostedPhotoUrls(row.photoUrls),
+      maintenanceRequest: parseMaintenanceRequest(row.maintenanceRequest),
     });
   }
   return {
@@ -117,17 +143,15 @@ export function mergeRoutineSelfInspectionDrafts(
   for (const name of names) {
     areas[name] = mergeAreaDrafts(local.areas[name], server.areas[name]);
   }
-  const orderSource = [
-    ...(local.areaOrder ?? []),
-    ...(server.areaOrder ?? []),
-    ...names,
-  ];
+  const savedOrder = local.areaOrder?.length
+    ? local.areaOrder
+    : server.areaOrder;
   return {
     scheduleKey,
     areaIndex: Math.max(local.areaIndex, server.areaIndex),
     areas,
     started: local.started || server.started,
-    areaOrder: mergeAreaOrder(local.areaOrder ?? server.areaOrder, orderSource),
+    areaOrder: resolveWalkOrder(savedOrder, [...names]),
   };
 }
 
@@ -138,18 +162,26 @@ export function toServerDraftPayload(draft: RoutineSelfInspectionDraft): {
     areaName: string;
     skipped: boolean;
     notes: string;
+    maintenanceRequest: boolean | null;
     photoUrls: string[];
   }>;
 } {
+  const order = draft.areaOrder?.length
+    ? resolveWalkOrder(draft.areaOrder, Object.keys(draft.areas))
+    : Object.keys(draft.areas);
   return {
     areaIndex: draft.areaIndex,
-    ...(draft.areaOrder?.length ? { areaOrder: draft.areaOrder } : {}),
-    areas: Object.entries(draft.areas).map(([areaName, row]) => ({
-      areaName,
-      skipped: row.skipped,
-      notes: row.notes,
-      photoUrls: hostedPhotoUrls(row.photoUrls),
-    })),
+    ...(order.length ? { areaOrder: order } : {}),
+    areas: order.map((areaName) => {
+      const row = draft.areas[areaName] ?? emptyRoutineSelfAreaDraft();
+      return {
+        areaName,
+        skipped: row.skipped,
+        notes: row.notes,
+        maintenanceRequest: row.maintenanceRequest,
+        photoUrls: hostedPhotoUrls(row.photoUrls),
+      };
+    }),
   };
 }
 

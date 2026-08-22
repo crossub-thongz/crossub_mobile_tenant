@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronLeft, Loader2 } from 'lucide-react';
+import { ChevronLeft, CheckCircle2, Loader2, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { DraggableNamedList } from '@/components/tenant/draggable-named-list';
 import { InspectionAreaNav } from '@/components/tenant/inspection-area-nav';
+import { RenameLabelDialog } from '@/components/tenant/rename-label-dialog';
 import { ResetInspectionDialog } from '@/components/tenant/reset-inspection-dialog';
 import { TenantAreaPhotosField } from '@/components/tenant/tenant-area-photos-field';
 import { Button } from '@/components/ui/button';
@@ -18,26 +19,23 @@ import {
   startTenantRoutineSelfInspection,
   submitTenantRoutineSelfInspection,
 } from '@/lib/crossub-api/tenant-account-client';
-import {
-  existingAreaNamesFromPlan,
-  resolveIngoingAreaPlan,
-} from '@/lib/inspection-area-workflow';
-import { moveIndex } from '@/lib/inspection-layout-edit';
+import { moveIndex, validateUniqueLabel } from '@/lib/inspection-layout-edit';
 import { matchAllReferencePhotosForRoom } from '@/lib/outgoing-reference-photos';
 import {
   clearRoutineSelfInspectionDraft,
   emptyRoutineSelfAreaDraft,
+  isRoutineSelfAreaComplete,
   loadRoutineSelfInspectionDraft,
-  mergeAreaOrder,
   mergeRoutineSelfInspectionDrafts,
   persistRoutineSelfInspectionDraft,
+  resolveWalkOrder,
   serverDraftToLocal,
   toServerDraftPayload,
   type RoutineSelfAreaDraft,
   type ServerRoutineSelfDraft,
 } from '@/lib/routine-self-inspection-draft';
-
-const FALLBACK_AREAS = ['Kitchen', 'Bathroom', 'Bedroom', 'Lounge', 'Laundry'];
+import { tenantSelfRoutineAreasFromBedrooms } from '@/lib/tenant-self-routine-layout';
+import { cn } from '@/lib/utils';
 
 function areaCatalogFromNames(names: string[]): InspectionAreaDefinition[] {
   return names.map((name) => ({
@@ -66,6 +64,7 @@ function draftFromInspection(
       skipped: false,
       notes: '',
       photoUrls,
+      maintenanceRequest: null,
     };
   }
   const fromAreas =
@@ -97,6 +96,7 @@ export function RoutineSelfInspectionWizard({
   const [areaIndex, setAreaIndex] = useState(0);
   const [areaOrder, setAreaOrder] = useState<string[]>([]);
   const [areas, setAreas] = useState<Record<string, RoutineSelfAreaDraft>>({});
+  const [addAreaOpen, setAddAreaOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const serverPersistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -119,21 +119,16 @@ export function RoutineSelfInspectionWizard({
     [inspection],
   );
 
-  const sourceAreaNames = useMemo(() => {
-    const plan = resolveIngoingAreaPlan(
-      referenceIngoingAreas.map((area) => ({ name: area.name })),
-    );
-    const fromIngoing = existingAreaNamesFromPlan(plan);
-    if (fromIngoing.length > 0) return fromIngoing;
-    const fromSections = (inspection.sections ?? [])
-      .map((section) => section.room.trim())
-      .filter(Boolean);
-    const unique = [...new Set(fromSections)];
-    return unique.length > 0 ? unique : FALLBACK_AREAS;
-  }, [inspection.sections, referenceIngoingAreas]);
+  const sourceAreaNames = useMemo(
+    () =>
+      tenantSelfRoutineAreasFromBedrooms(
+        (inspection as { bedrooms?: number | null }).bedrooms,
+      ),
+    [inspection],
+  );
 
   const areaNames = useMemo(
-    () => mergeAreaOrder(areaOrder, sourceAreaNames),
+    () => resolveWalkOrder(areaOrder, sourceAreaNames),
     [areaOrder, sourceAreaNames],
   );
 
@@ -145,7 +140,7 @@ export function RoutineSelfInspectionWizard({
     nextIndex = areaIndexRef.current,
     nextOrder = areaOrderRef.current,
   ) => {
-    const resolvedOrder = mergeAreaOrder(nextOrder, sourceAreaNamesRef.current);
+    const resolvedOrder = resolveWalkOrder(nextOrder, sourceAreaNamesRef.current);
     return {
       scheduleKey,
       areaIndex: nextIndex,
@@ -156,12 +151,16 @@ export function RoutineSelfInspectionWizard({
   };
 
   const hasDraftProgress = (nextAreas: Record<string, RoutineSelfAreaDraft>, nextOrder: string[]) => {
-    const resolvedOrder = mergeAreaOrder(nextOrder, sourceAreaNamesRef.current);
+    const resolvedOrder = resolveWalkOrder(nextOrder, sourceAreaNamesRef.current);
     const orderChanged = resolvedOrder.join('\0') !== sourceAreaNamesRef.current.join('\0');
     return (
       orderChanged ||
       Object.values(nextAreas).some(
-        (area) => area.skipped || area.photoUrls.length > 0 || area.notes.trim(),
+        (area) =>
+          area.skipped ||
+          area.photoUrls.length > 0 ||
+          area.notes.trim() ||
+          area.maintenanceRequest != null,
       )
     );
   };
@@ -328,6 +327,7 @@ export function RoutineSelfInspectionWizard({
         {
           areaName: def.name,
           comment: row.notes.trim() || undefined,
+          maintenanceRequest: row.maintenanceRequest ?? undefined,
           photoUrls: row.photoUrls,
         },
       ];
@@ -358,6 +358,10 @@ export function RoutineSelfInspectionWizard({
       toast.error(`Add at least one photo of ${area}`);
       return;
     }
+    if (!rec.skipped && rec.maintenanceRequest == null) {
+      toast.error('Select whether this area needs a maintenance request');
+      return;
+    }
     if (isLast) {
       await submitAll({ ...areas, [area]: rec });
       return;
@@ -378,6 +382,31 @@ export function RoutineSelfInspectionWizard({
     setAreaIndex(nextIndex >= 0 ? nextIndex : 0);
   };
 
+  const handleAddArea = (rawName: string) => {
+    const name = rawName.trim().replace(/\s+/g, ' ');
+    const error = validateUniqueLabel(name, areaNames);
+    if (error) return error;
+    const next = [...areaNames, name];
+    setAreaOrder(next);
+    setAreas((prev) => ({ ...prev, [name]: emptyRoutineSelfAreaDraft() }));
+    setAreaIndex(next.length - 1);
+    return null;
+  };
+
+  const handleDeleteArea = (name: string) => {
+    if (areaNames.length <= 1) {
+      toast.error('Keep at least one area');
+      return;
+    }
+    const next = areaNames.filter((item) => item !== name);
+    setAreaOrder(next);
+    setAreas((prev) => {
+      const { [name]: _removed, ...rest } = prev;
+      return rest;
+    });
+    setAreaIndex((index) => Math.min(index, next.length - 1));
+  };
+
   const resetInspection = () => {
     setResetOpen(false);
     if (persistTimer.current) clearTimeout(persistTimer.current);
@@ -395,8 +424,7 @@ export function RoutineSelfInspectionWizard({
   const progressTone = (index: number, areaName: string) => {
     const row = areas[areaName];
     if (index === safeAreaIndex) return 'bg-primary';
-    if (row?.skipped) return 'bg-muted-foreground/40';
-    if ((row?.photoUrls.length ?? 0) > 0) return 'bg-primary/70';
+    if (isRoutineSelfAreaComplete(row)) return 'bg-primary/80';
     if (index < safeAreaIndex) return 'bg-primary/40';
     return 'bg-secondary';
   };
@@ -405,8 +433,7 @@ export function RoutineSelfInspectionWizard({
     if (index === safeAreaIndex) return 'Current area';
     const row = areas[name];
     if (row?.skipped) return 'Skipped';
-    const count = row?.photoUrls.length ?? 0;
-    if (count > 0) return `${count} photo${count === 1 ? '' : 's'}`;
+    if (isRoutineSelfAreaComplete(row)) return 'Completed';
     return 'Not photographed';
   };
 
@@ -424,7 +451,7 @@ export function RoutineSelfInspectionWizard({
   if (areaCatalog.length === 0 || !areaDef) {
     return (
       <p className="text-muted-foreground text-sm">
-        No areas were found from the last ingoing inspection.
+        No areas to inspect. Add an area to continue.
       </p>
     );
   }
@@ -448,9 +475,9 @@ export function RoutineSelfInspectionWizard({
       />
 
       <p className="text-muted-foreground text-xs">
-        Rooms come from the last ingoing inspection. Drag the handle to change the
-        order, then photograph each area as it is now — you can snap or upload several
-        photos per room.
+        Rooms start from this property’s bedroom layout. Add or remove areas, drag
+        to reorder, then photograph each room as it is now — you can snap or upload
+        several photos per area.
       </p>
 
       <ul className="divide-y rounded-lg border bg-card">
@@ -458,20 +485,70 @@ export function RoutineSelfInspectionWizard({
           items={areaNames}
           disabled={busy}
           onReorder={handleMoveArea}
-          renderItem={(name, index) => (
-            <button
-              type="button"
-              className="min-w-0 flex-1 py-1 text-left"
-              onClick={() => goToArea(index)}
-            >
-              <p className="font-medium">{name}</p>
-              <p className="text-muted-foreground text-xs">
-                {areaStatusLabel(index, name)}
-              </p>
-            </button>
-          )}
+          renderItem={(name, index) => {
+            const complete = isRoutineSelfAreaComplete(areas[name]);
+            return (
+              <div className="flex min-w-0 flex-1 items-center gap-2">
+                <button
+                  type="button"
+                  className="min-w-0 flex-1 py-1 text-left"
+                  onClick={() => goToArea(index)}
+                >
+                  <p className="flex items-center gap-1.5 font-medium">
+                    {complete ? (
+                      <CheckCircle2
+                        className="text-primary size-4 shrink-0"
+                        aria-hidden
+                      />
+                    ) : null}
+                    {name}
+                  </p>
+                  <p
+                    className={cn(
+                      'text-xs',
+                      complete ? 'text-primary' : 'text-muted-foreground',
+                    )}
+                  >
+                    {areaStatusLabel(index, name)}
+                  </p>
+                </button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground hover:text-destructive size-8 shrink-0"
+                  disabled={busy || areaNames.length <= 1}
+                  aria-label={`Remove ${name}`}
+                  onClick={() => handleDeleteArea(name)}
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              </div>
+            );
+          }}
         />
       </ul>
+
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full"
+        disabled={busy}
+        onClick={() => setAddAreaOpen(true)}
+      >
+        <Plus className="size-4" />
+        Add area
+      </Button>
+      <RenameLabelDialog
+        open={addAreaOpen}
+        title="Add area"
+        description="Name the extra room or space you want to photograph."
+        label="Area name"
+        initialValue=""
+        confirmLabel="Add"
+        onClose={() => setAddAreaOpen(false)}
+        onConfirm={handleAddArea}
+      />
 
       <InspectionAreaNav
         areaCatalog={areaCatalog}
@@ -552,6 +629,32 @@ export function RoutineSelfInspectionWizard({
                 updateArea((current) => ({ photoUrls: updater(current.photoUrls) }))
               }
             />
+
+            <div className="space-y-1.5">
+              <p className="text-sm font-medium">Any maintenance request?</p>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant={rec.maintenanceRequest === true ? 'default' : 'outline'}
+                  onClick={() => updateArea({ maintenanceRequest: true })}
+                >
+                  Yes
+                </Button>
+                <Button
+                  type="button"
+                  variant={rec.maintenanceRequest === false ? 'default' : 'outline'}
+                  onClick={() => updateArea({ maintenanceRequest: false })}
+                >
+                  No
+                </Button>
+              </div>
+              {rec.maintenanceRequest === true ? (
+                <p className="text-muted-foreground text-xs">
+                  Note what needs attention below. Your property manager will see this
+                  with the report.
+                </p>
+              ) : null}
+            </div>
 
             <div className="space-y-1.5">
               <label htmlFor={`notes-${area}`} className="text-sm font-medium">

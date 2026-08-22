@@ -142,6 +142,7 @@ export type TenantRoutineSelfInspectionSectionSubmission =
     areaName?: string;
     itemName?: string;
     conditionTags?: string[];
+    maintenanceRequest?: boolean;
   };
 export type TenantDeclineVacatingSettlement =
   components['schemas']['TenantDeclineVacatingSettlementDto'];
@@ -386,6 +387,7 @@ export async function saveTenantRoutineSelfInspectionDraft(
       areaName: string;
       skipped?: boolean;
       notes?: string;
+      maintenanceRequest?: boolean | null;
       photoUrls: string[];
     }>;
   },
