@@ -300,6 +300,32 @@ export async function rejectTenantIngoingInspection(
   return data;
 }
 
+/** Yes/No answers on the NSW special-conditions page. */
+export async function submitTenantIngoingSpecialReporting(
+  inspectionId: string,
+  answers: Array<{ questionId: string; answer: 'yes' | 'no' }>,
+): Promise<TenantIngoingInspection> {
+  const res = await fetch(
+    `${API_BASE}/tenant/ingoing-inspections/${inspectionId}/special-reporting`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ answers }),
+    },
+  );
+  if (!res.ok) {
+    const err = (await res.json().catch(() => null)) as
+      | { message?: string | string[] }
+      | null;
+    const raw = err?.message;
+    throw new Error(
+      (Array.isArray(raw) ? raw[0] : raw) ?? 'Failed to save NSW special conditions',
+    );
+  }
+  return (await res.json()) as TenantIngoingInspection;
+}
+
 /** Agent-scheduled outgoing inspections (`GET /api/v1/tenant/outgoing-inspections`). */
 export async function fetchTenantOutgoingInspections(): Promise<TenantOutgoingInspection[]> {
   const { data, error } = await crossub.GET('/tenant/outgoing-inspections');

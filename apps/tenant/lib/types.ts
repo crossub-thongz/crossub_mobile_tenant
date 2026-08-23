@@ -29,12 +29,20 @@ export type OnboardingStepId =
 export type OnboardingStepStatus = 'pending' | 'uploaded' | 'approved' | 'completed';
 
 export type IngoingReportStatus =
+  | 'awaiting_admin'
   | 'pending_tenant_review'
   | 'partially_confirmed'
   | 'disputed'
   | 'confirmed'
   | 'rejected'
   | 'overdue';
+
+export interface IngoingSpecialQuestion {
+  id: string;
+  prompt: string;
+  inspectorAnswer?: 'yes' | 'no' | 'n/a' | null;
+  tenantAnswer?: 'yes' | 'no' | null;
+}
 
 export type MaintenanceTenantStatus =
   | 'submitted'
@@ -234,6 +242,13 @@ export interface IngoingReport {
   tenantApproved?: boolean;
   tenantRejected?: boolean;
   rejectReason?: string;
+  /** True after CROSSUB has approved and sent the report to this tenant. */
+  released?: boolean;
+  signingClosed?: boolean;
+  specialReporting?: {
+    title: string;
+    questions: IngoingSpecialQuestion[];
+  };
 }
 
 export interface MaintenanceRequest {

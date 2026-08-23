@@ -6,6 +6,7 @@ import { ExternalLink, FileText, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { TenantShell } from '@/components/layout/tenant-shell';
+import { NswSpecialConditionsCard } from '@/components/tenant/nsw-special-conditions-card';
 import { ReportSectionCard } from '@/components/tenant/report-section-card';
 import { StatusBadge } from '@/components/tenant/status-badge';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
@@ -26,6 +27,7 @@ export default function IngoingReportPage() {
     confirmIngoingSection,
     approveIngoingReport,
     rejectIngoingReport,
+    submitIngoingSpecialReporting,
     apiConnected,
   } = useTenantData();
   const [loadedReport, setLoadedReport] = useState(ingoingReport);
@@ -54,11 +56,21 @@ export default function IngoingReportPage() {
     return report.sections.every((s) => s.tenantConfirmed || s.tenantDispute);
   }, [report]);
 
+  const specialReady = useMemo(() => {
+    const questions = report?.specialReporting?.questions ?? [];
+    if (questions.length === 0) return true;
+    return questions.every((q) => q.tenantAnswer === 'yes' || q.tenantAnswer === 'no');
+  }, [report]);
+
+  const waitingForAdmin =
+    report?.status === 'awaiting_admin' || report?.released === false;
+  const signingClosed = report?.status === 'overdue' || Boolean(report?.signingClosed);
   const locked =
     report?.status === 'confirmed' ||
     report?.status === 'rejected' ||
     Boolean(report?.tenantApproved) ||
-    Boolean(report?.tenantRejected);
+    Boolean(report?.tenantRejected) ||
+    signingClosed;
 
   if (loading) {
     return (
@@ -85,6 +97,10 @@ export default function IngoingReportPage() {
   const handleApprove = async () => {
     if (!sectionsReady) {
       toast.error('Confirm or dispute every section before approving');
+      return;
+    }
+    if (!specialReady) {
+      toast.error('Answer every NSW special condition with Yes or No before signing');
       return;
     }
     setBusy(true);
@@ -126,17 +142,41 @@ export default function IngoingReportPage() {
           variant={
             report.status === 'confirmed'
               ? 'success'
-              : report.status === 'rejected'
+              : report.status === 'rejected' || report.status === 'overdue'
                 ? 'danger'
-                : 'action'
+                : report.status === 'awaiting_admin'
+                  ? 'warning'
+                  : 'action'
           }
         />
-        <span className="text-muted-foreground text-xs">
-          Due {formatDate(report.dueBy)} · {report.confirmedCount}/{total} reviewed
-        </span>
+        {!waitingForAdmin ? (
+          <span className="text-muted-foreground text-xs">
+            Due {formatDate(report.dueBy)} · {report.confirmedCount}/{total} reviewed
+          </span>
+        ) : null}
       </div>
 
-      {report.reportUrl ? (
+      {waitingForAdmin ? (
+        <div className="rounded-xl border border-dashed px-4 py-4 text-sm">
+          <p className="font-medium">Waiting for CROSSUB to approve the inspector report</p>
+          <p className="text-muted-foreground mt-1 text-xs">
+            You can review each section and complete the NSW special conditions
+            only after CROSSUB approves the inspector report and sends it to you.
+          </p>
+        </div>
+      ) : null}
+
+      {signingClosed && !report.tenantApproved ? (
+        <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm">
+          <p className="font-medium">Signing window closed</p>
+          <p className="text-muted-foreground mt-1 text-xs">
+            The 7-day return window has ended. This ingoing report can no longer
+            be signed.
+          </p>
+        </div>
+      ) : null}
+
+      {!waitingForAdmin && report.reportUrl ? (
         <a
           href={report.reportUrl}
           target="_blank"
@@ -147,12 +187,12 @@ export default function IngoingReportPage() {
           <span className="min-w-0 flex-1">View / download ingoing report (PDF)</span>
           <ExternalLink className="text-muted-foreground size-3.5 shrink-0" />
         </a>
-      ) : (
+      ) : !waitingForAdmin ? (
         <div className="text-muted-foreground mb-4 rounded-xl border border-dashed px-4 py-3 text-xs">
           Full PDF will appear here once the inspector report is generated. You can still review
           each section below.
         </div>
-      )}
+      ) : null}
 
       {report.status === 'rejected' && report.rejectReason ? (
         <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm">
@@ -161,49 +201,75 @@ export default function IngoingReportPage() {
         </div>
       ) : null}
 
-      <p className="text-muted-foreground mb-4 text-xs">
-        Review each section, leave feedback if needed, then Confirm or Dispute. When every section
-        is reviewed, Approve the whole report — or Reject it with a reason.
-      </p>
+      {!waitingForAdmin ? (
+        <p className="text-muted-foreground mb-4 text-xs">
+          Review each section, leave feedback if needed, then Confirm or Dispute. Complete the
+          NSW special conditions, then Approve the whole report — or Reject it with a reason.
+        </p>
+      ) : null}
 
-      <div className="space-y-4">
-        {report.sections.map((section) => (
-          <ReportSectionCard
-            key={section.id}
-            section={section}
-            disabled={locked || busy}
-            onConfirm={(feedback) =>
-              void confirmIngoingSection(section.id, {
-                feedback,
-                inspectionId: report.id,
-              }).catch((err) =>
-                toast.error(err instanceof Error ? err.message : 'Could not confirm section'),
-              )
-            }
-            onDispute={(comment) =>
-              void confirmIngoingSection(section.id, {
-                dispute: comment,
-                inspectionId: report.id,
-              }).catch((err) =>
-                toast.error(err instanceof Error ? err.message : 'Could not dispute section'),
-              )
-            }
-          />
-        ))}
-      </div>
+      {!waitingForAdmin ? (
+        <div className="space-y-4">
+          {report.sections.map((section) => (
+            <ReportSectionCard
+              key={section.id}
+              section={section}
+              disabled={locked || busy}
+              onConfirm={(feedback) =>
+                void confirmIngoingSection(section.id, {
+                  feedback,
+                  inspectionId: report.id,
+                }).catch((err) =>
+                  toast.error(err instanceof Error ? err.message : 'Could not confirm section'),
+                )
+              }
+              onDispute={(comment) =>
+                void confirmIngoingSection(section.id, {
+                  dispute: comment,
+                  inspectionId: report.id,
+                }).catch((err) =>
+                  toast.error(err instanceof Error ? err.message : 'Could not dispute section'),
+                )
+              }
+            />
+          ))}
+          {report.specialReporting ? (
+            <NswSpecialConditionsCard
+              title={report.specialReporting.title}
+              questions={report.specialReporting.questions}
+              disabled={locked || busy}
+              onSave={async (answers) => {
+                try {
+                  await submitIngoingSpecialReporting(answers, report.id);
+                  toast.success('NSW special conditions saved');
+                } catch (err) {
+                  toast.error(
+                    err instanceof Error
+                      ? err.message
+                      : 'Could not save NSW special conditions',
+                  );
+                  throw err;
+                }
+              }}
+            />
+          ) : null}
+        </div>
+      ) : null}
 
-      {!locked ? (
+      {!locked && !waitingForAdmin ? (
         <div className="mt-6 space-y-3 rounded-xl border bg-card p-4">
           <p className="text-sm font-semibold">Acknowledge report</p>
           <p className="text-muted-foreground text-xs">
-            {sectionsReady
+            {sectionsReady && specialReady
               ? 'All sections reviewed. Approve to accept the condition report, or reject with a reason.'
-              : `Review remaining sections (${total - report.confirmedCount} left) before approving.`}
+              : !specialReady
+                ? 'Answer every NSW special condition with Yes or No before approving.'
+                : `Review remaining sections (${total - report.confirmedCount} left) before approving.`}
           </p>
           <div className="flex flex-wrap gap-2">
             <Button
               size="sm"
-              disabled={busy || !sectionsReady}
+              disabled={busy || !sectionsReady || !specialReady}
               onClick={() => void handleApprove()}
             >
               {busy ? <Loader2 className="size-3.5 animate-spin" /> : null}

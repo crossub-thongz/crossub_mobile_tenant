@@ -29,12 +29,13 @@ export const MAINTENANCE_STATUS_LABEL: Record<MaintenanceTenantStatus, string> =
 };
 
 export const INGOING_STATUS_LABEL: Record<IngoingReportStatus, string> = {
+  awaiting_admin: 'Waiting for CROSSUB',
   pending_tenant_review: 'Pending your review',
   partially_confirmed: 'Partially confirmed',
   disputed: 'Disputed',
   confirmed: 'Confirmed',
   rejected: 'Rejected',
-  overdue: 'Overdue — please complete',
+  overdue: 'Overdue — signing closed',
 };
 
 export const MESSAGE_TYPE_LABEL: Record<MessageType, string> = {

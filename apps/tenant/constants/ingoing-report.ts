@@ -9,7 +9,7 @@ import type { IngoingReportStatus } from '@/lib/types';
  * settled the card is just a record, so it opens the PDF instead.
  */
 export const INGOING_REPORT_AWAITING_TENANT_STATUSES: readonly IngoingReportStatus[] =
-  ['pending_tenant_review', 'partially_confirmed', 'disputed', 'overdue'];
+  ['pending_tenant_review', 'partially_confirmed', 'disputed'];
 
 export function isIngoingReportAwaitingTenant(
   status: IngoingReportStatus,

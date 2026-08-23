@@ -2,7 +2,13 @@ import type { IngoingReport } from '@/lib/types';
 
 /** Whether the tenant still needs to confirm the ingoing report. */
 export function needsIngoingConfirmationAction(report: IngoingReport): boolean {
-  return report.status !== 'confirmed';
+  return (
+    report.released === true &&
+    report.status !== 'confirmed' &&
+    report.status !== 'rejected' &&
+    report.status !== 'awaiting_admin' &&
+    report.status !== 'overdue'
+  );
 }
 
 /** First agent-scheduled ingoing inspection awaiting tenant action. */

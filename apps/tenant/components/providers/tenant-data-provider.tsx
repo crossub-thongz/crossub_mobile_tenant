@@ -53,6 +53,7 @@ import {
   approveTenantIngoingInspection,
   rejectTenantIngoingInspection,
   submitTenantIngoingSectionFeedback,
+  submitTenantIngoingSpecialReporting,
   approveTenantOutgoingInspection,
   disputeTenantOutgoingSection,
 } from '@/lib/crossub-api/tenant-account-client';
@@ -258,6 +259,10 @@ interface TenantDataContextValue {
   ) => Promise<void>;
   approveIngoingReport: (inspectionId?: string) => Promise<void>;
   rejectIngoingReport: (reason: string, inspectionId?: string) => Promise<void>;
+  submitIngoingSpecialReporting: (
+    answers: Array<{ questionId: string; answer: 'yes' | 'no' }>,
+    inspectionId?: string,
+  ) => Promise<void>;
   confirmOutgoingSection: (sectionId: string, dispute?: string) => Promise<void>;
   respondRentReview: (
     id: string,
@@ -1197,6 +1202,41 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     [apiConnected, ingoing?.id],
   );
 
+  const submitIngoingSpecialReporting = useCallback(
+    async (
+      answers: Array<{ questionId: string; answer: 'yes' | 'no' }>,
+      inspectionId?: string,
+    ) => {
+      const targetId = inspectionId ?? ingoing?.id;
+      if (!targetId) return;
+      if (!apiConnected) {
+        setIngoing((prev) => {
+          if (!prev || prev.id !== targetId || !prev.specialReporting) return prev;
+          const next: IngoingReport = {
+            ...prev,
+            specialReporting: {
+              ...prev.specialReporting,
+              questions: prev.specialReporting.questions.map((q) => ({
+                ...q,
+                tenantAnswer:
+                  answers.find((row) => row.questionId === q.id)?.answer ??
+                  q.tenantAnswer,
+              })),
+            },
+          };
+          patchTenantStore({ ingoingReport: next });
+          return next;
+        });
+        return;
+      }
+      const updated = await submitTenantIngoingSpecialReporting(targetId, answers);
+      const mapped = toIngoingReport(updated);
+      setIngoing(mapped);
+      setIngoingInspections((prev) => prev.map((r) => (r.id === mapped.id ? mapped : r)));
+    },
+    [apiConnected, ingoing?.id],
+  );
+
   const rejectIngoingReport = useCallback(
     async (reason: string, inspectionId?: string) => {
       const targetId = inspectionId ?? ingoing?.id;
@@ -1832,6 +1872,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       confirmIngoingSection,
       approveIngoingReport,
       rejectIngoingReport,
+      submitIngoingSpecialReporting,
       confirmOutgoingSection,
       respondRentReview,
       signLeaseAgreement,
@@ -1901,6 +1942,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       confirmIngoingSection,
       approveIngoingReport,
       rejectIngoingReport,
+      submitIngoingSpecialReporting,
       confirmOutgoingSection,
       respondRentReview,
       signLeaseAgreement,

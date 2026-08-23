@@ -595,10 +595,23 @@ export function toIngoingReport(dto: TenantIngoingInspection): IngoingReport {
     (s) => s.tenantConfirmed || s.tenantDispute,
   ).length;
   const hasDispute = sections.some((s) => s.tenantDispute);
+  const extra = dto as TenantIngoingInspection & {
+    specialReporting?: IngoingReport['specialReporting'];
+    signingClosed?: boolean;
+  };
+  const released =
+    dto.status === 'awaiting_confirmation' ||
+    dto.status === 'confirmed' ||
+    dto.status === 'rejected' ||
+    Boolean(dto.tenantApproved);
+  const special = extra.specialReporting;
   let status: IngoingReport['status'] = 'pending_tenant_review';
   if (dto.tenantApproved || dto.status === 'confirmed') status = 'confirmed';
+  else if (extra.signingClosed && !dto.tenantApproved) status = 'overdue';
   else if (dto.tenantRejected || dto.status === 'rejected') status = 'rejected';
-  else if (hasDispute) status = 'disputed';
+  else if (dto.status === 'scheduled' || dto.status === 'awaiting_report') {
+    status = 'awaiting_admin';
+  } else if (hasDispute) status = 'disputed';
   else if (confirmedCount > 0) status = 'partially_confirmed';
 
   return {
@@ -612,6 +625,19 @@ export function toIngoingReport(dto: TenantIngoingInspection): IngoingReport {
     tenantApproved: dto.tenantApproved,
     tenantRejected: dto.tenantRejected,
     rejectReason: dto.rejectReason ?? undefined,
+    released,
+    signingClosed: Boolean(extra.signingClosed),
+    specialReporting: special
+      ? {
+          title: special.title,
+          questions: special.questions.map((q) => ({
+            id: q.id,
+            prompt: q.prompt,
+            inspectorAnswer: q.inspectorAnswer ?? null,
+            tenantAnswer: q.tenantAnswer ?? null,
+          })),
+        }
+      : undefined,
   };
 }
 
