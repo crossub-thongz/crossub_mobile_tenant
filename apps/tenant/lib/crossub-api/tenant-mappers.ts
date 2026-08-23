@@ -598,6 +598,9 @@ export function toIngoingReport(dto: TenantIngoingInspection): IngoingReport {
   const extra = dto as TenantIngoingInspection & {
     specialReporting?: IngoingReport['specialReporting'];
     signingClosed?: boolean;
+    tenantReturnedReportUrl?: string | null;
+    tenantReturnedSignedName?: string | null;
+    tenantReturnedSubmittedAt?: string | null;
   };
   const released =
     dto.status === 'awaiting_confirmation' ||
@@ -627,6 +630,9 @@ export function toIngoingReport(dto: TenantIngoingInspection): IngoingReport {
     rejectReason: dto.rejectReason ?? undefined,
     released,
     signingClosed: Boolean(extra.signingClosed),
+    tenantReturnedReportUrl: extra.tenantReturnedReportUrl ?? null,
+    tenantReturnedSignedName: extra.tenantReturnedSignedName ?? null,
+    tenantReturnedSubmittedAt: extra.tenantReturnedSubmittedAt ?? null,
     specialReporting: special
       ? {
           title: special.title,

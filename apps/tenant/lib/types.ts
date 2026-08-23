@@ -245,6 +245,9 @@ export interface IngoingReport {
   /** True after CROSSUB has approved and sent the report to this tenant. */
   released?: boolean;
   signingClosed?: boolean;
+  tenantReturnedReportUrl?: string | null;
+  tenantReturnedSignedName?: string | null;
+  tenantReturnedSubmittedAt?: string | null;
   specialReporting?: {
     title: string;
     questions: IngoingSpecialQuestion[];

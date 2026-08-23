@@ -30,7 +30,7 @@ export const MAINTENANCE_STATUS_LABEL: Record<MaintenanceTenantStatus, string> =
 
 export const INGOING_STATUS_LABEL: Record<IngoingReportStatus, string> = {
   awaiting_admin: 'Waiting for CROSSUB',
-  pending_tenant_review: 'Pending your review',
+  pending_tenant_review: 'Return your report',
   partially_confirmed: 'Partially confirmed',
   disputed: 'Disputed',
   confirmed: 'Confirmed',

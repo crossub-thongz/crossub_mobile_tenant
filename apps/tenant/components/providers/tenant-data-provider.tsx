@@ -54,6 +54,7 @@ import {
   rejectTenantIngoingInspection,
   submitTenantIngoingSectionFeedback,
   submitTenantIngoingSpecialReporting,
+  submitTenantIngoingReturnedReport,
   approveTenantOutgoingInspection,
   disputeTenantOutgoingSection,
 } from '@/lib/crossub-api/tenant-account-client';
@@ -261,6 +262,16 @@ interface TenantDataContextValue {
   rejectIngoingReport: (reason: string, inspectionId?: string) => Promise<void>;
   submitIngoingSpecialReporting: (
     answers: Array<{ questionId: string; answer: 'yes' | 'no' }>,
+    inspectionId?: string,
+  ) => Promise<void>;
+  submitIngoingReturnedReport: (
+    body: {
+      fileName: string;
+      mimeType: string;
+      sizeBytes: number;
+      contentBase64: string;
+      signatureName: string;
+    },
     inspectionId?: string,
   ) => Promise<void>;
   confirmOutgoingSection: (sectionId: string, dispute?: string) => Promise<void>;
@@ -1237,6 +1248,27 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     [apiConnected, ingoing?.id],
   );
 
+  const submitIngoingReturnedReport = useCallback(
+    async (
+      body: {
+        fileName: string;
+        mimeType: string;
+        sizeBytes: number;
+        contentBase64: string;
+        signatureName: string;
+      },
+      inspectionId?: string,
+    ) => {
+      const targetId = inspectionId ?? ingoing?.id;
+      if (!targetId) return;
+      const updated = await submitTenantIngoingReturnedReport(targetId, body);
+      const mapped = toIngoingReport(updated);
+      setIngoing(mapped);
+      setIngoingInspections((prev) => prev.map((r) => (r.id === mapped.id ? mapped : r)));
+    },
+    [ingoing?.id],
+  );
+
   const rejectIngoingReport = useCallback(
     async (reason: string, inspectionId?: string) => {
       const targetId = inspectionId ?? ingoing?.id;
@@ -1873,6 +1905,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       approveIngoingReport,
       rejectIngoingReport,
       submitIngoingSpecialReporting,
+      submitIngoingReturnedReport,
       confirmOutgoingSection,
       respondRentReview,
       signLeaseAgreement,
@@ -1943,6 +1976,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       approveIngoingReport,
       rejectIngoingReport,
       submitIngoingSpecialReporting,
+      submitIngoingReturnedReport,
       confirmOutgoingSection,
       respondRentReview,
       signLeaseAgreement,

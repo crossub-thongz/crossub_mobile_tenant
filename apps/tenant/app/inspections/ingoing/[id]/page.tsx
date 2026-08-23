@@ -1,13 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { ExternalLink, FileText, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { TenantShell } from '@/components/layout/tenant-shell';
-import { NswSpecialConditionsCard } from '@/components/tenant/nsw-special-conditions-card';
-import { ReportSectionCard } from '@/components/tenant/report-section-card';
 import { StatusBadge } from '@/components/tenant/status-badge';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
 import { Button } from '@/components/ui/button';
@@ -16,25 +14,18 @@ import { fetchTenantIngoingInspection } from '@/lib/crossub-api/tenant-account-c
 import { toIngoingReport } from '@/lib/crossub-api/tenant-mappers';
 import { resolveBackHref } from '@/lib/back-navigation';
 import { INGOING_STATUS_LABEL } from '@/lib/tenant-labels';
-import { formatDate } from '@/lib/utils';
+import { fileToBase64, formatDate } from '@/lib/utils';
 
 export default function IngoingReportPage() {
   const { id } = useParams<{ id: string }>();
   const searchParams = useSearchParams();
   const backHref = resolveBackHref(searchParams.get('from'), ROUTES.INSPECTIONS);
-  const {
-    ingoingReport,
-    confirmIngoingSection,
-    approveIngoingReport,
-    rejectIngoingReport,
-    submitIngoingSpecialReporting,
-    apiConnected,
-  } = useTenantData();
+  const { ingoingReport, submitIngoingReturnedReport, apiConnected } = useTenantData();
   const [loadedReport, setLoadedReport] = useState(ingoingReport);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [rejectOpen, setRejectOpen] = useState(false);
-  const [rejectReason, setRejectReason] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [signatureName, setSignatureName] = useState('');
 
   useEffect(() => {
     if (ingoingReport?.id === id) {
@@ -50,27 +41,14 @@ export default function IngoingReportPage() {
   }, [apiConnected, id, ingoingReport]);
 
   const report = loadedReport?.id === id ? loadedReport : null;
-
-  const sectionsReady = useMemo(() => {
-    if (!report?.sections.length) return true;
-    return report.sections.every((s) => s.tenantConfirmed || s.tenantDispute);
-  }, [report]);
-
-  const specialReady = useMemo(() => {
-    const questions = report?.specialReporting?.questions ?? [];
-    if (questions.length === 0) return true;
-    return questions.every((q) => q.tenantAnswer === 'yes' || q.tenantAnswer === 'no');
-  }, [report]);
-
   const waitingForAdmin =
     report?.status === 'awaiting_admin' || report?.released === false;
   const signingClosed = report?.status === 'overdue' || Boolean(report?.signingClosed);
-  const locked =
-    report?.status === 'confirmed' ||
-    report?.status === 'rejected' ||
-    Boolean(report?.tenantApproved) ||
-    Boolean(report?.tenantRejected) ||
-    signingClosed;
+  const submitted = Boolean(
+    report?.tenantApproved ||
+      report?.status === 'confirmed' ||
+      report?.tenantReturnedReportUrl,
+  );
 
   if (loading) {
     return (
@@ -92,42 +70,36 @@ export default function IngoingReportPage() {
     );
   }
 
-  const total = report.sections.length;
-
-  const handleApprove = async () => {
-    if (!sectionsReady) {
-      toast.error('Confirm or dispute every section before approving');
+  const handleSubmit = async () => {
+    if (!file) {
+      toast.error('Upload your completed report PDF');
       return;
     }
-    if (!specialReady) {
-      toast.error('Answer every NSW special condition with Yes or No before signing');
+    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+      toast.error('Upload the completed report as a PDF');
       return;
     }
-    setBusy(true);
-    try {
-      await approveIngoingReport(report.id);
-      toast.success('Ingoing report approved');
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not approve report');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleReject = async () => {
-    const reason = rejectReason.trim();
-    if (reason.length < 3) {
-      toast.error('Enter a reason for rejecting the report');
+    if (signatureName.trim().length < 2) {
+      toast.error('Enter your signature name');
       return;
     }
     setBusy(true);
     try {
-      await rejectIngoingReport(reason, report.id);
-      toast.success('Ingoing report rejected — your agent has been notified');
-      setRejectOpen(false);
-      setRejectReason('');
+      const contentBase64 = await fileToBase64(file);
+      await submitIngoingReturnedReport(
+        {
+          fileName: file.name,
+          mimeType: 'application/pdf',
+          sizeBytes: file.size,
+          contentBase64,
+          signatureName: signatureName.trim(),
+        },
+        report.id,
+      );
+      toast.success('Signed report submitted');
+      setFile(null);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not reject report');
+      toast.error(err instanceof Error ? err.message : 'Could not submit the report');
     } finally {
       setBusy(false);
     }
@@ -149,19 +121,19 @@ export default function IngoingReportPage() {
                   : 'action'
           }
         />
-        {!waitingForAdmin ? (
+        {!waitingForAdmin && report.dueBy ? (
           <span className="text-muted-foreground text-xs">
-            Due {formatDate(report.dueBy)} · {report.confirmedCount}/{total} reviewed
+            Due {formatDate(report.dueBy)}
           </span>
         ) : null}
       </div>
 
       {waitingForAdmin ? (
         <div className="rounded-xl border border-dashed px-4 py-4 text-sm">
-          <p className="font-medium">Waiting for CROSSUB to approve the inspector report</p>
+          <p className="font-medium">Waiting for CROSSUB to send the inspector report</p>
           <p className="text-muted-foreground mt-1 text-xs">
-            You can review each section and complete the NSW special conditions
-            only after CROSSUB approves the inspector report and sends it to you.
+            After CROSSUB approves and sends the report, check it, fill the required
+            sections, sign it, and upload the completed copy here.
           </p>
         </div>
       ) : null}
@@ -171,7 +143,7 @@ export default function IngoingReportPage() {
           <p className="font-medium">Signing window closed</p>
           <p className="text-muted-foreground mt-1 text-xs">
             The 7-day return window has ended. This ingoing report can no longer
-            be signed.
+            be submitted.
           </p>
         </div>
       ) : null}
@@ -184,126 +156,79 @@ export default function IngoingReportPage() {
           className="mb-4 flex items-center gap-2 rounded-xl border bg-card px-4 py-3 text-sm font-medium hover:bg-secondary/40"
         >
           <FileText className="text-primary size-4 shrink-0" />
-          <span className="min-w-0 flex-1">View / download ingoing report (PDF)</span>
+          <span className="min-w-0 flex-1">1. Check the inspector report (PDF)</span>
           <ExternalLink className="text-muted-foreground size-3.5 shrink-0" />
         </a>
       ) : !waitingForAdmin ? (
         <div className="text-muted-foreground mb-4 rounded-xl border border-dashed px-4 py-3 text-xs">
-          Full PDF will appear here once the inspector report is generated. You can still review
-          each section below.
+          The inspector report PDF will appear here when it is ready.
         </div>
       ) : null}
 
-      {report.status === 'rejected' && report.rejectReason ? (
-        <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm">
-          <p className="font-medium">You rejected this report</p>
-          <p className="text-muted-foreground mt-1 text-xs">{report.rejectReason}</p>
+      {!waitingForAdmin && report.tenantReturnedReportUrl ? (
+        <a
+          href={report.tenantReturnedReportUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mb-4 flex items-center gap-2 rounded-xl border bg-card px-4 py-3 text-sm font-medium hover:bg-secondary/40"
+        >
+          <FileText className="text-primary size-4 shrink-0" />
+          <span className="min-w-0 flex-1">
+            Your returned copy
+            {report.tenantReturnedSignedName
+              ? ` · signed by ${report.tenantReturnedSignedName}`
+              : ''}
+          </span>
+          <ExternalLink className="text-muted-foreground size-3.5 shrink-0" />
+        </a>
+      ) : null}
+
+      {!waitingForAdmin && !signingClosed && !submitted ? (
+        <div className="space-y-3 rounded-xl border bg-card p-4">
+          <p className="text-sm font-semibold">Return your completed report</p>
+          <ol className="text-muted-foreground list-decimal space-y-1 pl-4 text-xs">
+            <li>Open the inspector report and check it.</li>
+            <li>Fill in the required sections on that report.</li>
+            <li>Add your signature, then upload the completed PDF below.</li>
+            <li>Submit it back to CROSSUB.</li>
+          </ol>
+          <label className="block space-y-1.5">
+            <span className="text-xs font-medium">Upload completed PDF</span>
+            <input
+              type="file"
+              accept="application/pdf,.pdf"
+              className="text-muted-foreground block w-full text-xs"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            />
+            {file ? (
+              <p className="text-muted-foreground text-[11px]">{file.name}</p>
+            ) : null}
+          </label>
+          <label className="block space-y-1.5">
+            <span className="text-xs font-medium">Signature name</span>
+            <input
+              className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm"
+              placeholder="Type your full name"
+              value={signatureName}
+              onChange={(e) => setSignatureName(e.target.value)}
+            />
+          </label>
+          <Button
+            size="sm"
+            disabled={busy}
+            onClick={() => void handleSubmit()}
+          >
+            {busy ? <Loader2 className="size-3.5 animate-spin" /> : null}
+            Submit report
+          </Button>
         </div>
       ) : null}
 
-      {!waitingForAdmin ? (
-        <p className="text-muted-foreground mb-4 text-xs">
-          Review each section, leave feedback if needed, then Confirm or Dispute. Complete the
-          NSW special conditions, then Approve the whole report — or Reject it with a reason.
+      {submitted && !waitingForAdmin ? (
+        <p className="text-muted-foreground text-xs">
+          Your signed report has been submitted. CROSSUB and your agent can view
+          both the inspector copy and your returned copy.
         </p>
-      ) : null}
-
-      {!waitingForAdmin ? (
-        <div className="space-y-4">
-          {report.sections.map((section) => (
-            <ReportSectionCard
-              key={section.id}
-              section={section}
-              disabled={locked || busy}
-              onConfirm={(feedback) =>
-                void confirmIngoingSection(section.id, {
-                  feedback,
-                  inspectionId: report.id,
-                }).catch((err) =>
-                  toast.error(err instanceof Error ? err.message : 'Could not confirm section'),
-                )
-              }
-              onDispute={(comment) =>
-                void confirmIngoingSection(section.id, {
-                  dispute: comment,
-                  inspectionId: report.id,
-                }).catch((err) =>
-                  toast.error(err instanceof Error ? err.message : 'Could not dispute section'),
-                )
-              }
-            />
-          ))}
-          {report.specialReporting ? (
-            <NswSpecialConditionsCard
-              title={report.specialReporting.title}
-              questions={report.specialReporting.questions}
-              disabled={locked || busy}
-              onSave={async (answers) => {
-                try {
-                  await submitIngoingSpecialReporting(answers, report.id);
-                  toast.success('NSW special conditions saved');
-                } catch (err) {
-                  toast.error(
-                    err instanceof Error
-                      ? err.message
-                      : 'Could not save NSW special conditions',
-                  );
-                  throw err;
-                }
-              }}
-            />
-          ) : null}
-        </div>
-      ) : null}
-
-      {!locked && !waitingForAdmin ? (
-        <div className="mt-6 space-y-3 rounded-xl border bg-card p-4">
-          <p className="text-sm font-semibold">Acknowledge report</p>
-          <p className="text-muted-foreground text-xs">
-            {sectionsReady && specialReady
-              ? 'All sections reviewed. Approve to accept the condition report, or reject with a reason.'
-              : !specialReady
-                ? 'Answer every NSW special condition with Yes or No before approving.'
-                : `Review remaining sections (${total - report.confirmedCount} left) before approving.`}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              size="sm"
-              disabled={busy || !sectionsReady || !specialReady}
-              onClick={() => void handleApprove()}
-            >
-              {busy ? <Loader2 className="size-3.5 animate-spin" /> : null}
-              Approve report
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={busy}
-              onClick={() => setRejectOpen((v) => !v)}
-            >
-              Reject report
-            </Button>
-          </div>
-          {rejectOpen ? (
-            <div className="space-y-2 border-t pt-3">
-              <textarea
-                className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm"
-                placeholder="State your reason for rejecting the report"
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-                rows={3}
-              />
-              <Button
-                size="sm"
-                variant="destructive"
-                disabled={busy}
-                onClick={() => void handleReject()}
-              >
-                Confirm rejection
-              </Button>
-            </div>
-          ) : null}
-        </div>
       ) : null}
     </TenantShell>
   );

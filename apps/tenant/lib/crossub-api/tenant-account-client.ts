@@ -300,6 +300,38 @@ export async function rejectTenantIngoingInspection(
   return data;
 }
 
+/** Upload the tenant-completed/signed ingoing report and submit it back. */
+export async function submitTenantIngoingReturnedReport(
+  inspectionId: string,
+  body: {
+    fileName: string;
+    mimeType: string;
+    sizeBytes: number;
+    contentBase64: string;
+    signatureName: string;
+  },
+): Promise<TenantIngoingInspection> {
+  const res = await fetch(
+    `${API_BASE}/tenant/ingoing-inspections/${inspectionId}/return-report`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(body),
+    },
+  );
+  if (!res.ok) {
+    const err = (await res.json().catch(() => null)) as
+      | { message?: string | string[] }
+      | null;
+    const raw = err?.message;
+    throw new Error(
+      (Array.isArray(raw) ? raw[0] : raw) ?? 'Failed to submit the signed report',
+    );
+  }
+  return (await res.json()) as TenantIngoingInspection;
+}
+
 /** Yes/No answers on the NSW special-conditions page. */
 export async function submitTenantIngoingSpecialReporting(
   inspectionId: string,
