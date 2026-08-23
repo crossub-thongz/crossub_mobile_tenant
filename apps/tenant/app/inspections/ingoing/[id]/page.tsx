@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
-import { ExternalLink, FileText, Loader2 } from 'lucide-react';
+import { ExternalLink, FileText, Loader2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { TenantShell } from '@/components/layout/tenant-shell';
@@ -14,7 +14,7 @@ import { fetchTenantIngoingInspection } from '@/lib/crossub-api/tenant-account-c
 import { toIngoingReport } from '@/lib/crossub-api/tenant-mappers';
 import { resolveBackHref } from '@/lib/back-navigation';
 import { INGOING_STATUS_LABEL } from '@/lib/tenant-labels';
-import { fileToBase64, formatDate } from '@/lib/utils';
+import { cn, fileToBase64, formatDate } from '@/lib/utils';
 
 export default function IngoingReportPage() {
   const { id } = useParams<{ id: string }>();
@@ -25,7 +25,7 @@ export default function IngoingReportPage() {
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [file, setFile] = useState<File | null>(null);
-  const [signatureName, setSignatureName] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (ingoingReport?.id === id) {
@@ -44,11 +44,7 @@ export default function IngoingReportPage() {
   const waitingForAdmin =
     report?.status === 'awaiting_admin' || report?.released === false;
   const signingClosed = report?.status === 'overdue' || Boolean(report?.signingClosed);
-  const submitted = Boolean(
-    report?.tenantApproved ||
-      report?.status === 'confirmed' ||
-      report?.tenantReturnedReportUrl,
-  );
+  const alreadyReturned = Boolean(report?.tenantReturnedReportUrl);
 
   if (loading) {
     return (
@@ -72,15 +68,11 @@ export default function IngoingReportPage() {
 
   const handleSubmit = async () => {
     if (!file) {
-      toast.error('Upload your completed report PDF');
+      toast.error('Choose the completed report PDF to re-upload');
       return;
     }
     if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
       toast.error('Upload the completed report as a PDF');
-      return;
-    }
-    if (signatureName.trim().length < 2) {
-      toast.error('Enter your signature name');
       return;
     }
     setBusy(true);
@@ -92,12 +84,12 @@ export default function IngoingReportPage() {
           mimeType: 'application/pdf',
           sizeBytes: file.size,
           contentBase64,
-          signatureName: signatureName.trim(),
         },
         report.id,
       );
-      toast.success('Signed report submitted');
+      toast.success(alreadyReturned ? 'Report re-uploaded' : 'Report submitted');
       setFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not submit the report');
     } finally {
@@ -133,7 +125,7 @@ export default function IngoingReportPage() {
           <p className="font-medium">Waiting for CROSSUB to send the inspector report</p>
           <p className="text-muted-foreground mt-1 text-xs">
             After CROSSUB approves and sends the report, check it, fill the required
-            sections, sign it, and upload the completed copy here.
+            sections, then re-upload the completed PDF here.
           </p>
         </div>
       ) : null}
@@ -153,11 +145,11 @@ export default function IngoingReportPage() {
           href={report.reportUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="mb-4 flex items-center gap-2 rounded-xl border bg-card px-4 py-3 text-sm font-medium hover:bg-secondary/40"
+          className="bg-primary text-primary-foreground mb-4 flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold shadow-sm"
         >
-          <FileText className="text-primary size-4 shrink-0" />
-          <span className="min-w-0 flex-1">1. Check the inspector report (PDF)</span>
-          <ExternalLink className="text-muted-foreground size-3.5 shrink-0" />
+          <FileText className="size-5 shrink-0" />
+          Check inspector report
+          <ExternalLink className="size-4 shrink-0 opacity-90" />
         </a>
       ) : !waitingForAdmin ? (
         <div className="text-muted-foreground mb-4 rounded-xl border border-dashed px-4 py-3 text-xs">
@@ -170,64 +162,70 @@ export default function IngoingReportPage() {
           href={report.tenantReturnedReportUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="mb-4 flex items-center gap-2 rounded-xl border bg-card px-4 py-3 text-sm font-medium hover:bg-secondary/40"
+          className="border-primary/40 bg-primary/10 text-primary mb-4 flex min-h-12 items-center justify-center gap-2 rounded-xl border-2 px-4 py-3 text-sm font-semibold"
         >
-          <FileText className="text-primary size-4 shrink-0" />
-          <span className="min-w-0 flex-1">
-            Your returned copy
-            {report.tenantReturnedSignedName
-              ? ` · signed by ${report.tenantReturnedSignedName}`
-              : ''}
-          </span>
-          <ExternalLink className="text-muted-foreground size-3.5 shrink-0" />
+          <FileText className="size-5 shrink-0" />
+          View your uploaded copy
+          <ExternalLink className="size-4 shrink-0" />
         </a>
       ) : null}
 
-      {!waitingForAdmin && !signingClosed && !submitted ? (
-        <div className="space-y-3 rounded-xl border bg-card p-4">
-          <p className="text-sm font-semibold">Return your completed report</p>
-          <ol className="text-muted-foreground list-decimal space-y-1 pl-4 text-xs">
+      {!waitingForAdmin && !signingClosed ? (
+        <div className="space-y-4 rounded-xl border-2 border-primary/25 bg-card p-4">
+          <p className="text-base font-semibold">
+            {alreadyReturned ? 'Re-upload your report' : 'Upload your completed report'}
+          </p>
+          <ol className="text-foreground/80 list-decimal space-y-1.5 pl-4 text-sm">
             <li>Open the inspector report and check it.</li>
             <li>Fill in the required sections on that report.</li>
-            <li>Add your signature, then upload the completed PDF below.</li>
-            <li>Submit it back to CROSSUB.</li>
+            <li>Re-upload the completed PDF and submit it back to CROSSUB.</li>
           </ol>
-          <label className="block space-y-1.5">
-            <span className="text-xs font-medium">Upload completed PDF</span>
-            <input
-              type="file"
-              accept="application/pdf,.pdf"
-              className="text-muted-foreground block w-full text-xs"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            />
-            {file ? (
-              <p className="text-muted-foreground text-[11px]">{file.name}</p>
-            ) : null}
-          </label>
-          <label className="block space-y-1.5">
-            <span className="text-xs font-medium">Signature name</span>
-            <input
-              className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm"
-              placeholder="Type your full name"
-              value={signatureName}
-              onChange={(e) => setSignatureName(e.target.value)}
-            />
-          </label>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/pdf,.pdf"
+            className="sr-only"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          />
           <Button
-            size="sm"
-            disabled={busy}
+            type="button"
+            size="lg"
+            variant={file ? 'secondary' : 'default'}
+            className={cn(
+              'h-12 w-full text-base font-semibold',
+              !file && 'bg-primary text-primary-foreground shadow-md',
+            )}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Upload className="size-5" />
+            {file ? 'Change PDF' : alreadyReturned ? 'Choose PDF to re-upload' : 'Choose PDF'}
+          </Button>
+          {file ? (
+            <p className="text-center text-sm font-medium">{file.name}</p>
+          ) : (
+            <p className="text-muted-foreground text-center text-xs">
+              PDF only · tap the button to select a file
+            </p>
+          )}
+
+          <Button
+            type="button"
+            size="lg"
+            className="bg-primary text-primary-foreground h-12 w-full text-base font-semibold shadow-md"
+            disabled={busy || !file}
             onClick={() => void handleSubmit()}
           >
-            {busy ? <Loader2 className="size-3.5 animate-spin" /> : null}
-            Submit report
+            {busy ? <Loader2 className="size-5 animate-spin" /> : null}
+            {alreadyReturned ? 'Re-upload report' : 'Submit report'}
           </Button>
         </div>
       ) : null}
 
-      {submitted && !waitingForAdmin ? (
+      {alreadyReturned && !waitingForAdmin && signingClosed ? (
         <p className="text-muted-foreground text-xs">
-          Your signed report has been submitted. CROSSUB and your agent can view
-          both the inspector copy and your returned copy.
+          Your report has been submitted. CROSSUB and your agent can view both
+          the inspector copy and your returned copy.
         </p>
       ) : null}
     </TenantShell>

@@ -308,7 +308,6 @@ export async function submitTenantIngoingReturnedReport(
     mimeType: string;
     sizeBytes: number;
     contentBase64: string;
-    signatureName: string;
   },
 ): Promise<TenantIngoingInspection> {
   const res = await fetch(

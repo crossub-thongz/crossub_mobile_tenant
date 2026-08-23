@@ -270,7 +270,6 @@ interface TenantDataContextValue {
       mimeType: string;
       sizeBytes: number;
       contentBase64: string;
-      signatureName: string;
     },
     inspectionId?: string,
   ) => Promise<void>;
@@ -1255,7 +1254,6 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
         mimeType: string;
         sizeBytes: number;
         contentBase64: string;
-        signatureName: string;
       },
       inspectionId?: string,
     ) => {
