@@ -7,6 +7,16 @@ import { Label } from '@/components/ui/label';
 import type { InspectionAreaDefinition } from '@/constants/inspection-areas';
 import { cn } from '@/lib/utils';
 
+/** Current = amber, completed = brand green, otherwise white. */
+export function inspectionAreaProgressBarClass(
+  current: boolean,
+  complete: boolean,
+): string {
+  if (current) return 'bg-amber-400';
+  if (complete) return 'bg-primary';
+  return 'bg-white ring-1 ring-black/20 dark:ring-white/30';
+}
+
 type InspectionAreaNavProps = {
   areaCatalog: InspectionAreaDefinition[];
   areaIndex: number;

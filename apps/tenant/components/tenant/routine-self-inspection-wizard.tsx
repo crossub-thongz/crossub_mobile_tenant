@@ -5,7 +5,7 @@ import { ChevronLeft, CheckCircle2, Loader2, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { DraggableNamedList } from '@/components/tenant/draggable-named-list';
-import { InspectionAreaNav } from '@/components/tenant/inspection-area-nav';
+import { InspectionAreaNav, inspectionAreaProgressBarClass } from '@/components/tenant/inspection-area-nav';
 import { RenameLabelDialog } from '@/components/tenant/rename-label-dialog';
 import { ResetInspectionDialog } from '@/components/tenant/reset-inspection-dialog';
 import { TenantAreaPhotosField } from '@/components/tenant/tenant-area-photos-field';
@@ -421,13 +421,11 @@ export function RoutineSelfInspectionWizard({
     toast.success('Self-inspection reset — start again from the first area');
   };
 
-  const progressTone = (index: number, areaName: string) => {
-    const row = areas[areaName];
-    if (index === safeAreaIndex) return 'bg-primary';
-    if (isRoutineSelfAreaComplete(row)) return 'bg-primary/80';
-    if (index < safeAreaIndex) return 'bg-primary/40';
-    return 'bg-secondary';
-  };
+  const progressTone = (index: number, areaName: string) =>
+    inspectionAreaProgressBarClass(
+      index === safeAreaIndex,
+      isRoutineSelfAreaComplete(areas[areaName]),
+    );
 
   const areaStatusLabel = (index: number, name: string) => {
     if (index === safeAreaIndex) return 'Current area';
