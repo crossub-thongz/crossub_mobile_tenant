@@ -1,9 +1,5 @@
 import { parseSectionAreaName } from '@/constants/inspection-areas';
-import {
-  isCustomAreaName,
-  resolveAreaDefinition,
-  type CustomAreaDefinition,
-} from '@/lib/custom-inspection-areas';
+import { type CustomAreaDefinition } from '@/lib/custom-inspection-areas';
 
 export type IngoingAreaPlan = {
   rooms: Array<{ name: string; sections: string[] }>;
@@ -20,15 +16,12 @@ export function findIngoingPlanRoom(
   return plan.rooms.find((room) => room.name.trim().toLowerCase() === target);
 }
 
-/** Sections for an outgoing/routine room — ingoing plan wins over catalog defaults. */
+/** Tenant self-routine is overall-room photos only. */
 export function outgoingSectionsForRoom(
-  plan: IngoingAreaPlan | null | undefined,
-  roomName: string,
+  _plan: IngoingAreaPlan | null | undefined,
+  _roomName: string,
 ): string[] {
-  const fromPlan = findIngoingPlanRoom(plan, roomName)?.sections;
-  if (fromPlan?.length) return [...fromPlan];
-  const def = resolveAreaDefinition(roomName);
-  return [...(def?.defaultSections ?? [])];
+  return [];
 }
 
 export function isAreaSetupComplete(areaSetupComplete: boolean): boolean {
@@ -74,19 +67,11 @@ export function resolveIngoingAreaPlan(
 }
 
 export function sectionsForAvailableArea(
-  areaName: string,
-  customAreas: CustomAreaDefinition[],
-  ingoingAreaPlan: IngoingAreaPlan | null,
+  _areaName: string,
+  _customAreas: CustomAreaDefinition[],
+  _ingoingAreaPlan: IngoingAreaPlan | null,
 ): string[] {
-  if (isCustomAreaName(areaName, customAreas)) {
-    const custom = customAreas.find(
-      (area) =>
-        area.name.trim().toLowerCase() === areaName.trim().toLowerCase(),
-    );
-    if (custom?.defaultSections?.length) return [...custom.defaultSections];
-    return [...resolveAreaDefinition(areaName, customAreas).defaultSections];
-  }
-  return outgoingSectionsForRoom(ingoingAreaPlan, areaName);
+  return [];
 }
 
 type AreaRecordBase = {
@@ -111,6 +96,14 @@ export function seedAreasForInspectionStart<T extends AreaRecordBase>(
   for (const name of areaNames) {
     const current = next[name] ?? options.emptyEntry(name);
     if (current.available === false) {
+      if (!next[name]) {
+        next[name] = current;
+        changed = true;
+      }
+      continue;
+    }
+
+    if (current.available === true) {
       if (!next[name]) {
         next[name] = current;
         changed = true;
@@ -156,9 +149,9 @@ export function layoutFromIngoingPlan(
     names.push(name);
     customAreas.push({
       name,
-      sectionMode: room.sections.length > 0 ? 'standard' : 'manual',
-      defaultSections: [...room.sections],
-      optionalSections: ['Custom / Other'],
+      sectionMode: 'manual',
+      defaultSections: [],
+      optionalSections: [],
     });
   }
   if (names.length === 0) return null;

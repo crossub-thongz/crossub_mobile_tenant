@@ -476,8 +476,8 @@ export function RoutineSelfInspectionWizard({
 
       <p className="text-muted-foreground text-xs">
         Rooms start from this property’s bedroom layout. Add or remove areas, drag
-        to reorder, then photograph each room as it is now — you can snap or upload
-        several photos per area.
+        to reorder, then photograph each room overall as it is now — not walls,
+        windows, or other parts. You can snap or upload several photos per room.
       </p>
 
       <ul className="space-y-2">
@@ -629,7 +629,7 @@ export function RoutineSelfInspectionWizard({
               photoUrls={rec.photoUrls}
               uploading={busy}
               sessionKey={area}
-              emptyLabel={`Add at least one photo of ${area}.`}
+              emptyLabel={`Add at least one overall photo of ${area} — not walls, windows, or other parts.`}
               onPhotosChange={(updater) =>
                 updateArea((current) => ({ photoUrls: updater(current.photoUrls) }))
               }
