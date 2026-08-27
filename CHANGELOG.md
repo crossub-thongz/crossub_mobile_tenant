@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-08-27
+
+### Fixed
+- **CRS-0137 — a tenant opening their self routine inspection was met, on every single room, by an empty ingoing condition report.** Each area card in the routine walk led with a read-only photo field headed **"Ingoing"** and, underneath it, the line *"No ingoing photos for this area."* — before the field the tenant is actually there to fill. It rendered unconditionally, so on a routine walk of an 8-room flat the tenant read the word "Ingoing" eight times and their own task never appeared above the fold. Angel filed it as *"when tenant click into self routine inspection, it shows ingoing inspection"*, and that is exactly what the screen said.
+
+  ⭐ **The comparison it was offering does not exist in production.** The move-in photos come from `referenceIngoingAreas`, which the API builds from the latest completed/published INGOING inspection on the property and — deliberately — drops every area of that carries no photo. Of **401** completed/published ingoing inspections on production, **not one has a single `InspectionArea` row** (probe 27 Aug 2026, `pnpm probe:tenant-self-routine-content --prod` in `crossub_web`); a migrated ingoing report is a PDF and nothing else. Of the **226** properties with a self routine awaiting their tenant, 79 have an ingoing on file and **0** have one with a photographed room. So the block was empty for every tenant, on every room, always — it could not have been anything else.
+
+  The field now renders **only when there is something to compare**, and it is labelled **"At move-in"** rather than "Ingoing": the tenant is being asked to photograph the room as it is now, and naming another inspection type inside that walk is what made this read as the wrong screen. The tenant's own field keeps the contrasting label "Now" while the comparison is on screen and reads plain "Photos" when it is not.
+
+  **Not changed, deliberately:** the API still sends the reference when it has one, and the walk still shows it — this is a rendering guard, not a removal, so the day ingoing inspections carry photographed rooms (the inspector app's ingoings do) the comparison returns on its own with no further change here. The data itself was checked and is sound: all 246 routine schedules on production point at a genuine `ROUTINE` inspection, none carries an `(ingoing)`-suffixed area, and every actionable checklist is the property's bedroom template — the tenant was never being served another inspection's rooms, only another inspection's empty heading.
+
 ## 2026-08-26
 
 ### Changed

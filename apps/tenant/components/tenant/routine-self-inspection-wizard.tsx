@@ -616,14 +616,35 @@ export function RoutineSelfInspectionWizard({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/*
+              CRS-0137 — the move-in comparison renders only when there is something to
+              compare. It used to render unconditionally, headed "Ingoing" and reading "No
+              ingoing photos for this area.", so the first thing a tenant met on every room of
+              a routine walk was an empty ingoing condition report. That is what "click into
+              self routine inspection, it shows ingoing inspection" was.
+
+              It is never filled in production: of 401 completed/published INGOING inspections
+              not one has a single InspectionArea row (probe 27 Aug 2026,
+              `probe:tenant-self-routine-content --prod` in crossub_web), and the API drops
+              every reference area with no photo before it sends `referenceIngoingAreas` — a
+              migrated ingoing report is a PDF and nothing else. So the block was empty for
+              every tenant, on every room, always.
+
+              The label reads "At move-in", not "Ingoing": the tenant is being asked to
+              photograph the room as it is now, and naming another inspection type inside that
+              walk is what made this read as the wrong screen.
+            */}
+            {ingoingPhotos.length > 0 ? (
+              <TenantAreaPhotosField
+                label="At move-in"
+                photoUrls={ingoingPhotos}
+                disabled
+              />
+            ) : null}
             <TenantAreaPhotosField
-              label="Ingoing"
-              photoUrls={ingoingPhotos}
-              disabled
-              emptyLabel="No ingoing photos for this area."
-            />
-            <TenantAreaPhotosField
-              label="Now"
+              // "Now" is only meaningful opposite the move-in photos above it; with nothing to
+              // compare against, the tenant is simply photographing the room.
+              label={ingoingPhotos.length > 0 ? 'Now' : 'Photos'}
               photoUrls={rec.photoUrls}
               uploading={busy}
               sessionKey={area}
