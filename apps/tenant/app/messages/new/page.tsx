@@ -18,6 +18,7 @@ import {
 } from '@/lib/tenant-message-recipients';
 import type { MessageCategory } from '@/lib/types';
 import { MESSAGE_RECIPIENT_LABEL } from '@/lib/message-parties';
+import { stripEmojis } from '@/lib/strip-emojis';
 
 const CATEGORIES: { value: MessageCategory; label: string }[] = [
   { value: 'leasing', label: 'Leasing' },
@@ -153,7 +154,7 @@ export default function NewMessagePage() {
           <textarea
             className="border-input bg-background min-h-[120px] w-full rounded-md border px-3 py-2 text-sm"
             value={body}
-            onChange={(e) => setBody(e.target.value)}
+            onChange={(e) => setBody(stripEmojis(e.target.value))}
             required
             placeholder={`Write your message to ${recipientLabel}…`}
           />

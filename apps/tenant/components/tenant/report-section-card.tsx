@@ -5,6 +5,7 @@ import { ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
+import { stripEmojis } from '@/lib/strip-emojis';
 import type { ReportSection } from '@/lib/types';
 import { formatDateTime } from '@/lib/utils';
 
@@ -98,7 +99,7 @@ export function ReportSectionCard({
             className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm"
             placeholder="Optional feedback on this section (required if you dispute)"
             value={feedbackText}
-            onChange={(e) => setFeedbackText(e.target.value)}
+            onChange={(e) => setFeedbackText(stripEmojis(e.target.value))}
           />
           <div className="flex flex-wrap gap-2">
             <Button

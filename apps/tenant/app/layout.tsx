@@ -5,6 +5,7 @@ import { Inter } from 'next/font/google';
 import { AuthProvider } from '@/components/providers/auth-provider';
 import { TenantDataProvider } from '@/components/providers/tenant-data-provider';
 import { ThemeProvider } from '@/components/theme-provider';
+import { StripEmojisGuard } from '@/components/providers/strip-emojis-guard';
 import { SystemAccessAgreementGate } from '@/components/auth/system-access-agreement-gate';
 import { OnboardingGuideGate } from '@/components/tenant/onboarding-guide-gate';
 import { Toaster } from '@/components/ui/sonner';
@@ -39,6 +40,7 @@ export default function RootLayout({
           {`(function(){try{var t=localStorage.getItem('theme');var d=document.documentElement;if(t==='dark')d.classList.add('dark');else d.classList.remove('dark')}catch(e){}})();`}
         </Script>
         <ThemeProvider>
+          <StripEmojisGuard />
           <AuthProvider>
             <TenantDataProvider>
               <SystemAccessAgreementGate />

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { FileUploadField } from '@/components/tenant/file-upload-field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { stripEmojis } from '@/lib/strip-emojis';
 import {
   NSW_APPLICATION_DOCUMENT_SLOTS,
   NSW_APPLICATION_PDF_URL,
@@ -253,7 +254,7 @@ export function NswTenancyApplicationForm({
           <textarea
             id="currentAddress"
             value={form.currentAddress.address ?? ''}
-            onChange={(e) => patch('currentAddress', { address: e.target.value })}
+            onChange={(e) => patch('currentAddress', { address: stripEmojis(e.target.value) })}
             rows={2}
             className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex min-h-[60px] w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
           />
@@ -320,7 +321,7 @@ export function NswTenancyApplicationForm({
           <textarea
             id="previousAddress"
             value={form.previousAddress.address ?? ''}
-            onChange={(e) => patch('previousAddress', { address: e.target.value })}
+            onChange={(e) => patch('previousAddress', { address: stripEmojis(e.target.value) })}
             rows={2}
             className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex min-h-[60px] w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
           />

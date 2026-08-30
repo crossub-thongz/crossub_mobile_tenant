@@ -31,6 +31,7 @@ import { SegmentTabs } from '@/components/tenant/segment-tabs';
 import { StatusBadge } from '@/components/tenant/status-badge';
 import { Button } from '@/components/ui/button';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
+import { stripEmojis } from '@/lib/strip-emojis';
 import { messageDetail, ROUTES } from '@/constants/routes';
 import { SCHEDULE_DECISION, type ScheduleDecision } from '@/constants/maintenance-schedule';
 import { MAINTENANCE_TENANT_FINISHED_STATUSES } from '@/constants/maintenance-status';
@@ -391,7 +392,7 @@ export default function RepairDetailPage() {
                   placeholder="Reason if declining (required to decline)"
                   value={scheduleDeclineReason}
                   disabled={scheduleActionsLocked}
-                  onChange={(e) => setScheduleDeclineReason(e.target.value)}
+                  onChange={(e) => setScheduleDeclineReason(stripEmojis(e.target.value))}
                 />
                 <Button
                   variant="outline"
@@ -568,7 +569,7 @@ export default function RepairDetailPage() {
                   maxLength={MAX_RESPONSIBILITY_DECLINE_REASON_LENGTH}
                   value={responsibilityDeclineReason}
                   disabled={submittingAck}
-                  onChange={(e) => setResponsibilityDeclineReason(e.target.value)}
+                  onChange={(e) => setResponsibilityDeclineReason(stripEmojis(e.target.value))}
                 />
                 <div className="flex gap-2">
                   <Button

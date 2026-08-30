@@ -8,6 +8,7 @@ import { KeyRound, Landmark, ClipboardList, Wrench, ImagePlus, Loader2, X } from
 import { useTenantData } from '@/components/providers/tenant-data-provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { stripEmojis } from '@/lib/strip-emojis';
 import {
   VACATING_STAGE,
   VACATING_STAGE_LABEL,
@@ -349,7 +350,7 @@ function TenantResponsibilityReviewPanel({
             className="border-input bg-background w-full rounded-xl border px-3 py-2 text-sm"
             placeholder="Reason for disagreeing (required)"
             value={declineReason}
-            onChange={(e) => setDeclineReason(e.target.value)}
+            onChange={(e) => setDeclineReason(stripEmojis(e.target.value))}
           />
           <Button
             variant="destructive"
@@ -452,7 +453,7 @@ function RepairQuoteAckPanel({
             className="border-input bg-background w-full rounded-xl border px-3 py-2 text-sm"
             placeholder="Reason for disagreeing (optional)"
             value={declineReason}
-            onChange={(e) => setDeclineReason(e.target.value)}
+            onChange={(e) => setDeclineReason(stripEmojis(e.target.value))}
           />
           <Button
             variant="destructive"
@@ -726,7 +727,7 @@ function PhasePanel({
                 className="border-input bg-background w-full rounded-xl border px-3 py-2 text-sm"
                 placeholder="Reason for declining (required)"
                 value={declineReason}
-                onChange={(e) => setDeclineReason(e.target.value)}
+                onChange={(e) => setDeclineReason(stripEmojis(e.target.value))}
               />
               <Button
                 variant="destructive"

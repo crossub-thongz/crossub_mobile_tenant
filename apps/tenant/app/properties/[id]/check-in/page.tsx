@@ -18,6 +18,7 @@ import { submitOpenViewingCheckIn } from '@/lib/crossub-api/open-viewings-client
 import { saveOpenInspectionCheckIn } from '@/lib/open-inspection-check-in-store';
 import type { ListingProperty } from '@/lib/types';
 import { propertyApply, propertyDetail, ROUTES } from '@/constants/routes';
+import { stripEmojis } from '@/lib/strip-emojis';
 import { apiErrorMessage } from '@/lib/api-error-message';
 
 export default function CheckInPage() {
@@ -226,7 +227,7 @@ export default function CheckInPage() {
           <textarea
             id="specialRequest"
             value={form.specialRequest}
-            onChange={(e) => setForm((f) => ({ ...f, specialRequest: e.target.value }))}
+            onChange={(e) => setForm((f) => ({ ...f, specialRequest: stripEmojis(e.target.value) }))}
             placeholder="e.g. ground-floor parking, accessibility needs, preferred move-in date"
             rows={3}
             className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex min-h-[72px] w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
@@ -237,7 +238,7 @@ export default function CheckInPage() {
           <textarea
             id="comments"
             value={form.comments}
-            onChange={(e) => setForm((f) => ({ ...f, comments: e.target.value }))}
+            onChange={(e) => setForm((f) => ({ ...f, comments: stripEmojis(e.target.value) }))}
             placeholder="Anything else for the agent or inspection report"
             rows={3}
             className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex min-h-[72px] w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
