@@ -254,6 +254,19 @@ export interface IngoingReport {
   };
 }
 
+/**
+ * A question CROSSUB asked the tenant about a repair. When the maintenance AI can't decide a
+ * repair from the report, it stores short questions; the tenant answers them here so triage
+ * can re-run. `answer === null` means still waiting on the tenant.
+ */
+export interface MaintenanceQuestion {
+  issueId: string;
+  questionKey: string;
+  question: string;
+  answer: string | null;
+  answeredAt: string | null;
+}
+
 export interface MaintenanceRequest {
   id: string;
   trackingNumber: string;
@@ -291,6 +304,8 @@ export interface MaintenanceRequest {
   strataPlanNumber?: string | null;
   buildingManager?: MaintenancePropertyContact;
   strataContact?: MaintenancePropertyContact;
+  /** Questions CROSSUB asked about this repair; empty when there is nothing to answer. */
+  questions: MaintenanceQuestion[];
 }
 
 export type InspectionListType = 'ingoing' | 'outgoing' | 'routine';

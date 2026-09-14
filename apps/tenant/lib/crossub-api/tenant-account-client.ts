@@ -833,6 +833,30 @@ export async function approveMaintenanceCompletion(
   return data;
 }
 
+export type RecordMaintenanceIssueAnswers =
+  components['schemas']['RecordMaintenanceIssueAnswersDto'];
+
+/**
+ * Answer the questions CROSSUB asked about a repair (`PATCH .../answers`). The API records
+ * the answers and re-runs the AI triage so the job can progress; it returns the fresh summary.
+ */
+export async function recordMaintenanceIssueAnswers(
+  requestId: string,
+  body: RecordMaintenanceIssueAnswers,
+): Promise<TenantMaintenanceRequestSummary> {
+  const { data, error, response } = await crossub.PATCH(
+    '/tenant/maintenance-requests/{requestId}/answers',
+    {
+      params: { path: { requestId } },
+      body,
+    },
+  );
+  if (error || !data) {
+    throwTenantApiError(error, response, 'Failed to record your answers');
+  }
+  return data;
+}
+
 /** Approve or decline contractor-proposed visit times (`PATCH .../schedule-response`). */
 export async function respondToMaintenanceSchedule(
   requestId: string,

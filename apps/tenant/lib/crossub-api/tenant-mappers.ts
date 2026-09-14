@@ -34,6 +34,7 @@ import type {
   InspectionSummary,
   LeaseSummary,
   MaintenancePropertyContact,
+  MaintenanceQuestion,
   MaintenanceRequest,
   MessageCategory,
   MessageThread,
@@ -104,6 +105,31 @@ function readMaintenancePropertyContact(
   const phone = asString(contact.phone) ?? undefined;
   if (!name && !email && !phone) return undefined;
   return { name, email, phone };
+}
+
+/**
+ * Read the (optional) triage questions off a maintenance summary. Absent, non-array or
+ * malformed → `[]`; every scalar is guarded so a partial row can never crash a screen.
+ */
+function readMaintenanceQuestions(value: unknown): MaintenanceQuestion[] {
+  if (!Array.isArray(value)) return [];
+  const questions: MaintenanceQuestion[] = [];
+  for (const entry of value) {
+    if (!entry || typeof entry !== 'object') continue;
+    const row = entry as Record<string, unknown>;
+    const issueId = asString(row.issueId);
+    const questionKey = asString(row.questionKey);
+    const question = asString(row.question);
+    if (!issueId || !questionKey || !question) continue;
+    questions.push({
+      issueId,
+      questionKey,
+      question,
+      answer: asString(row.answer),
+      answeredAt: asString(row.answeredAt),
+    });
+  }
+  return questions;
 }
 
 export function readTenantPropertyMessageContacts(property: unknown): {
@@ -320,6 +346,7 @@ export function toTenantMaintenanceRequests(
       strataPlanNumber: asString(s.strataPlanNumber),
       buildingManager: readMaintenancePropertyContact(s.buildingManager),
       strataContact: readMaintenancePropertyContact(s.strataContact),
+      questions: readMaintenanceQuestions(s.questions),
     };
 
     return mapped;

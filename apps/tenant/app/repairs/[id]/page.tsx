@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   ClipboardList,
   HardHat,
+  HelpCircle,
   ImageIcon,
   ListTree,
   MessageSquare,
@@ -36,6 +37,14 @@ import { messageDetail, ROUTES } from '@/constants/routes';
 import { SCHEDULE_DECISION, type ScheduleDecision } from '@/constants/maintenance-schedule';
 import { MAINTENANCE_TENANT_FINISHED_STATUSES } from '@/constants/maintenance-status';
 import {
+  MAINTENANCE_QUESTIONS_CARD_HINT,
+  MAINTENANCE_QUESTIONS_CARD_TITLE,
+  MAINTENANCE_QUESTIONS_SUBMIT_CTA,
+  MAINTENANCE_QUESTIONS_SUBMIT_FALLBACK_ERROR,
+  MAINTENANCE_QUESTIONS_SUBMIT_SUCCESS,
+  MAX_MAINTENANCE_ANSWER_LENGTH,
+} from '@/constants/maintenance-questions';
+import {
   MAX_RESPONSIBILITY_DECLINE_REASON_LENGTH,
   MIN_RESPONSIBILITY_DECLINE_REASON_LENGTH,
   RESPONSIBILITY_ACCEPT_AFTER_DISPUTE_CTA,
@@ -54,8 +63,15 @@ type Tab = 'overview' | 'status' | 'message';
 
 export default function RepairDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { maintenance, messages, approveRepairCompletion, respondToMaintenanceSchedule, respondMaintenanceResponsibilityAck, refresh } =
-    useTenantData();
+  const {
+    maintenance,
+    messages,
+    approveRepairCompletion,
+    respondToMaintenanceSchedule,
+    respondMaintenanceResponsibilityAck,
+    recordMaintenanceIssueAnswers,
+    refresh,
+  } = useTenantData();
   const request = maintenance.find((m) => m.id === id);
   const thread = messages.find((m) => m.linkedCaseId === id);
   const [tab, setTab] = useState<Tab>('overview');
@@ -72,6 +88,18 @@ export default function RepairDetailPage() {
   const [scheduleHydrated, setScheduleHydrated] = useState(false);
   const [scheduleDeclineReason, setScheduleDeclineReason] = useState('');
   const [completionPopupOpen, setCompletionPopupOpen] = useState(false);
+  // Draft answers to CROSSUB's triage questions, keyed by `${issueId}::${questionKey}`.
+  const [answerDrafts, setAnswerDrafts] = useState<Record<string, string>>({});
+  const [submittingAnswers, setSubmittingAnswers] = useState(false);
+
+  const questions = request?.questions ?? [];
+  const unansweredQuestions = questions.filter((q) => q.answer === null);
+  const answeredQuestions = questions.filter((q) => q.answer !== null);
+  const showQuestionsCard = unansweredQuestions.length > 0;
+  const answerKey = (issueId: string, questionKey: string) => `${issueId}::${questionKey}`;
+  const allQuestionsAnswered = unansweredQuestions.every(
+    (q) => (answerDrafts[answerKey(q.issueId, q.questionKey)] ?? '').trim().length > 0,
+  );
 
   const needsCompletionApproval =
     request?.completionApprovalPending && !request.tenantCompletionApproved;
@@ -162,6 +190,32 @@ export default function RepairDetailPage() {
       );
     } finally {
       setSubmittingAck(false);
+    }
+  };
+
+  const handleSubmitAnswers = async () => {
+    if (!request) return;
+    const payload = unansweredQuestions.map((q) => ({
+      issueId: q.issueId,
+      questionKey: q.questionKey,
+      answer: (answerDrafts[answerKey(q.issueId, q.questionKey)] ?? '').trim(),
+    }));
+    // Every question must carry the tenant's own words — a blank answer helps triage nothing.
+    if (payload.some((a) => a.answer.length === 0)) {
+      toast.error('Please answer every question before sending.');
+      return;
+    }
+    setSubmittingAnswers(true);
+    try {
+      await recordMaintenanceIssueAnswers(request.id, payload);
+      toast.success(MAINTENANCE_QUESTIONS_SUBMIT_SUCCESS);
+      setAnswerDrafts({});
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : MAINTENANCE_QUESTIONS_SUBMIT_FALLBACK_ERROR,
+      );
+    } finally {
+      setSubmittingAnswers(false);
     }
   };
 
@@ -335,6 +389,59 @@ export default function RepairDetailPage() {
                 {request.contractorPhone}
               </a>
             )}
+          </InfoCard>
+        )}
+
+        {showQuestionsCard && (
+          <InfoCard icon={HelpCircle} label={MAINTENANCE_QUESTIONS_CARD_TITLE} accent="primary">
+            <p className="text-muted-foreground text-xs leading-relaxed">
+              {MAINTENANCE_QUESTIONS_CARD_HINT}
+            </p>
+            <div className="mt-4 space-y-4">
+              {unansweredQuestions.map((q) => {
+                const key = answerKey(q.issueId, q.questionKey);
+                return (
+                  <div key={key} className="space-y-2">
+                    <label htmlFor={`answer-${key}`} className="text-sm font-medium leading-snug">
+                      {q.question}
+                    </label>
+                    <textarea
+                      id={`answer-${key}`}
+                      className="border-input bg-background flex min-h-[80px] w-full rounded-md border px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+                      placeholder="Type your answer"
+                      maxLength={MAX_MAINTENANCE_ANSWER_LENGTH}
+                      value={answerDrafts[key] ?? ''}
+                      disabled={submittingAnswers}
+                      onChange={(e) =>
+                        setAnswerDrafts((prev) => ({
+                          ...prev,
+                          [key]: stripEmojis(e.target.value),
+                        }))
+                      }
+                    />
+                  </div>
+                );
+              })}
+            </div>
+            {answeredQuestions.length > 0 && (
+              <div className="mt-4 space-y-3 border-t border-primary/15 pt-4">
+                {answeredQuestions.map((q) => (
+                  <div key={answerKey(q.issueId, q.questionKey)}>
+                    <p className="text-sm font-medium leading-snug">{q.question}</p>
+                    <p className="text-muted-foreground mt-1 whitespace-pre-wrap text-sm leading-relaxed">
+                      You answered: {q.answer}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+            <Button
+              className="mt-4 w-full"
+              disabled={submittingAnswers || !allQuestionsAnswered}
+              onClick={() => void handleSubmitAnswers()}
+            >
+              {submittingAnswers ? 'Sending…' : MAINTENANCE_QUESTIONS_SUBMIT_CTA}
+            </Button>
           </InfoCard>
         )}
 

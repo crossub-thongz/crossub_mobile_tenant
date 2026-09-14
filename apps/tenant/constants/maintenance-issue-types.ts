@@ -30,6 +30,9 @@ export const MAINTENANCE_ISSUE_TYPES = [
   'Shower Repair',
   'Cabinet Repair',
   'Carpet Cleaning',
+  // Daniel Zhou, 9 Sep 2026 — a global Handyman trade for small general repairs;
+  // mirrors the API list.
+  'Handyman',
   MAINTENANCE_ISSUE_TYPE_OTHER,
 ] as const;
 

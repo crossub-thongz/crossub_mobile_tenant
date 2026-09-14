@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ChevronRight, Wrench } from 'lucide-react';
 
 import { StatusBadge } from '@/components/tenant/status-badge';
+import { MAINTENANCE_QUESTIONS_LIST_BADGE } from '@/constants/maintenance-questions';
 import { repairDetail } from '@/constants/routes';
 import type { MaintenanceRequest } from '@/lib/types';
 import { cn, formatDateTime, formatRelative } from '@/lib/utils';
@@ -13,6 +14,8 @@ export function RepairListCard({
   repair: MaintenanceRequest;
   showProgress?: boolean;
 }) {
+  const hasUnansweredQuestions = repair.questions.some((q) => q.answer === null);
+
   return (
     <Link
       href={repairDetail(repair.id)}
@@ -61,6 +64,11 @@ export function RepairListCard({
               )}
             >
               Completion approval needed
+            </p>
+          )}
+          {hasUnansweredQuestions && (
+            <p className="mt-2 text-[11px] font-medium text-amber-400">
+              {MAINTENANCE_QUESTIONS_LIST_BADGE}
             </p>
           )}
         </div>

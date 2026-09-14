@@ -18,6 +18,7 @@ import {
   approveMaintenanceCompletion,
   respondToMaintenanceSchedule,
   respondMaintenanceResponsibilityAck,
+  recordMaintenanceIssueAnswers,
   fetchTenancies,
   fetchTenantApplications,
   fetchTenantDocuments,
@@ -240,6 +241,11 @@ interface TenantDataContextValue {
     id: string,
     agreed: boolean,
     reason?: string,
+  ) => Promise<void>;
+  /** Answer the questions CROSSUB asked about a repair; re-runs triage server-side. */
+  recordMaintenanceIssueAnswers: (
+    id: string,
+    answers: { issueId: string; questionKey: string; answer: string }[],
   ) => Promise<void>;
   recordVacatingDate: (date: string) => void;
   startVacating: (date: string, reason?: string) => Promise<void>;
@@ -932,6 +938,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
         completionEvidenceUploaded: false,
         completionApprovalPending: false,
         tenantCompletionApproved: false,
+        questions: [],
       };
       setMaintenance((prev) => {
         const next = [item, ...prev];
@@ -1438,6 +1445,25 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     [apiConnected, persistMaintenance, propertyAddress],
   );
 
+  const recordMaintenanceIssueAnswersHandler = useCallback(
+    async (
+      id: string,
+      answers: { issueId: string; questionKey: string; answer: string }[],
+    ) => {
+      if (!apiConnected) {
+        throw new Error('Connect to the API to send your answers.');
+      }
+      const summary = await recordMaintenanceIssueAnswers(id, { answers });
+      const [mapped] = toTenantMaintenanceRequests([summary], propertyAddress);
+      setMaintenance((prev) => {
+        const next = prev.map((m) => (m.id === id ? { ...m, ...mapped } : m));
+        persistMaintenance(next);
+        return next;
+      });
+    },
+    [apiConnected, persistMaintenance, propertyAddress],
+  );
+
   const startVacating = useCallback(
     async (date: string, reason?: string) => {
       const applyLocalVacating = () => {
@@ -1881,6 +1907,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       approveRepairCompletion,
       respondToMaintenanceSchedule: respondToMaintenanceScheduleHandler,
       respondMaintenanceResponsibilityAck: respondMaintenanceResponsibilityAckHandler,
+      recordMaintenanceIssueAnswers: recordMaintenanceIssueAnswersHandler,
       recordVacatingDate,
       startVacating,
       cancelVacatingCase,
@@ -1952,6 +1979,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       approveRepairCompletion,
       respondToMaintenanceScheduleHandler,
       respondMaintenanceResponsibilityAckHandler,
+      recordMaintenanceIssueAnswersHandler,
       recordVacatingDate,
       startVacating,
       cancelVacatingCase,
