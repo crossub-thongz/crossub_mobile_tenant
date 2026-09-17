@@ -180,8 +180,8 @@ export default function DashboardPage() {
       title: 'Rent review notice',
       summary: `Proposed ${formatCurrency(pendingRentReview.proposedRentWeekly)}/week — ${
         pendingRentReview.rentNegotiable === true
-          ? 'accept, decline, or counter'
-          : 'accept or decline (non-negotiable)'
+          ? 'accept, request a review, or dispute'
+          : 'accept or dispute (non-negotiable)'
       }`,
       href: rentReviewDetail(pendingRentReview.id),
       badge: 'Required',

@@ -7,12 +7,10 @@ import { toast } from 'sonner';
 
 import { TenantShell } from '@/components/layout/tenant-shell';
 import { useAuth } from '@/components/providers/auth-provider';
-import { InfoCard } from '@/components/tenant/info-card';
 import { RentReviewEmailsSection } from '@/components/tenant/rent-review-emails-section';
 import { RentReviewLeaseAgreementSection } from '@/components/tenant/rent-review-lease-agreement-section';
 import { RentReviewNoticeTermsSummary } from '@/components/tenant/rent-review-notice-terms-summary';
 import { RentReviewResponsePanel } from '@/components/tenant/rent-review-response-panel';
-import { StatusBadge } from '@/components/tenant/status-badge';
 import { useTenantData } from '@/components/providers/tenant-data-provider';
 import { ROUTES } from '@/constants/routes';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
@@ -84,12 +82,12 @@ export default function RentReviewDetailPage() {
     setBusy(true);
     try {
       await respondRentReview(review.id, 'reject', { moveOutDate });
-      toast.success('Rejection recorded', {
-        description: 'Your property manager will open an end-leasing case',
+      toast.success('Notice to vacate submitted', {
+        description: 'Your vacating steps are open — final inspection, keys and bond.',
       });
       router.push(ROUTES.VACATING);
     } catch {
-      toast.error('Could not record rejection');
+      toast.error('Could not submit your notice to vacate');
     } finally {
       setBusy(false);
     }
@@ -119,14 +117,6 @@ export default function RentReviewDetailPage() {
   return (
     <TenantShell title="Notice of rent review" backHref={ROUTES.RENT_REVIEW}>
       <div className="space-y-5">
-        <InfoCard label="Notice of rent review" accent="primary">
-          <p className="text-sm">{review.propertyAddress}</p>
-          <StatusBadge label={review.status} className="mt-3" variant="action" />
-          {review.explanation ? (
-            <p className="text-muted-foreground mt-3 text-sm leading-relaxed">{review.explanation}</p>
-          ) : null}
-        </InfoCard>
-
         <RentReviewNoticeTermsSummary review={review} />
 
         {leaseAgreementEnabled ? (

@@ -84,7 +84,7 @@ export const TENANT_FAQ_SECTIONS: TenantFaqSection[] = [
       {
         question: 'What is a rent review notice?',
         answer:
-          'When your rent is reviewed, you receive a notification with the proposed weekly amount. Open Rent review to accept, decline, or — if negotiable — submit a counter offer. You may also indicate a move-out date instead of renewing.',
+          'When your rent is reviewed, you receive a notification with the proposed weekly amount. Open Rent review to acknowledge and accept it or — if the rent is negotiable — request a review of the amount. You can also read what to do if you think the increase is excessive, or submit a notice to vacate if you are planning to leave.',
       },
       {
         question: 'How do I respond to a lease renewal reminder?',

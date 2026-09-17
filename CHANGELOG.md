@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-09-18
+
+### Changed
+- **The rent review response card asks four separate questions, in the words Daniel Zhou wrote on 17 Sep 2026, and moving out is no longer the way to say no.** Accept reads **"Acknowledge and accept the increase"**, and the counter-offer became **"Request a review"** — a tenant who has already asked once sees **"Submit"** instead, because a second round is answering an offer, not opening the conversation (the round is read off the counter history already on the case, not from the v2 offer versions, which this app's vendored contract does not carry yet). A new **"Dispute the increase"** opens, in place, the NCAT note: *"Think the rent increase is excessive? You may be able to apply to NCAT to have the rent increase reviewed. Time limits may apply."* It records nothing and notifies nobody — applying to the tribunal is the tenant's to do and the agency's to disclose, not a state this workflow owns, so a button that quietly filed a dispute would be worse than the sentence.
+
+  **"Reject and vacate" is gone.** It sat under a date field, which made moving out look like the answer to an increase. In its place, at the foot of the card and behind a question — *"Planning to leave the property?"* — is **Submit notice to vacate**, which reveals the move-out date and says what submitting it does. It calls the same `decision: 'reject'` endpoint as before; what changed is that the API now opens the vacating case from it rather than leaving the agent to open one by hand, so the toast says the vacating steps are open instead of promising someone will start them.
+
+  **The first card is not rendered.** The notice's address, status pill and rationale repeated the shell title and the Confirmed notice terms card below it, and pushed the terms and the response off the first screen. The copy moved into `constants/rent-review.ts` (`RENT_REVIEW_RESPONSE_COPY`) rather than staying inline in the panel, and the three sibling places that describe the same choices — the dashboard row, the notice alert and the FAQ answer — now name the same verbs. No contract change and no new endpoint: every field this uses was already on the case.
+
 ## 2026-09-14
 
 ### Added

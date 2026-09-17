@@ -25,8 +25,8 @@ export function RentReviewNoticeAlert() {
   const body = pending
     ? `Your property manager proposed ${formatCurrency(pending.proposedRentWeekly)}/week. ${
         pending.rentNegotiable === true
-          ? 'Accept, decline, or submit a counter-offer.'
-          : 'Accept or decline — rent is non-negotiable.'
+          ? 'Accept, request a review, or dispute the increase.'
+          : 'Accept or dispute — rent is non-negotiable.'
       }`
     : unreadNotice!.body;
 
