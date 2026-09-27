@@ -2952,6 +2952,53 @@
         ]
       }
     },
+    "/tenant/vacating-cases/{caseId}/cleaning": {
+      "patch": {
+        "operationId": "TenantAccountController_setVacatingCleaning",
+        "parameters": [
+          {
+            "name": "caseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantSetVacatingCleaningDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantVacatingCaseResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Choose how the end-of-lease clean is arranged (tenant arranges it, or CROSSUB books it).",
+        "tags": [
+          "tenant"
+        ]
+      }
+    },
     "/tenant/vacating-cases/{caseId}/key-return": {
       "patch": {
         "operationId": "TenantAccountController_submitVacatingKeyReturn",
@@ -12459,6 +12506,200 @@
         ]
       }
     },
+    "/agent/tasks/{kind}/{taskId}/force-complete": {
+      "post": {
+        "operationId": "AgentPortalController_forceCompleteTask",
+        "parameters": [
+          {
+            "name": "kind",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "enum": [
+                "inspection",
+                "leasing",
+                "maintenance",
+                "rent_review",
+                "end_leasing",
+                "tribunal"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "taskId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentTaskLifecycleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentTaskLifecycleResultDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Task not found for this agent."
+          },
+          "409": {
+            "description": "Task is already completed or deleted."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Force complete an agent task and close its remaining workflow chain.",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/agent/tasks/{kind}/{taskId}/force-delete": {
+      "post": {
+        "operationId": "AgentPortalController_forceDeleteTask",
+        "parameters": [
+          {
+            "name": "kind",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "enum": [
+                "inspection",
+                "leasing",
+                "maintenance",
+                "rent_review",
+                "end_leasing",
+                "tribunal"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "taskId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentTaskLifecycleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentTaskLifecycleResultDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Task not found for this agent."
+          },
+          "409": {
+            "description": "Task is already deleted."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Force delete an agent task and close its remaining workflow chain.",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/agent/tasks/{kind}/{taskId}/audit-log": {
+      "get": {
+        "operationId": "AgentPortalController_listTaskAuditLog",
+        "parameters": [
+          {
+            "name": "kind",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "enum": [
+                "inspection",
+                "leasing",
+                "maintenance",
+                "rent_review",
+                "end_leasing",
+                "tribunal"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "taskId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentTaskAuditLogDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Task not found for this agent."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Audit log for force-complete and force-delete of an agent task.",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
     "/agent/properties/{propertyId}/workflows/end-leasing/{caseId}/cancel": {
       "post": {
         "operationId": "AgentPortalController_cancelTerminationCase",
@@ -18139,6 +18380,35 @@
             "format": "date-time",
             "description": "When the tenant submitted their key return report in the app."
           },
+          "cleaningArrangement": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "booked",
+              "declined",
+              "own_arrangement"
+            ],
+            "description": "How the end-of-lease clean is arranged: `own_arrangement` — the tenant does it; `booked` — CROSSUB books Brightness AU; `pending` — not chosen yet."
+          },
+          "cleaningChosenBy": {
+            "type": "string",
+            "enum": [
+              "tenant",
+              "agent"
+            ],
+            "nullable": true,
+            "description": "Who chose the arrangement — the tenant in the app, or the property manager."
+          },
+          "cleaningChoiceRequestedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "description": "When the property manager asked the tenant to choose the cleaning arrangement."
+          },
+          "cleaningDone": {
+            "type": "boolean",
+            "description": "The end-of-lease clean is recorded as done."
+          },
           "inspectionDate": {
             "type": "string",
             "nullable": true,
@@ -18270,6 +18540,10 @@
           "keysReturnAddress",
           "keyReturnPhotoUrls",
           "tenantKeyReturnSubmittedAt",
+          "cleaningArrangement",
+          "cleaningChosenBy",
+          "cleaningChoiceRequestedAt",
+          "cleaningDone",
           "inspectionDate",
           "outgoingInspectionId",
           "tenantOutgoingAttendance",
@@ -18363,6 +18637,22 @@
         },
         "required": [
           "reason"
+        ]
+      },
+      "TenantSetVacatingCleaningDto": {
+        "type": "object",
+        "properties": {
+          "choice": {
+            "type": "string",
+            "enum": [
+              "own_arrangement",
+              "booked"
+            ],
+            "description": "`own_arrangement` — the tenant arranges it; `booked` — CROSSUB books Brightness AU."
+          }
+        },
+        "required": [
+          "choice"
         ]
       },
       "TenantSubmitKeyReturnDto": {
@@ -28755,6 +29045,111 @@
           "amount",
           "paymentDate",
           "paymentMethod"
+        ]
+      },
+      "AgentTaskLifecycleDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 500
+          }
+        }
+      },
+      "AgentTaskLifecycleResultDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "inspection",
+              "leasing",
+              "maintenance",
+              "rent_review",
+              "end_leasing",
+              "tribunal"
+            ]
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "force_completed",
+              "force_deleted"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "COMPLETED",
+              "DELETED"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "action",
+          "status"
+        ]
+      },
+      "AgentTaskAuditLogEntryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "at": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "force_completed",
+              "force_deleted"
+            ]
+          },
+          "label": {
+            "type": "string",
+            "example": "Task force completed"
+          },
+          "sentence": {
+            "type": "string",
+            "example": "Daniel Zhou force completed this task on 18 Sep 2026 at 3:21 PM."
+          },
+          "actor": {
+            "type": "string"
+          },
+          "taskType": {
+            "type": "string"
+          },
+          "previousStatus": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "at",
+          "action",
+          "label",
+          "sentence",
+          "actor"
+        ]
+      },
+      "AgentTaskAuditLogDto": {
+        "type": "object",
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentTaskAuditLogEntryDto"
+            }
+          }
+        },
+        "required": [
+          "entries"
         ]
       },
       "CancelAgentTerminationCaseDto": {

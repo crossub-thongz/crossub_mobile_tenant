@@ -611,6 +611,19 @@ export async function setTenantVacatingOutgoingAttendance(
   return data;
 }
 
+/** Choose the end-of-lease cleaning arrangement (`PATCH /api/v1/tenant/vacating-cases/:caseId/cleaning`). */
+export async function setTenantVacatingCleaning(
+  caseId: string,
+  choice: 'own_arrangement' | 'booked',
+): Promise<TenantVacatingCase> {
+  const { data, error } = await crossub.PATCH('/tenant/vacating-cases/{caseId}/cleaning', {
+    params: { path: { caseId } },
+    body: { choice },
+  });
+  if (error || !data) throw new Error('Failed to save your cleaning choice');
+  return data;
+}
+
 /** Agree to bond-deduction items from the quote step. */
 export async function acceptTenantVacatingRepairQuote(
   caseId: string,

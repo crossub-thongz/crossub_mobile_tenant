@@ -4,12 +4,14 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { TenantShell } from '@/components/layout/tenant-shell';
+import { useTenantData } from '@/components/providers/tenant-data-provider';
+import { VacatingCleaningChoice } from '@/components/tenant/vacating-cleaning-choice';
 import { Button } from '@/components/ui/button';
 import { ROUTES } from '@/constants/routes';
 
 export default function MoveOutServicesPage() {
+  const { vacatingCase } = useTenantData();
   const [moving, setMoving] = useState(false);
-  const [cleaning, setCleaning] = useState(false);
 
   return (
     <TenantShell title="Move-out services" backHref={ROUTES.VACATING}>
@@ -17,6 +19,15 @@ export default function MoveOutServicesPage() {
         After you confirm a move-out date, CROSSUB can help arrange optional services.
       </p>
       <div className="space-y-3">
+        {/* End-of-lease cleaning is a real choice saved to your vacating case (27 Sep 2026). */}
+        {vacatingCase ? (
+          <VacatingCleaningChoice vacating={vacatingCase} />
+        ) : (
+          <p className="text-muted-foreground rounded-xl border bg-card p-4 text-xs">
+            End-of-lease cleaning can be arranged once your property manager opens your end-of-lease
+            case.
+          </p>
+        )}
         <label className="flex items-center gap-3 rounded-xl border bg-card p-4">
           <input
             type="checkbox"
@@ -29,30 +40,13 @@ export default function MoveOutServicesPage() {
             <p className="text-muted-foreground text-xs">Partner referral — quote on request</p>
           </div>
         </label>
-        <label className="flex items-center gap-3 rounded-xl border bg-card p-4">
-          <input
-            type="checkbox"
-            checked={cleaning}
-            onChange={(e) => setCleaning(e.target.checked)}
-            className="accent-primary size-4"
-          />
-          <div>
-            <p className="font-medium">End-of-lease cleaning</p>
-            <p className="text-muted-foreground text-xs">Recommended before outgoing inspection</p>
-          </div>
-        </label>
       </div>
       <Button
         className="mt-6 w-full"
-        onClick={() => {
-          if (!moving && !cleaning) return toast.error('Select at least one service or skip');
-          toast.success('Request sent — CROSSUB will contact you');
-        }}
+        disabled={!moving}
+        onClick={() => toast.success('Request sent — CROSSUB will contact you')}
       >
-        Request services
-      </Button>
-      <Button variant="ghost" className="mt-2 w-full" onClick={() => toast.info('Skipped')}>
-        No thanks
+        Request moving service
       </Button>
     </TenantShell>
   );

@@ -510,6 +510,12 @@ export interface VacatingCase {
     | 'finalized';
   outgoingReportId?: string;
   tenantOutgoingAttendance?: 'pending' | 'yes' | 'no';
+  /** How the end-of-lease clean is arranged — the tenant may choose until it is recorded done. */
+  cleaningArrangement?: import('@/constants/vacating').VacatingCleaning;
+  cleaningChosenBy?: import('@/constants/vacating').VacatingCleaningChosenBy | null;
+  /** The property manager asked the tenant to choose in the app. */
+  cleaningChoiceRequestedAt?: string | null;
+  cleaningDone?: boolean;
 }
 
 export interface VacatingRepairQuoteItem {

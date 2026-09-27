@@ -42,6 +42,7 @@ import {
   declineTenantVacatingSettlement,
   acceptTenantVacatingRepairQuote,
   declineTenantVacatingRepairQuote,
+  setTenantVacatingCleaning,
   setTenantVacatingOutgoingAttendance,
   submitTenantKeyReturn,
   acceptTenantVacatingResponsibilities,
@@ -91,7 +92,7 @@ import {
 import { isIngoingReportAwaitingTenant } from '@/constants/ingoing-report';
 import { LOCAL_MAINTENANCE_REQUEST_ID_PREFIX } from '@/constants/maintenance-request';
 import { ingoingReport } from '@/constants/routes';
-import { VACATING_STAGE } from '@/constants/vacating';
+import { VACATING_STAGE, type VacatingCleaningChoice } from '@/constants/vacating';
 import { fetchPublicListings } from '@/lib/crossub-api/public-listings-client';
 import {
   fetchLeasingOnboarding,
@@ -256,6 +257,8 @@ interface TenantDataContextValue {
   acceptVacatingRepairQuote: (caseId: string) => Promise<void>;
   declineVacatingRepairQuote: (caseId: string, reason?: string) => Promise<void>;
   setVacatingOutgoingAttendance: (attendance: 'yes' | 'no') => Promise<void>;
+  /** Choose how the end-of-lease clean is arranged; throws so the screen can say it failed. */
+  setVacatingCleaning: (choice: VacatingCleaningChoice) => Promise<void>;
   submitVacatingKeyReturn: (photoUrls: string[]) => Promise<void>;
   acceptVacatingResponsibilities: (caseId: string) => Promise<void>;
   declineVacatingResponsibilities: (caseId: string, reason: string) => Promise<void>;
@@ -1641,6 +1644,16 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
     [status, vacatingDisplay?.id, applyVacatingCaseUpdate],
   );
 
+  const setVacatingCleaning = useCallback(
+    async (choice: VacatingCleaningChoice) => {
+      const id = vacatingDisplay?.id;
+      if (!id || status !== 'authed') return;
+      const updated = await setTenantVacatingCleaning(id, choice);
+      applyVacatingCaseUpdate(toTenantVacatingCases([updated])[0] ?? null);
+    },
+    [status, vacatingDisplay?.id, applyVacatingCaseUpdate],
+  );
+
   const submitVacatingKeyReturn = useCallback(
     async (photoUrls: string[]) => {
       const id = vacatingDisplay?.id;
@@ -1917,6 +1930,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       acceptVacatingRepairQuote,
       declineVacatingRepairQuote,
       setVacatingOutgoingAttendance,
+      setVacatingCleaning,
       submitVacatingKeyReturn,
       acceptVacatingResponsibilities,
       declineVacatingResponsibilities,
@@ -1989,6 +2003,7 @@ export function TenantDataProvider({ children }: { children: React.ReactNode }) 
       acceptVacatingRepairQuote,
       declineVacatingRepairQuote,
       setVacatingOutgoingAttendance,
+      setVacatingCleaning,
       submitVacatingKeyReturn,
       acceptVacatingResponsibilities,
       declineVacatingResponsibilities,

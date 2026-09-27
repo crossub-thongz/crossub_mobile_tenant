@@ -1101,6 +1101,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/tenant/vacating-cases/{caseId}/cleaning": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Choose how the end-of-lease clean is arranged (tenant arranges it, or CROSSUB books it). */
+        patch: operations["TenantAccountController_setVacatingCleaning"];
+        trace?: never;
+    };
     "/tenant/vacating-cases/{caseId}/key-return": {
         parameters: {
             query?: never;
@@ -4327,6 +4344,57 @@ export interface paths {
         patch: operations["AgentPortalController_updateTribunalRentChasing"];
         trace?: never;
     };
+    "/agent/tasks/{kind}/{taskId}/force-complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Force complete an agent task and close its remaining workflow chain. */
+        post: operations["AgentPortalController_forceCompleteTask"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/tasks/{kind}/{taskId}/force-delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Force delete an agent task and close its remaining workflow chain. */
+        post: operations["AgentPortalController_forceDeleteTask"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/tasks/{kind}/{taskId}/audit-log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Audit log for force-complete and force-delete of an agent task. */
+        get: operations["AgentPortalController_listTaskAuditLog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent/properties/{propertyId}/workflows/end-leasing/{caseId}/cancel": {
         parameters: {
             query?: never;
@@ -6517,6 +6585,23 @@ export interface components {
              */
             tenantKeyReturnSubmittedAt: string | null;
             /**
+             * @description How the end-of-lease clean is arranged: `own_arrangement` — the tenant does it; `booked` — CROSSUB books Brightness AU; `pending` — not chosen yet.
+             * @enum {string}
+             */
+            cleaningArrangement: "pending" | "booked" | "declined" | "own_arrangement";
+            /**
+             * @description Who chose the arrangement — the tenant in the app, or the property manager.
+             * @enum {string|null}
+             */
+            cleaningChosenBy: "tenant" | "agent" | null;
+            /**
+             * Format: date-time
+             * @description When the property manager asked the tenant to choose the cleaning arrangement.
+             */
+            cleaningChoiceRequestedAt: string | null;
+            /** @description The end-of-lease clean is recorded as done. */
+            cleaningDone: boolean;
+            /**
              * Format: date-time
              * @description Scheduled final inspection date.
              */
@@ -6599,6 +6684,13 @@ export interface components {
         };
         TenantDeclineVacatingResponsibilitiesDto: {
             reason: string;
+        };
+        TenantSetVacatingCleaningDto: {
+            /**
+             * @description `own_arrangement` — the tenant arranges it; `booked` — CROSSUB books Brightness AU.
+             * @enum {string}
+             */
+            choice: "own_arrangement" | "booked";
         };
         TenantSubmitKeyReturnDto: {
             /**
@@ -10558,6 +10650,34 @@ export interface components {
             bondDescription?: string;
             note?: string;
         };
+        AgentTaskLifecycleDto: {
+            reason?: string;
+        };
+        AgentTaskLifecycleResultDto: {
+            id: string;
+            /** @enum {string} */
+            kind: "inspection" | "leasing" | "maintenance" | "rent_review" | "end_leasing" | "tribunal";
+            /** @enum {string} */
+            action: "force_completed" | "force_deleted";
+            /** @enum {string} */
+            status: "COMPLETED" | "DELETED";
+        };
+        AgentTaskAuditLogEntryDto: {
+            id: string;
+            at: string;
+            /** @enum {string} */
+            action: "force_completed" | "force_deleted";
+            /** @example Task force completed */
+            label: string;
+            /** @example Daniel Zhou force completed this task on 18 Sep 2026 at 3:21 PM. */
+            sentence: string;
+            actor: string;
+            taskType?: string;
+            previousStatus?: string;
+        };
+        AgentTaskAuditLogDto: {
+            entries: components["schemas"]["AgentTaskAuditLogEntryDto"][];
+        };
         CancelAgentTerminationCaseDto: {
             /** @example Tenant decided to stay — case no longer required */
             reason: string;
@@ -14477,6 +14597,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TenantPhotoUploadResponseDto"];
+                };
+            };
+        };
+    };
+    TenantAccountController_setVacatingCleaning: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                caseId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TenantSetVacatingCleaningDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantVacatingCaseResponseDto"];
                 };
             };
         };
@@ -22046,6 +22191,115 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AgentTribunalRentChasingDetailDto"];
                 };
+            };
+        };
+    };
+    AgentPortalController_forceCompleteTask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "inspection" | "leasing" | "maintenance" | "rent_review" | "end_leasing" | "tribunal";
+                taskId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AgentTaskLifecycleDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentTaskLifecycleResultDto"];
+                };
+            };
+            /** @description Task not found for this agent. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Task is already completed or deleted. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AgentPortalController_forceDeleteTask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "inspection" | "leasing" | "maintenance" | "rent_review" | "end_leasing" | "tribunal";
+                taskId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AgentTaskLifecycleDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentTaskLifecycleResultDto"];
+                };
+            };
+            /** @description Task not found for this agent. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Task is already deleted. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AgentPortalController_listTaskAuditLog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "inspection" | "leasing" | "maintenance" | "rent_review" | "end_leasing" | "tribunal";
+                taskId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentTaskAuditLogDto"];
+                };
+            };
+            /** @description Task not found for this agent. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

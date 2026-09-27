@@ -23,6 +23,7 @@ import { needsVacatingRepairQuoteAction, needsVacatingResponsibilityReviewAction
 import type { VacatingCase, VacatingRepairQuoteItem, VacatingRepairQuoteSettlement } from '@/lib/types';
 import { cn, formatCurrency, formatDate, resolveEvidenceMimeType } from '@/lib/utils';
 import { uploadTenantKeyReturnPhoto } from '@/lib/crossub-api/tenant-account-client';
+import { VacatingCleaningChoice } from '@/components/tenant/vacating-cleaning-choice';
 
 function vacateDateLabel(date: string, changed?: boolean): string {
   const base = formatDate(date);
@@ -517,6 +518,9 @@ function PhasePanel({
 
   return (
     <div className="space-y-3">
+      {stage === VACATING_STAGE.KEY_RETURN && !vacating.keysReturned && (
+        <VacatingCleaningChoice vacating={vacating} readOnly={readOnly} />
+      )}
       {stage === VACATING_STAGE.KEY_RETURN && (
         <div className="rounded-xl border bg-card p-4 text-sm">
           <div className="mb-2 flex items-center gap-2 font-medium">

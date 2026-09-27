@@ -4201,6 +4201,52 @@
         ]
       }
     },
+    "/billing/platform-bills/invoices/{invoiceId}/correct": {
+      "post": {
+        "operationId": "StaffPlatformBillsController_correctInvoice",
+        "parameters": [
+          {
+            "name": "invoiceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorrectStaffMonthlyInvoiceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffPlatformMonthlyInvoiceDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Correct a sent or overdue unpaid invoice: keep the original in audit history as Replaced, apply the edited lines to a replacement invoice, and send it to the agency.",
+        "tags": [
+          "billing"
+        ]
+      }
+    },
     "/billing/platform-bills/invoices/{invoiceId}/retract": {
       "post": {
         "operationId": "StaffPlatformBillsController_retractInvoice",
@@ -4242,6 +4288,124 @@
           }
         ],
         "summary": "Retract a sent or paid monthly invoice: void the issued invoice, email the agency, and create a replacement draft. Paid invoices are refunded via Stripe; unpaid sent/overdue invoices are withdrawn without a refund.",
+        "tags": [
+          "billing"
+        ]
+      }
+    },
+    "/billing/platform-bills/invoices/{invoiceId}/mark-paid": {
+      "post": {
+        "operationId": "StaffPlatformBillsController_markInvoicePaid",
+        "parameters": [
+          {
+            "name": "invoiceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarkStaffMonthlyInvoicePaidDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffPlatformMonthlyInvoiceDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark an unpaid monthly invoice as paid for an off-Stripe payment (Osko / bank transfer), including drafts. Unlocks the agency portal when no other lock-eligible invoices remain.",
+        "tags": [
+          "billing"
+        ]
+      }
+    },
+    "/billing/platform-bills/invoices/{invoiceId}/unlock-account": {
+      "post": {
+        "operationId": "StaffPlatformBillsController_unlockInvoiceAccount",
+        "parameters": [
+          {
+            "name": "invoiceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffPlatformMonthlyInvoiceDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Manually unlock the agency portal for a locked overdue invoice without recording a payment. Confirm in the UI before calling.",
+        "tags": [
+          "billing"
+        ]
+      }
+    },
+    "/billing/platform-bills/invoices/{invoiceId}/lock-account": {
+      "post": {
+        "operationId": "StaffPlatformBillsController_lockInvoiceAccount",
+        "parameters": [
+          {
+            "name": "invoiceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffPlatformMonthlyInvoiceDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Manually lock the agency portal for an unpaid overdue invoice. Confirm in the UI before calling.",
         "tags": [
           "billing"
         ]
@@ -23924,7 +24088,7 @@
             "bearer": []
           }
         ],
-        "summary": "Mark the task complete",
+        "summary": "Requester or Super Admin closes the task. Anyone else sends it for requester review first.",
         "tags": [
           "it-work"
         ]
@@ -24039,6 +24203,68 @@
           }
         ],
         "summary": "Add a comment",
+        "tags": [
+          "it-work"
+        ]
+      }
+    },
+    "/it-work/{id}/requirements": {
+      "post": {
+        "operationId": "ItWorkController_addRequirement",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddItWorkRequirementDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItWorkItemDetailDto"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItWorkItemDetailDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller is not staff, or is an outside agency / portal login."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a requirement and notify the assigned IT person",
         "tags": [
           "it-work"
         ]
@@ -31056,6 +31282,7 @@
     },
     "/open-viewings/public/sessions/{id}/register": {
       "post": {
+        "description": "Prospects can check in with the QR or Chrome link after the open has ended (CLOSED). Cancelled sessions still reject registrations.",
         "operationId": "OpenViewingsController_qrRegister",
         "parameters": [
           {
@@ -31153,6 +31380,14 @@
           },
           {
             "name": "assignedOfficerId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "outgoingInspectionId",
             "required": true,
             "in": "query",
             "schema": {
@@ -33175,6 +33410,501 @@
           }
         ],
         "summary": "Notify releasing of a closed termination case",
+        "tags": [
+          "TerminationCase"
+        ]
+      }
+    },
+    "/end-leasing/cases/{id}/notice-receipt": {
+      "patch": {
+        "operationId": "TerminationCaseController_confirmVacatingNotice",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmVacatingNoticeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "400": {
+            "description": "A path parameter is not a valid UUID, or the request body is invalid."
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller lacks the required permission or role."
+          },
+          "404": {
+            "description": "The requested resource was not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Confirm how the tenant's notice to vacate was received",
+        "tags": [
+          "TerminationCase"
+        ]
+      }
+    },
+    "/end-leasing/cases/{id}/relet-decision": {
+      "patch": {
+        "operationId": "TerminationCaseController_setVacatingReletDecision",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetVacatingReletDecisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "400": {
+            "description": "A path parameter is not a valid UUID, or the request body is invalid."
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller lacks the required permission or role."
+          },
+          "404": {
+            "description": "The requested resource was not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Record the managing agent's re-letting decision (Yes/No)",
+        "tags": [
+          "TerminationCase"
+        ]
+      }
+    },
+    "/end-leasing/cases/{id}/vacating-instructions/resend": {
+      "post": {
+        "operationId": "TerminationCaseController_resendVacatingInstructions",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "400": {
+            "description": "A path parameter is not a valid UUID."
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller lacks the required permission or role."
+          },
+          "404": {
+            "description": "The requested resource was not found."
+          },
+          "409": {
+            "description": "The letter could not be sent (no vacate date or tenant email)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Resend the vacating instructions to the tenant",
+        "tags": [
+          "TerminationCase"
+        ]
+      }
+    },
+    "/end-leasing/cases/{id}/vacate/key-return-photos": {
+      "post": {
+        "operationId": "TerminationCaseController_addKeyReturnPhoto",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadTerminationDocumentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "400": {
+            "description": "A path parameter is not a valid UUID, or the photo is invalid."
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller lacks the required permission or role."
+          },
+          "404": {
+            "description": "The requested resource was not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Attach a key return evidence photo",
+        "tags": [
+          "TerminationCase"
+        ]
+      }
+    },
+    "/end-leasing/cases/{id}/issues/status": {
+      "patch": {
+        "operationId": "TerminationCaseController_setVacatingIssueStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetVacatingIssueStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "400": {
+            "description": "A path parameter is not a valid UUID, or the request body is invalid."
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller lacks the required permission or role."
+          },
+          "404": {
+            "description": "The requested resource was not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Set the resolution status of one inspection issue",
+        "tags": [
+          "TerminationCase"
+        ]
+      }
+    },
+    "/end-leasing/cases/{id}/complete": {
+      "patch": {
+        "operationId": "TerminationCaseController_completeVacatingTask",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteVacatingTaskDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "400": {
+            "description": "A path parameter is not a valid UUID, the body is invalid, or the case is already completed."
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller lacks the required permission or role."
+          },
+          "404": {
+            "description": "The requested resource was not found."
+          },
+          "409": {
+            "description": "The case is cancelled."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark the vacating task completed",
+        "tags": [
+          "TerminationCase"
+        ]
+      }
+    },
+    "/end-leasing/cases/{id}/cleaning/ask-tenant": {
+      "post": {
+        "operationId": "TerminationCaseController_askTenantToChooseCleaning",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "400": {
+            "description": "A path parameter is not a valid UUID."
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller lacks the required permission or role."
+          },
+          "404": {
+            "description": "The requested resource was not found."
+          },
+          "409": {
+            "description": "The tenant has no app account to ask."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Ask the tenant to choose the end-of-lease cleaning in their app",
+        "tags": [
+          "TerminationCase"
+        ]
+      }
+    },
+    "/end-leasing/cases/{id}/agent-deductions/request": {
+      "post": {
+        "operationId": "TerminationCaseController_requestAgentDeductions",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestAgentDeductionsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "400": {
+            "description": "A path parameter is not a valid UUID, or the request body is invalid."
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller lacks the required permission or role."
+          },
+          "404": {
+            "description": "The requested resource was not found."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Ask the managing agent to key in the deduction details (staff)",
+        "tags": [
+          "TerminationCase"
+        ]
+      }
+    },
+    "/end-leasing/cases/{id}/agent-deductions": {
+      "post": {
+        "operationId": "TerminationCaseController_submitAgentDeductions",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitAgentDeductionsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "400": {
+            "description": "A path parameter is not a valid UUID, or the request body is invalid."
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller lacks the required permission or role."
+          },
+          "404": {
+            "description": "The requested resource was not found."
+          },
+          "409": {
+            "description": "The final statement has already been sent."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Key in the deduction details (managing agent, Agent app)",
+        "tags": [
+          "TerminationCase"
+        ]
+      }
+    },
+    "/end-leasing/cases/{id}/agent-deductions/apply": {
+      "post": {
+        "operationId": "TerminationCaseController_applyAgentDeductions",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "400": {
+            "description": "A path parameter is not a valid UUID, or nothing was keyed in."
+          },
+          "401": {
+            "description": "Missing/invalid/expired token, or the user is not active."
+          },
+          "403": {
+            "description": "Caller lacks the required permission or role."
+          },
+          "404": {
+            "description": "The requested resource was not found."
+          },
+          "409": {
+            "description": "Already applied, or the statement has been sent."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Apply the managing agent's deduction figures to the statement (staff)",
         "tags": [
           "TerminationCase"
         ]
@@ -41779,6 +42509,53 @@
           }
         ],
         "summary": "Finalize a direct-to-R2 key-return photo upload.",
+        "tags": [
+          "tenant"
+        ]
+      }
+    },
+    "/tenant/vacating-cases/{caseId}/cleaning": {
+      "patch": {
+        "operationId": "TenantAccountController_setVacatingCleaning",
+        "parameters": [
+          {
+            "name": "caseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantSetVacatingCleaningDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantVacatingCaseResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Choose how the end-of-lease clean is arranged (tenant arranges it, or CROSSUB books it).",
         "tags": [
           "tenant"
         ]
@@ -51330,6 +52107,200 @@
         ]
       }
     },
+    "/agent/tasks/{kind}/{taskId}/force-complete": {
+      "post": {
+        "operationId": "AgentPortalController_forceCompleteTask",
+        "parameters": [
+          {
+            "name": "kind",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "enum": [
+                "inspection",
+                "leasing",
+                "maintenance",
+                "rent_review",
+                "end_leasing",
+                "tribunal"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "taskId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentTaskLifecycleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentTaskLifecycleResultDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Task not found for this agent."
+          },
+          "409": {
+            "description": "Task is already completed or deleted."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Force complete an agent task and close its remaining workflow chain.",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/agent/tasks/{kind}/{taskId}/force-delete": {
+      "post": {
+        "operationId": "AgentPortalController_forceDeleteTask",
+        "parameters": [
+          {
+            "name": "kind",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "enum": [
+                "inspection",
+                "leasing",
+                "maintenance",
+                "rent_review",
+                "end_leasing",
+                "tribunal"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "taskId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentTaskLifecycleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentTaskLifecycleResultDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Task not found for this agent."
+          },
+          "409": {
+            "description": "Task is already deleted."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Force delete an agent task and close its remaining workflow chain.",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/agent/tasks/{kind}/{taskId}/audit-log": {
+      "get": {
+        "operationId": "AgentPortalController_listTaskAuditLog",
+        "parameters": [
+          {
+            "name": "kind",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "enum": [
+                "inspection",
+                "leasing",
+                "maintenance",
+                "rent_review",
+                "end_leasing",
+                "tribunal"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "taskId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentTaskAuditLogDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Task not found for this agent."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Audit log for force-complete and force-delete of an agent task.",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
     "/agent/properties/{propertyId}/workflows/end-leasing/{caseId}/cancel": {
       "post": {
         "operationId": "AgentPortalController_cancelTerminationCase",
@@ -57415,6 +58386,10 @@
             "type": "string",
             "maxLength": 120
           },
+          "abn": {
+            "type": "string",
+            "maxLength": 40
+          },
           "acn": {
             "type": "string",
             "maxLength": 20
@@ -57583,6 +58558,10 @@
           "company": {
             "type": "string",
             "maxLength": 120
+          },
+          "abn": {
+            "type": "string",
+            "maxLength": 40
           },
           "acn": {
             "type": "string",
@@ -58288,6 +59267,21 @@
             "example": true,
             "description": "True when Accounting retracted this invoice after it was issued."
           },
+          "replaced": {
+            "type": "boolean",
+            "example": true,
+            "description": "True when this unpaid issued invoice was corrected and replaced by a new invoice."
+          },
+          "replacementInvoiceNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "CSB-2026-07-002"
+          },
+          "createdAfterRetractOfInvoiceNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "CSB-2026-07-001"
+          },
           "retractedAt": {
             "type": "string",
             "nullable": true,
@@ -58603,6 +59597,21 @@
             "type": "boolean",
             "example": true,
             "description": "True when Accounting retracted this invoice after it was issued."
+          },
+          "replaced": {
+            "type": "boolean",
+            "example": true,
+            "description": "True when this unpaid issued invoice was corrected and replaced by a new invoice."
+          },
+          "replacementInvoiceNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "CSB-2026-07-002"
+          },
+          "createdAfterRetractOfInvoiceNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "CSB-2026-07-001"
           },
           "retractedAt": {
             "type": "string",
@@ -59827,6 +60836,11 @@
             "example": true,
             "description": "True when the retracted invoice was paid and a refund was issued."
           },
+          "replaced": {
+            "type": "boolean",
+            "example": true,
+            "description": "True when this unpaid issued invoice was corrected and replaced by a new invoice."
+          },
           "refundedAmountAud": {
             "type": "number",
             "nullable": true,
@@ -59894,6 +60908,27 @@
             "type": "number",
             "nullable": true,
             "description": "Draft version on the retracted invoice that this replacement copies."
+          },
+          "lockDate": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "description": "The day the agency portal locks if this invoice is still unpaid (14th)."
+          },
+          "accountLocked": {
+            "type": "boolean",
+            "example": true,
+            "description": "True when this unpaid invoice has passed the lock date and the agency portal is blocked."
+          },
+          "manuallyUnlocked": {
+            "type": "boolean",
+            "example": false,
+            "description": "True when Accounting has manually unlocked the agency portal."
+          },
+          "lockable": {
+            "type": "boolean",
+            "example": true,
+            "description": "True when Accounting can lock the agency portal for this unpaid overdue invoice."
           }
         },
         "required": [
@@ -60179,6 +61214,11 @@
             "example": true,
             "description": "True when the retracted invoice was paid and a refund was issued."
           },
+          "replaced": {
+            "type": "boolean",
+            "example": true,
+            "description": "True when this unpaid issued invoice was corrected and replaced by a new invoice."
+          },
           "refundedAmountAud": {
             "type": "number",
             "nullable": true,
@@ -60247,6 +61287,27 @@
             "nullable": true,
             "description": "Draft version on the retracted invoice that this replacement copies."
           },
+          "lockDate": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "description": "The day the agency portal locks if this invoice is still unpaid (14th)."
+          },
+          "accountLocked": {
+            "type": "boolean",
+            "example": true,
+            "description": "True when this unpaid invoice has passed the lock date and the agency portal is blocked."
+          },
+          "manuallyUnlocked": {
+            "type": "boolean",
+            "example": false,
+            "description": "True when Accounting has manually unlocked the agency portal."
+          },
+          "lockable": {
+            "type": "boolean",
+            "example": true,
+            "description": "True when Accounting can lock the agency portal for this unpaid overdue invoice."
+          },
           "serviceFeePercent": {
             "type": "number",
             "nullable": true
@@ -60283,10 +61344,20 @@
             "example": false,
             "description": "True when Accounting can retract the invoice (sent, overdue, or paid) and open a replacement draft."
           },
+          "correctable": {
+            "type": "boolean",
+            "example": false,
+            "description": "True when Accounting can correct this unpaid sent or overdue invoice and open a replacement draft."
+          },
           "retractRefundsPayment": {
             "type": "boolean",
             "example": false,
             "description": "True when retracting this invoice will refund the agency via Stripe (paid invoices only)."
+          },
+          "markablePaid": {
+            "type": "boolean",
+            "example": true,
+            "description": "True when Accounting can mark this unpaid invoice paid for an off-Stripe payment (Osko / bank transfer), including drafts. This also unlocks the agency portal."
           },
           "taxInvoice": {
             "$ref": "#/components/schemas/PlatformTaxInvoiceDto"
@@ -60417,12 +61488,39 @@
           "lineItems"
         ]
       },
+      "CorrectStaffMonthlyInvoiceDto": {
+        "type": "object",
+        "properties": {
+          "lineItems": {
+            "description": "Corrected line items. Applied to the replacement invoice after the original is kept in audit history as Replaced.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StaffPlatformMonthlyInvoiceLineEditDto"
+            }
+          }
+        }
+      },
       "RetractStaffMonthlyInvoiceDto": {
         "type": "object",
         "properties": {
           "reason": {
             "type": "string",
             "description": "Optional note included in the refund email to the agency (defaults to standard Accounting copy)."
+          }
+        }
+      },
+      "MarkStaffMonthlyInvoicePaidDto": {
+        "type": "object",
+        "properties": {
+          "receiptNumber": {
+            "type": "string",
+            "maxLength": 120,
+            "description": "Bank / Osko receipt number, if Accounting has one."
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Internal note (payer name, transfer date, etc.)."
           }
         }
       },
@@ -68041,6 +69139,14 @@
               "CANCELLED"
             ]
           },
+          "tag": {
+            "type": "string",
+            "enum": [
+              "NEW",
+              "UNDER_REVIEW",
+              "COMPLETE"
+            ]
+          },
           "assignee": {
             "nullable": true,
             "allOf": [
@@ -68077,6 +69183,13 @@
           "commentCount": {
             "type": "number"
           },
+          "unreadCommentCount": {
+            "type": "number",
+            "description": "Unread comments for the signed-in user."
+          },
+          "requirementCount": {
+            "type": "number"
+          },
           "attachments": {
             "type": "array",
             "items": {
@@ -68090,10 +69203,13 @@
           "description",
           "urgent",
           "status",
+          "tag",
           "createdBy",
           "createdAt",
           "updatedAt",
           "commentCount",
+          "unreadCommentCount",
+          "requirementCount",
           "attachments"
         ]
       },
@@ -68143,6 +69259,29 @@
           "author",
           "createdAt",
           "attachments"
+        ]
+      },
+      "ItWorkRequirementDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "author": {
+            "$ref": "#/components/schemas/ItWorkPersonDto"
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "body",
+          "author",
+          "createdAt"
         ]
       },
       "ItWorkStatusEventDto": {
@@ -68228,6 +69367,14 @@
               "CANCELLED"
             ]
           },
+          "tag": {
+            "type": "string",
+            "enum": [
+              "NEW",
+              "UNDER_REVIEW",
+              "COMPLETE"
+            ]
+          },
           "assignee": {
             "nullable": true,
             "allOf": [
@@ -68264,6 +69411,13 @@
           "commentCount": {
             "type": "number"
           },
+          "unreadCommentCount": {
+            "type": "number",
+            "description": "Unread comments for the signed-in user."
+          },
+          "requirementCount": {
+            "type": "number"
+          },
           "attachments": {
             "type": "array",
             "items": {
@@ -68274,6 +69428,12 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ItWorkCommentDto"
+            }
+          },
+          "requirements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItWorkRequirementDto"
             }
           },
           "statusLog": {
@@ -68289,12 +69449,16 @@
           "description",
           "urgent",
           "status",
+          "tag",
           "createdBy",
           "createdAt",
           "updatedAt",
           "commentCount",
+          "unreadCommentCount",
+          "requirementCount",
           "attachments",
           "comments",
+          "requirements",
           "statusLog"
         ]
       },
@@ -68353,6 +69517,15 @@
             "type": "string",
             "maxLength": 4000,
             "description": "Optional first comment on the item."
+          },
+          "requirements": {
+            "maxItems": 20,
+            "description": "Requirements to attach when the item is filed.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 2000
+            }
           },
           "attachments": {
             "maxItems": 10,
@@ -68434,6 +69607,19 @@
             }
           }
         }
+      },
+      "AddItWorkRequirementDto": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "maxLength": 2000,
+            "example": "Please also reset the shared printer profile."
+          }
+        },
+        "required": [
+          "body"
+        ]
       },
       "CreateLeasingCycleDto": {
         "type": "object",
@@ -70502,6 +71688,15 @@
       "ReportComparisonRepairItemDto": {
         "type": "object",
         "properties": {
+          "resolutionStatus": {
+            "type": "string",
+            "enum": [
+              "open",
+              "in_progress",
+              "completed",
+              "closed"
+            ]
+          },
           "area": {
             "type": "string",
             "maxLength": 120
@@ -70539,6 +71734,9 @@
           "maintenanceRequestId": {
             "type": "string",
             "nullable": true
+          },
+          "fairWearAndTear": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -70807,6 +72005,143 @@
             "type": "string"
           }
         }
+      },
+      "ConfirmVacatingNoticeDto": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "enum": [
+              "email",
+              "phone",
+              "in_person",
+              "letter",
+              "agent",
+              "tenant_app",
+              "other"
+            ]
+          },
+          "noticeDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "channel"
+        ]
+      },
+      "SetVacatingReletDecisionDto": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "yes",
+              "no"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "decision"
+        ]
+      },
+      "SetVacatingIssueStatusDto": {
+        "type": "object",
+        "properties": {
+          "list": {
+            "type": "string",
+            "enum": [
+              "tenant",
+              "landlord"
+            ]
+          },
+          "index": {
+            "type": "number",
+            "minimum": 0
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "in_progress",
+              "completed",
+              "closed"
+            ]
+          }
+        },
+        "required": [
+          "list",
+          "index",
+          "status"
+        ]
+      },
+      "CompleteVacatingTaskDto": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        }
+      },
+      "RequestAgentDeductionsDto": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        }
+      },
+      "AgentDeductionLineDto": {
+        "type": "object",
+        "properties": {
+          "group": {
+            "type": "string",
+            "enum": [
+              "rent",
+              "maintenance",
+              "cleaning",
+              "other"
+            ]
+          },
+          "amount": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000000,
+            "description": "Amount ex. GST, in dollars."
+          }
+        },
+        "required": [
+          "group",
+          "amount"
+        ]
+      },
+      "SubmitAgentDeductionsDto": {
+        "type": "object",
+        "properties": {
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentDeductionLineDto"
+            }
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "lines"
+        ]
       },
       "UploadSalesDocumentDto": {
         "type": "object",
@@ -75326,6 +76661,35 @@
             "format": "date-time",
             "description": "When the tenant submitted their key return report in the app."
           },
+          "cleaningArrangement": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "booked",
+              "declined",
+              "own_arrangement"
+            ],
+            "description": "How the end-of-lease clean is arranged: `own_arrangement` — the tenant does it; `booked` — CROSSUB books Brightness AU; `pending` — not chosen yet."
+          },
+          "cleaningChosenBy": {
+            "type": "string",
+            "enum": [
+              "tenant",
+              "agent"
+            ],
+            "nullable": true,
+            "description": "Who chose the arrangement — the tenant in the app, or the property manager."
+          },
+          "cleaningChoiceRequestedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "description": "When the property manager asked the tenant to choose the cleaning arrangement."
+          },
+          "cleaningDone": {
+            "type": "boolean",
+            "description": "The end-of-lease clean is recorded as done."
+          },
           "inspectionDate": {
             "type": "string",
             "nullable": true,
@@ -75457,6 +76821,10 @@
           "keysReturnAddress",
           "keyReturnPhotoUrls",
           "tenantKeyReturnSubmittedAt",
+          "cleaningArrangement",
+          "cleaningChosenBy",
+          "cleaningChoiceRequestedAt",
+          "cleaningDone",
           "inspectionDate",
           "outgoingInspectionId",
           "tenantOutgoingAttendance",
@@ -75550,6 +76918,22 @@
         },
         "required": [
           "reason"
+        ]
+      },
+      "TenantSetVacatingCleaningDto": {
+        "type": "object",
+        "properties": {
+          "choice": {
+            "type": "string",
+            "enum": [
+              "own_arrangement",
+              "booked"
+            ],
+            "description": "`own_arrangement` — the tenant arranges it; `booked` — CROSSUB books Brightness AU."
+          }
+        },
+        "required": [
+          "choice"
         ]
       },
       "TenantSubmitKeyReturnDto": {
@@ -85591,6 +86975,111 @@
           "amount",
           "paymentDate",
           "paymentMethod"
+        ]
+      },
+      "AgentTaskLifecycleDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 500
+          }
+        }
+      },
+      "AgentTaskLifecycleResultDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "inspection",
+              "leasing",
+              "maintenance",
+              "rent_review",
+              "end_leasing",
+              "tribunal"
+            ]
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "force_completed",
+              "force_deleted"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "COMPLETED",
+              "DELETED"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "action",
+          "status"
+        ]
+      },
+      "AgentTaskAuditLogEntryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "at": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "force_completed",
+              "force_deleted"
+            ]
+          },
+          "label": {
+            "type": "string",
+            "example": "Task force completed"
+          },
+          "sentence": {
+            "type": "string",
+            "example": "Daniel Zhou force completed this task on 18 Sep 2026 at 3:21 PM."
+          },
+          "actor": {
+            "type": "string"
+          },
+          "taskType": {
+            "type": "string"
+          },
+          "previousStatus": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "at",
+          "action",
+          "label",
+          "sentence",
+          "actor"
+        ]
+      },
+      "AgentTaskAuditLogDto": {
+        "type": "object",
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentTaskAuditLogEntryDto"
+            }
+          }
+        },
+        "required": [
+          "entries"
         ]
       },
       "CancelAgentTerminationCaseDto": {

@@ -4,7 +4,7 @@
  * translation here means the screens stay agnostic about where their data came from —
  * the provider swaps seed data for these mapped results with no component changes.
  */
-import { VACATING_STAGE } from '@/constants/vacating';
+import { VACATING_CLEANING, VACATING_STAGE } from '@/constants/vacating';
 import { routineInspection } from '@/constants/routes';
 import {
   APPLICATION_STATUS,
@@ -939,6 +939,10 @@ export function toTenantVacatingCases(cases: TenantVacatingCase[]): VacatingCase
       outgoingStatus,
       outgoingReportId,
       tenantOutgoingAttendance: c.tenantOutgoingAttendance ?? 'pending',
+      cleaningArrangement: c.cleaningArrangement ?? VACATING_CLEANING.PENDING,
+      cleaningChosenBy: c.cleaningChosenBy ?? null,
+      cleaningChoiceRequestedAt: asString(c.cleaningChoiceRequestedAt) ?? null,
+      cleaningDone: c.cleaningDone ?? false,
       tenantRepairQuoteStatus:
         (c as { tenantRepairQuoteStatus?: VacatingCase['tenantRepairQuoteStatus'] })
           .tenantRepairQuoteStatus ?? 'none',
