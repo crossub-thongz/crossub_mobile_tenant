@@ -3,15 +3,15 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   ArrowRight,
-  ChevronDown,
   Eye,
   EyeOff,
-  FileText,
   Loader2,
   Lock,
   Mail,
+  MessageCircle,
   Receipt,
   Wrench,
+  type LucideIcon,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -61,7 +61,6 @@ export default function LoginPage() {
   const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
   const [keepSignedIn, setKeepSignedIn] = useState(true);
-  const [languageOpen, setLanguageOpen] = useState(false);
   const wrongPortal = searchParams.get('wrongPortal') === '1';
 
   useLayoutEffect(() => {
@@ -112,7 +111,7 @@ export default function LoginPage() {
 
   return (
     <div
-      className="relative min-h-dvh text-[#0D1836]"
+      className="relative flex min-h-[calc(100dvh-var(--env-banner-height,0px))] flex-col justify-center pt-6 pb-16 text-[#0D1836]"
       style={{
         backgroundColor: '#F6FCFC',
         backgroundImage: 'url(/login/tenant-bg.svg)',
@@ -120,66 +119,43 @@ export default function LoginPage() {
         backgroundPosition: 'center',
       }}
     >
-      <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-5 sm:px-8 lg:px-10">
+      <header className="mx-auto mb-2 w-full max-w-6xl px-5 sm:px-8 lg:-mt-4 lg:px-10">
         <div className="flex items-center gap-2.5">
           <Image src="/crossub-logo.png" alt="" width={36} height={36} priority className="size-9" />
           <span className="text-[15px] font-bold tracking-[0.16em]">CROSSUB</span>
         </div>
-        <div className="relative">
-          <button
-            type="button"
-            className="inline-flex items-center gap-1 text-sm text-[#52647C]"
-            aria-expanded={languageOpen}
-            aria-haspopup="listbox"
-            onClick={() => setLanguageOpen((open) => !open)}
-          >
-            English
-            <ChevronDown className="size-4" />
-          </button>
-          {languageOpen ? (
-            <ul
-              role="listbox"
-              className="absolute right-0 z-10 mt-2 min-w-32 rounded-xl border border-[#CED9E4] bg-white p-1 text-sm shadow-lg"
-            >
-              <li>
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected
-                  className="w-full rounded-lg px-3 py-2 text-left font-medium"
-                  style={{ color: TENANT_GREEN }}
-                  onClick={() => setLanguageOpen(false)}
-                >
-                  English
-                </button>
-              </li>
-            </ul>
-          ) : null}
-        </div>
       </header>
 
-      <main className="mx-auto grid w-full max-w-6xl items-center gap-10 px-5 pb-12 sm:px-8 lg:grid-cols-[minmax(0,1.05fr)_440px] lg:gap-16 lg:px-10 lg:pb-16">
+      <main className="mx-auto mt-12 grid w-full max-w-6xl items-center gap-10 px-5 sm:px-8 lg:mt-16 lg:grid-cols-[minmax(0,1.05fr)_440px] lg:gap-16 lg:px-10">
         <section className="max-w-xl">
-          <p className="text-xs font-semibold tracking-[0.16em]" style={{ color: TENANT_GREEN }}>
-            TENANT PORTAL
-          </p>
-          <h1 className="mt-3 text-4xl font-semibold tracking-tight text-[#0D1836] sm:text-5xl sm:leading-[1.05]">
-            A simpler way to manage your rental.
+          <div className="flex items-center gap-3">
+            <span className="h-0.5 w-8 rounded-full" style={{ backgroundColor: TENANT_GREEN }} />
+            <p className="text-xs font-semibold tracking-[0.16em]" style={{ color: TENANT_GREEN }}>
+              TENANT PORTAL
+            </p>
+          </div>
+          <h1 className="mt-5 text-4xl font-semibold tracking-tight text-[#0D1836] sm:text-5xl sm:leading-[1.05]">
+            Manage your rental with ease
           </h1>
-          <p className="mt-4 max-w-md text-base leading-relaxed text-[#52647C]">
-            Pay rent, submit maintenance requests, view your documents and more — anytime, anywhere.
+          <p className="mt-6 max-w-md text-base leading-7 text-[#52647C]">
+            Pay rent, submit maintenance requests and stay connected with your property, all in one
+            place.
           </p>
-          <ul className="mt-8 space-y-5">
-            <Feature icon={Receipt} title="Pay rent securely" body="View your balance and payment history" />
+          <ul className="mt-10 space-y-7">
             <Feature
-              icon={Wrench}
-              title="Report and track maintenance"
-              body="With photos and real-time updates"
+              icon={Receipt}
+              title="Simple rent payments"
+              body="Pay securely and view your payment history."
             />
             <Feature
-              icon={FileText}
-              title="Access important documents"
-              body="Leases, inspection reports and notices"
+              icon={Wrench}
+              title="Request maintenance"
+              body="Report issues and track progress in real time."
+            />
+            <Feature
+              icon={MessageCircle}
+              title="Stay connected"
+              body="Get important updates from your property team."
             />
           </ul>
         </section>
@@ -192,19 +168,19 @@ export default function LoginPage() {
             provisioned with an emailed setup link. "Create an account" below opens the
             setup/reset screen, which re-sends that link.
           */}
-          <p className="mt-1 text-sm text-[#52647C]">Sign in to your Crossub Tenant Portal</p>
+          <p className="mt-1 text-sm text-[#52647C]">Sign in to your tenant account</p>
 
           <form onSubmit={loginForm.handleSubmit(onLogin)} className="mt-6 space-y-4">
             <div className="space-y-1.5">
               <label htmlFor="email" className="text-sm font-medium">
-                Email
+                Email address
               </label>
               <div className="relative">
                 <Mail className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[#8AA0B5]" />
                 <input
                   id="email"
                   type="email"
-                  placeholder="your@email.com"
+                  placeholder="you@example.com"
                   autoComplete="email"
                   className="h-12 w-full rounded-[9px] border border-[#CED9E4] bg-white pr-3 pl-10 text-sm outline-none placeholder:text-[#9AADC0] focus:border-[#2AC48D]"
                   {...loginForm.register('email')}
@@ -224,7 +200,7 @@ export default function LoginPage() {
                 <input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
+                  placeholder="Enter your password"
                   autoComplete="current-password"
                   className="h-12 w-full rounded-[9px] border border-[#CED9E4] bg-white pr-10 pl-10 text-sm outline-none placeholder:text-[#9AADC0] focus:border-[#2AC48D]"
                   {...loginForm.register('password')}
@@ -281,7 +257,7 @@ export default function LoginPage() {
           <p className="mt-5 text-center text-sm text-[#52647C]">
             First time here?{' '}
             <Link href={ROUTES.FORGOT_PASSWORD} className="font-semibold" style={{ color: TENANT_GREEN }}>
-              Create an account
+              Create a tenant account
             </Link>
           </p>
         </section>
@@ -295,7 +271,7 @@ function Feature({
   title,
   body,
 }: {
-  icon: typeof Receipt;
+  icon: LucideIcon;
   title: string;
   body: string;
 }) {
@@ -309,7 +285,7 @@ function Feature({
       </span>
       <span>
         <span className="block text-sm font-semibold">{title}</span>
-        <span className="mt-0.5 block text-sm text-[#52647C]">{body}</span>
+        <span className="mt-1.5 block text-sm leading-6 text-[#52647C]">{body}</span>
       </span>
     </li>
   );
