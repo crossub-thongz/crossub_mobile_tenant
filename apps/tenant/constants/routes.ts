@@ -2,6 +2,7 @@ export const ROUTES = {
   DASHBOARD: '/dashboard',
   LOGIN: '/login',
   FORGOT_PASSWORD: '/forgot-password',
+  RESET_PASSWORD: '/reset-password',
   PROPERTIES: '/properties',
   APPLICATIONS: '/applications',
   ONBOARDING: '/onboarding',
@@ -34,6 +35,7 @@ export const ROUTES = {
 export const PUBLIC_ROUTE_PATTERNS = [
   /^\/login\/?$/,
   /^\/forgot-password\/?$/,
+  /^\/reset-password(\/|$)/,
   /^\/properties(\/|$)/,
 ];
 

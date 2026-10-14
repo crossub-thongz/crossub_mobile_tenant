@@ -30,8 +30,8 @@ import { ApiError, api } from '@/lib/api';
  * `forgotPassword` handles exactly this: a PENDING_INVITE user is re-sent a fresh SETUP link
  * rather than being met with silence, so one screen closes the whole loop.
  *
- * The link in that email lands on the crossub_web reset page — this app deliberately has no
- * `/reset-password` route — so there is nothing more to build here than the request.
+ * The link in that email lands on the admin reset page (and on this app, if it is opened
+ * here). Either page says when the link has already been used or has expired.
  *
  * The response is identical whether or not the address has an account (the API says so in
  * `AuthService.forgotPassword`), so the confirmation below must NOT confirm existence.
