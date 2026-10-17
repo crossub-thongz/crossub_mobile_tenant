@@ -9367,6 +9367,63 @@
         ]
       }
     },
+    "/agent/agencies/{agencyId}/service-level": {
+      "patch": {
+        "description": "Applies to the whole agency; a per-property service level override still wins. Only a Self-Manage agency can switch from the app; other plans are changed by CROSSUB.",
+        "operationId": "AgentPortalController_updateAgencyServiceLevel",
+        "parameters": [
+          {
+            "name": "agencyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentUpdateAgencyServiceLevelDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentAgencyResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The plan is not one an agency may choose."
+          },
+          "403": {
+            "description": "The agency is not on Self-Manage."
+          },
+          "404": {
+            "description": "agencyId does not exist or the caller is not a principal of this agency."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Switch a Self-Manage agency to Inspection Only or Full Service (principal only).",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
     "/agent/agencies/{agencyId}/primary-contact": {
       "patch": {
         "description": "Null keeps the agency (company registry contact) as the default primary. A user id must be an active team member.",
@@ -14659,8 +14716,8 @@
             "name": "quotationId",
             "required": true,
             "in": "path",
+            "description": "The workflow quotation id as the maintenance board returns it (`Q-<timestamp>`), not a UUID.",
             "schema": {
-              "format": "uuid",
               "type": "string"
             }
           }
@@ -14677,7 +14734,7 @@
             }
           },
           "400": {
-            "description": "requestId or quotationId is not a valid UUID."
+            "description": "requestId is not a valid UUID."
           },
           "401": {
             "description": "Missing/invalid/expired token, or the user is not active."
@@ -14720,8 +14777,8 @@
             "name": "quotationId",
             "required": true,
             "in": "path",
+            "description": "The workflow quotation id as the maintenance board returns it (`Q-<timestamp>`), not a UUID.",
             "schema": {
-              "format": "uuid",
               "type": "string"
             }
           }
@@ -14748,7 +14805,7 @@
             }
           },
           "400": {
-            "description": "requestId/quotationId is not a valid UUID, or the reason is missing/too short."
+            "description": "requestId is not a valid UUID, or the reason is missing/too short."
           },
           "401": {
             "description": "Missing/invalid/expired token, or the user is not active."
@@ -14792,8 +14849,8 @@
             "name": "quotationId",
             "required": true,
             "in": "path",
+            "description": "The workflow quotation id as the maintenance board returns it (`Q-<timestamp>`), not a UUID.",
             "schema": {
-              "format": "uuid",
               "type": "string"
             }
           }
@@ -14820,7 +14877,7 @@
             }
           },
           "400": {
-            "description": "requestId/quotationId is not a valid UUID, or the counter price is invalid."
+            "description": "requestId is not a valid UUID, or the counter price is invalid."
           },
           "401": {
             "description": "Missing/invalid/expired token, or the user is not active."
@@ -15252,6 +15309,124 @@
           }
         ],
         "summary": "Transcribe hold-to-talk audio for Gii",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/agent/properties/{propertyId}/owner-decisions": {
+      "post": {
+        "description": "Self-Manage properties only. Records the decision and, when the property has an owner email, emails the owner a copy from the agency address; the copy carries no approve link.",
+        "operationId": "AgentOwnerDecisionController_record",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentCreateOwnerDecisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentOwnerDecisionDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The property is not Self-Manage, or CROSSUB has not confirmed it services this property."
+          },
+          "404": {
+            "description": "The property is not in this agent’s book."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Record a decision on a property and email the owner a copy (Self-Manage).",
+        "tags": [
+          "agent"
+        ]
+      },
+      "get": {
+        "operationId": "AgentOwnerDecisionController_list",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "caseType",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "MAINTENANCE",
+                "INSPECTION",
+                "LEASING",
+                "RENT_REVIEW",
+                "END_LEASING",
+                "TRUST",
+                "GENERAL"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "caseId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentOwnerDecisionListDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The property is not in this agent’s book."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List decisions recorded on a property, newest first.",
         "tags": [
           "agent"
         ]
@@ -18193,7 +18368,7 @@
           },
           "counterWeekly": {
             "type": "number",
-            "minimum": 0
+            "minimum": 0.01
           },
           "tenantNote": {
             "type": "string",
@@ -18708,7 +18883,9 @@
               "EMAIL",
               "VOICE",
               "INTERNAL_NOTE",
-              "PUSH"
+              "PUSH",
+              "SMS",
+              "WHATSAPP"
             ],
             "example": "APP",
             "description": "The channel the message was sent on (APP / EMAIL / …)."
@@ -18754,7 +18931,8 @@
               "TRIBUNAL",
               "GENERAL",
               "RENT_REVIEW",
-              "COMPLAINT"
+              "COMPLAINT",
+              "SALES"
             ],
             "example": "MAINTENANCE"
           },
@@ -18826,7 +19004,8 @@
               "TRIBUNAL",
               "GENERAL",
               "RENT_REVIEW",
-              "COMPLAINT"
+              "COMPLAINT",
+              "SALES"
             ],
             "default": "GENERAL",
             "description": "Staff queue to route the thread to. Defaults to GENERAL."
@@ -20863,7 +21042,8 @@
               "TRIBUNAL",
               "GENERAL",
               "RENT_REVIEW",
-              "COMPLAINT"
+              "COMPLAINT",
+              "SALES"
             ],
             "example": "ACCOUNTING"
           },
@@ -20935,7 +21115,8 @@
               "TRIBUNAL",
               "GENERAL",
               "RENT_REVIEW",
-              "COMPLAINT"
+              "COMPLAINT",
+              "SALES"
             ],
             "default": "GENERAL",
             "description": "Staff queue to route the thread to. Defaults to GENERAL."
@@ -21701,7 +21882,9 @@
               "EMAIL",
               "VOICE",
               "INTERNAL_NOTE",
-              "PUSH"
+              "PUSH",
+              "SMS",
+              "WHATSAPP"
             ],
             "example": "APP"
           }
@@ -23537,7 +23720,9 @@
               "EMAIL",
               "VOICE",
               "INTERNAL_NOTE",
-              "PUSH"
+              "PUSH",
+              "SMS",
+              "WHATSAPP"
             ],
             "example": "APP"
           },
@@ -24914,6 +25099,33 @@
           "createdAt"
         ]
       },
+      "AgentArrearsPaymentDto": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number",
+            "example": 200
+          },
+          "paidDate": {
+            "type": "string",
+            "example": "2026-10-13"
+          },
+          "remaining": {
+            "type": "number",
+            "example": 0,
+            "description": "Balance left on the case after this receipt."
+          },
+          "caseId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "amount",
+          "paidDate",
+          "remaining"
+        ]
+      },
       "AgentTribunalRentChasingPrefillDto": {
         "type": "object",
         "properties": {
@@ -24937,6 +25149,13 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/AgentTribunalArrearRowDto"
+            }
+          },
+          "payments": {
+            "description": "Receipts recorded against this property, newest first, including a case that is now paid in full.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentArrearsPaymentDto"
             }
           },
           "rentArrears": {
@@ -24978,6 +25197,7 @@
           "tenantName",
           "hasAccountingArrears",
           "arrears",
+          "payments",
           "billArrears"
         ]
       },
@@ -25544,7 +25764,8 @@
             "enum": [
               "LEVEL_1_INSPECTION_ONLY",
               "LEVEL_2_FULL_MANAGEMENT",
-              "LEVEL_3_LEGACY"
+              "LEVEL_3_LEGACY",
+              "SELF_MANAGED"
             ],
             "example": "LEVEL_2_FULL_MANAGEMENT",
             "description": "Agent portal service tier for this client agency — Level 1 is inspection and tribunal; Level 2 is full property management. Null until the agent chooses a plan."
@@ -25952,6 +26173,25 @@
             "maxLength": 40
           }
         }
+      },
+      "AgentUpdateAgencyServiceLevelDto": {
+        "type": "object",
+        "properties": {
+          "portalServiceLevel": {
+            "type": "string",
+            "enum": [
+              "LEVEL_1_INSPECTION_ONLY",
+              "LEVEL_2_FULL_MANAGEMENT",
+              "LEVEL_3_LEGACY",
+              "SELF_MANAGED"
+            ],
+            "example": "SELF_MANAGED",
+            "description": "Self-Manage, Inspection Only or Full Service. Legacy cannot be chosen."
+          }
+        },
+        "required": [
+          "portalServiceLevel"
+        ]
       },
       "AgentUpdateAgencyPrimaryContactDto": {
         "type": "object",
@@ -26925,7 +27165,7 @@
           },
           "postcode": {
             "type": "string",
-            "maxLength": 10
+            "pattern": "^\\d{4}$"
           },
           "propertyType": {
             "type": "string",
@@ -27024,7 +27264,7 @@
           },
           "rentWeekly": {
             "type": "number",
-            "minimum": 0
+            "minimum": 0.01
           },
           "bondAmount": {
             "type": "number",
@@ -27158,7 +27398,7 @@
           },
           "postcode": {
             "type": "string",
-            "maxLength": 10
+            "pattern": "^\\d{4}$"
           },
           "propertyType": {
             "type": "string",
@@ -27256,7 +27496,7 @@
           },
           "rentWeekly": {
             "type": "number",
-            "minimum": 0
+            "minimum": 0.01
           },
           "bondAmount": {
             "type": "number",
@@ -27654,7 +27894,7 @@
         "properties": {
           "currentWeeklyRent": {
             "type": "number",
-            "minimum": 0
+            "minimum": 0.01
           },
           "tenantName": {
             "type": "string",
@@ -27695,7 +27935,7 @@
           },
           "proposedRent": {
             "type": "number",
-            "minimum": 0
+            "minimum": 0.01
           },
           "rentPeriod": {
             "type": "string",
@@ -27944,6 +28184,7 @@
           "id": {
             "type": "string",
             "enum": [
+              "openai",
               "nsw_fair_trading",
               "rp_data",
               "rea"
@@ -28379,6 +28620,14 @@
             "type": "string",
             "nullable": true
           },
+          "reviewKind": {
+            "type": "string",
+            "enum": [
+              "rent_review",
+              "lease_renewal"
+            ],
+            "nullable": true
+          },
           "tenantName": {
             "type": "string",
             "nullable": true
@@ -28620,6 +28869,7 @@
           "orderNumber",
           "status",
           "agentDecision",
+          "reviewKind",
           "tenantName",
           "currentWeeklyRent",
           "proposedWeeklyRent",
@@ -28833,7 +29083,7 @@
         "properties": {
           "weekly": {
             "type": "number",
-            "minimum": 0,
+            "minimum": 0.01,
             "nullable": true
           },
           "effectiveDate": {
@@ -29901,7 +30151,7 @@
           },
           "comments": {
             "type": "string",
-            "description": "Contractor’s notes / caveats."
+            "description": "Notes on the quote — the contractor’s, or an officer’s rewrite. Absent until an officer has confirmed them or the quote is approved."
           },
           "declineReason": {
             "type": "string",
@@ -29915,22 +30165,6 @@
             ],
             "example": "standard",
             "description": "Why the quote was requested. `diagnostic` is a paid call-out to identify the cause — quoted and approved like a standard quote, shown as “Diagnostic call-out”."
-          },
-          "reviewFlags": {
-            "example": [
-              "ABOVE_TRADE_RANGE"
-            ],
-            "description": "Advisory flags from the AI quote review, shown as neutral badges. On a form-submitted quote the price-judgement flags are advisory only (recorded, never a hold).",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "reviewSummary": {
-            "type": "string",
-            "nullable": true,
-            "example": "Total is 18% above the trade range for this job.",
-            "description": "One-line summary from the AI quote review, or null when the review has not run."
           }
         },
         "required": [
@@ -29944,9 +30178,7 @@
           "isLowest",
           "submittedAt",
           "lineItems",
-          "purpose",
-          "reviewFlags",
-          "reviewSummary"
+          "purpose"
         ]
       },
       "AgentTenantResponsibilityResponseDto": {
@@ -31016,7 +31248,9 @@
               "EMAIL",
               "VOICE",
               "INTERNAL_NOTE",
-              "PUSH"
+              "PUSH",
+              "SMS",
+              "WHATSAPP"
             ],
             "example": "APP"
           }
@@ -31061,7 +31295,8 @@
               "TRIBUNAL",
               "GENERAL",
               "RENT_REVIEW",
-              "COMPLAINT"
+              "COMPLAINT",
+              "SALES"
             ],
             "example": "INSPECTION"
           },
@@ -31075,7 +31310,8 @@
               "LEASING",
               "RENT_REVIEW",
               "TRIBUNAL",
-              "ACCOUNTING"
+              "ACCOUNTING",
+              "SALES"
             ],
             "example": "INSPECTION"
           },
@@ -31273,7 +31509,8 @@
               "TRIBUNAL",
               "GENERAL",
               "RENT_REVIEW",
-              "COMPLAINT"
+              "COMPLAINT",
+              "SALES"
             ],
             "default": "GENERAL",
             "description": "Staff queue to route the thread to. Defaults to GENERAL."
@@ -31292,7 +31529,8 @@
               "LEASING",
               "RENT_REVIEW",
               "TRIBUNAL",
-              "ACCOUNTING"
+              "ACCOUNTING",
+              "SALES"
             ],
             "description": "Optional workflow case tag so staff can open the job in the admin portal from Communication Hub."
           },
@@ -32896,7 +33134,7 @@
           "dailyRentDisplay": {
             "type": "string",
             "nullable": true,
-            "example": "142.857",
+            "example": "142.86",
             "description": "The daily rate as displayed. Render this verbatim; do not re-round."
           },
           "term": {
@@ -33160,6 +33398,135 @@
         },
         "required": [
           "text"
+        ]
+      },
+      "AgentCreateOwnerDecisionDto": {
+        "type": "object",
+        "properties": {
+          "caseType": {
+            "type": "string",
+            "enum": [
+              "MAINTENANCE",
+              "INSPECTION",
+              "LEASING",
+              "RENT_REVIEW",
+              "END_LEASING",
+              "TRUST",
+              "GENERAL"
+            ],
+            "example": "MAINTENANCE"
+          },
+          "caseId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The job this decision belongs to."
+          },
+          "decision": {
+            "type": "string",
+            "maxLength": 120,
+            "example": "Quote approved"
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 4000,
+            "example": "We approved the $420 quote from Ace Plumbing to replace the kitchen mixer tap."
+          }
+        },
+        "required": [
+          "caseType",
+          "decision",
+          "summary"
+        ]
+      },
+      "AgentOwnerDecisionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "caseType": {
+            "type": "string",
+            "enum": [
+              "MAINTENANCE",
+              "INSPECTION",
+              "LEASING",
+              "RENT_REVIEW",
+              "END_LEASING",
+              "TRUST",
+              "GENERAL"
+            ]
+          },
+          "caseId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "decision": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "decidedByName": {
+            "type": "string",
+            "nullable": true,
+            "description": "Who decided."
+          },
+          "ownerEmail": {
+            "type": "string",
+            "nullable": true,
+            "description": "Owner address the copy went to. Null when no owner email is on file."
+          },
+          "emailStatus": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "sent",
+              "not_configured",
+              "stub_recipient",
+              "blocked_recipient",
+              "blocked_landlord",
+              "blocked_archived_agency",
+              "withheld_template",
+              "failed"
+            ],
+            "description": "What became of the owner copy. Null when none was sent because the property has no owner email."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "propertyId",
+          "caseType",
+          "caseId",
+          "decision",
+          "summary",
+          "decidedByName",
+          "ownerEmail",
+          "emailStatus",
+          "createdAt"
+        ]
+      },
+      "AgentOwnerDecisionListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentOwnerDecisionDto"
+            }
+          }
+        },
+        "required": [
+          "items"
         ]
       },
       "MeProfileResponseDto": {

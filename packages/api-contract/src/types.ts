@@ -3395,6 +3395,26 @@ export interface paths {
         patch: operations["AgentPortalController_updateAgencyBilling"];
         trace?: never;
     };
+    "/agent/agencies/{agencyId}/service-level": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Switch a Self-Manage agency to Inspection Only or Full Service (principal only).
+         * @description Applies to the whole agency; a per-property service level override still wins. Only a Self-Manage agency can switch from the app; other plans are changed by CROSSUB.
+         */
+        patch: operations["AgentPortalController_updateAgencyServiceLevel"];
+        trace?: never;
+    };
     "/agent/agencies/{agencyId}/primary-contact": {
         parameters: {
             query?: never;
@@ -5316,6 +5336,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent/properties/{propertyId}/owner-decisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List decisions recorded on a property, newest first. */
+        get: operations["AgentOwnerDecisionController_list"];
+        put?: never;
+        /**
+         * Record a decision on a property and email the owner a copy (Self-Manage).
+         * @description Self-Manage properties only. Records the decision and, when the property has an owner email, emails the owner a copy from the agency address; the copy carries no approve link.
+         */
+        post: operations["AgentOwnerDecisionController_record"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/me": {
         parameters: {
             query?: never;
@@ -6723,7 +6764,7 @@ export interface components {
              * @example APP
              * @enum {string}
              */
-            channel: "APP" | "EMAIL" | "VOICE" | "INTERNAL_NOTE" | "PUSH";
+            channel: "APP" | "EMAIL" | "VOICE" | "INTERNAL_NOTE" | "PUSH" | "SMS" | "WHATSAPP";
         };
         TenantMessageThreadResponseDto: {
             /** Format: uuid */
@@ -6738,7 +6779,7 @@ export interface components {
              * @example MAINTENANCE
              * @enum {string}
              */
-            department: "LEASING" | "MAINTENANCE" | "INSPECTION" | "ACCOUNTING" | "TRIBUNAL" | "GENERAL" | "RENT_REVIEW" | "COMPLAINT";
+            department: "LEASING" | "MAINTENANCE" | "INSPECTION" | "ACCOUNTING" | "TRIBUNAL" | "GENERAL" | "RENT_REVIEW" | "COMPLAINT" | "SALES";
             /**
              * @example [
              *       "CROSSUB Support",
@@ -6767,7 +6808,7 @@ export interface components {
              * @default GENERAL
              * @enum {string}
              */
-            department: "LEASING" | "MAINTENANCE" | "INSPECTION" | "ACCOUNTING" | "TRIBUNAL" | "GENERAL" | "RENT_REVIEW" | "COMPLAINT";
+            department: "LEASING" | "MAINTENANCE" | "INSPECTION" | "ACCOUNTING" | "TRIBUNAL" | "GENERAL" | "RENT_REVIEW" | "COMPLAINT" | "SALES";
             /**
              * Format: uuid
              * @description The leased property the thread is about. Omit for a general enquiry.
@@ -7695,7 +7736,7 @@ export interface components {
              * @example ACCOUNTING
              * @enum {string}
              */
-            department: "LEASING" | "MAINTENANCE" | "INSPECTION" | "ACCOUNTING" | "TRIBUNAL" | "GENERAL" | "RENT_REVIEW" | "COMPLAINT";
+            department: "LEASING" | "MAINTENANCE" | "INSPECTION" | "ACCOUNTING" | "TRIBUNAL" | "GENERAL" | "RENT_REVIEW" | "COMPLAINT" | "SALES";
             /**
              * @example [
              *       "CROSSUB Support",
@@ -7724,7 +7765,7 @@ export interface components {
              * @default GENERAL
              * @enum {string}
              */
-            department: "LEASING" | "MAINTENANCE" | "INSPECTION" | "ACCOUNTING" | "TRIBUNAL" | "GENERAL" | "RENT_REVIEW" | "COMPLAINT";
+            department: "LEASING" | "MAINTENANCE" | "INSPECTION" | "ACCOUNTING" | "TRIBUNAL" | "GENERAL" | "RENT_REVIEW" | "COMPLAINT" | "SALES";
             /**
              * Format: uuid
              * @description An owned property the thread is about. Omit for a general enquiry.
@@ -8071,7 +8112,7 @@ export interface components {
              * @example APP
              * @enum {string}
              */
-            channel: "APP" | "EMAIL" | "VOICE" | "INTERNAL_NOTE" | "PUSH";
+            channel: "APP" | "EMAIL" | "VOICE" | "INTERNAL_NOTE" | "PUSH" | "SMS" | "WHATSAPP";
         };
         ContractorMessageThreadResponseDto: {
             /** Format: uuid */
@@ -8810,7 +8851,7 @@ export interface components {
              * @example APP
              * @enum {string}
              */
-            channel: "APP" | "EMAIL" | "VOICE" | "INTERNAL_NOTE" | "PUSH";
+            channel: "APP" | "EMAIL" | "VOICE" | "INTERNAL_NOTE" | "PUSH" | "SMS" | "WHATSAPP";
             attachments?: {
                 fileName?: string;
                 mimeType?: string;
@@ -9294,6 +9335,19 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        AgentArrearsPaymentDto: {
+            /** @example 200 */
+            amount: number;
+            /** @example 2026-10-13 */
+            paidDate: string;
+            /**
+             * @description Balance left on the case after this receipt.
+             * @example 0
+             */
+            remaining: number;
+            /** Format: uuid */
+            caseId?: string;
+        };
         AgentTribunalRentChasingPrefillDto: {
             /** Format: uuid */
             propertyId: string;
@@ -9303,6 +9357,8 @@ export interface components {
             /** @description True when the property has open Accounting arrears (rent, invoice/bill, or bond). */
             hasAccountingArrears: boolean;
             arrears: components["schemas"]["AgentTribunalArrearRowDto"][];
+            /** @description Receipts recorded against this property, newest first, including a case that is now paid in full. */
+            payments: components["schemas"]["AgentArrearsPaymentDto"][];
             rentArrears?: components["schemas"]["AgentTribunalRentArrearsDto"] | null;
             billArrears: components["schemas"]["AgentTribunalBillArrearsRowDto"][];
             /** @description Property agreement / lease end date — always populated from the property when known, including when there is no open bond arrears case. */
@@ -9505,7 +9561,7 @@ export interface components {
              * @example LEVEL_2_FULL_MANAGEMENT
              * @enum {string|null}
              */
-            portalServiceLevel: "LEVEL_1_INSPECTION_ONLY" | "LEVEL_2_FULL_MANAGEMENT" | "LEVEL_3_LEGACY" | null;
+            portalServiceLevel: "LEVEL_1_INSPECTION_ONLY" | "LEVEL_2_FULL_MANAGEMENT" | "LEVEL_3_LEGACY" | "SELF_MANAGED" | null;
             /**
              * @description Caller membership tier for this agency.
              * @example PRINCIPAL
@@ -9682,6 +9738,14 @@ export interface components {
             bankAccountName?: string;
             bankBsb?: string;
             bankAccountNumber?: string;
+        };
+        AgentUpdateAgencyServiceLevelDto: {
+            /**
+             * @description Self-Manage, Inspection Only or Full Service. Legacy cannot be chosen.
+             * @example SELF_MANAGED
+             * @enum {string}
+             */
+            portalServiceLevel: "LEVEL_1_INSPECTION_ONLY" | "LEVEL_2_FULL_MANAGEMENT" | "LEVEL_3_LEGACY" | "SELF_MANAGED";
         };
         AgentUpdateAgencyPrimaryContactDto: {
             /**
@@ -10373,7 +10437,7 @@ export interface components {
         };
         RentPlatformResearch: {
             /** @enum {string} */
-            id: "nsw_fair_trading" | "rp_data" | "rea";
+            id: "openai" | "nsw_fair_trading" | "rp_data" | "rea";
             /** @enum {string} */
             status: "complete" | "failed" | "pending_credentials" | "insufficient_data";
             medianWeekly: number | null;
@@ -10473,6 +10537,8 @@ export interface components {
             /** @enum {string} */
             status: "OPEN" | "COMPLETED";
             agentDecision: string | null;
+            /** @enum {string|null} */
+            reviewKind: "rent_review" | "lease_renewal" | null;
             tenantName: string | null;
             currentWeeklyRent: number | null;
             proposedWeeklyRent: number | null;
@@ -10970,7 +11036,7 @@ export interface components {
             /** Format: date-time */
             submittedAt: string | null;
             lineItems: components["schemas"]["AgentMaintenanceQuoteLineItemDto"][];
-            /** @description Contractor’s notes / caveats. */
+            /** @description Notes on the quote — the contractor’s, or an officer’s rewrite. Absent until an officer has confirmed them or the quote is approved. */
             comments?: string;
             /** @description Reason recorded if the quote was declined. */
             declineReason?: string;
@@ -10980,18 +11046,6 @@ export interface components {
              * @enum {string}
              */
             purpose: "standard" | "diagnostic";
-            /**
-             * @description Advisory flags from the AI quote review, shown as neutral badges. On a form-submitted quote the price-judgement flags are advisory only (recorded, never a hold).
-             * @example [
-             *       "ABOVE_TRADE_RANGE"
-             *     ]
-             */
-            reviewFlags: string[];
-            /**
-             * @description One-line summary from the AI quote review, or null when the review has not run.
-             * @example Total is 18% above the trade range for this job.
-             */
-            reviewSummary: string | null;
         };
         AgentTenantResponsibilityResponseDto: {
             /** @example false */
@@ -11382,7 +11436,7 @@ export interface components {
              * @example APP
              * @enum {string}
              */
-            channel: "APP" | "EMAIL" | "VOICE" | "INTERNAL_NOTE" | "PUSH";
+            channel: "APP" | "EMAIL" | "VOICE" | "INTERNAL_NOTE" | "PUSH" | "SMS" | "WHATSAPP";
         };
         AgentMessageThreadResponseDto: {
             /** Format: uuid */
@@ -11397,12 +11451,12 @@ export interface components {
              * @example INSPECTION
              * @enum {string}
              */
-            department: "LEASING" | "MAINTENANCE" | "INSPECTION" | "ACCOUNTING" | "TRIBUNAL" | "GENERAL" | "RENT_REVIEW" | "COMPLAINT";
+            department: "LEASING" | "MAINTENANCE" | "INSPECTION" | "ACCOUNTING" | "TRIBUNAL" | "GENERAL" | "RENT_REVIEW" | "COMPLAINT" | "SALES";
             /**
              * @example INSPECTION
              * @enum {string|null}
              */
-            caseType: "PROPERTY" | "MAINTENANCE" | "INSPECTION" | "LEASING" | "RENT_REVIEW" | "TRIBUNAL" | "ACCOUNTING" | null;
+            caseType: "PROPERTY" | "MAINTENANCE" | "INSPECTION" | "LEASING" | "RENT_REVIEW" | "TRIBUNAL" | "ACCOUNTING" | "SALES" | null;
             /** @description The id of the case this thread is about. */
             caseId: string | null;
             /**
@@ -11471,7 +11525,7 @@ export interface components {
              * @default GENERAL
              * @enum {string}
              */
-            department: "LEASING" | "MAINTENANCE" | "INSPECTION" | "ACCOUNTING" | "TRIBUNAL" | "GENERAL" | "RENT_REVIEW" | "COMPLAINT";
+            department: "LEASING" | "MAINTENANCE" | "INSPECTION" | "ACCOUNTING" | "TRIBUNAL" | "GENERAL" | "RENT_REVIEW" | "COMPLAINT" | "SALES";
             /**
              * Format: uuid
              * @description A managed property the thread is about. Omit for a general enquiry.
@@ -11481,7 +11535,7 @@ export interface components {
              * @description Optional workflow case tag so staff can open the job in the admin portal from Communication Hub.
              * @enum {string}
              */
-            caseType?: "PROPERTY" | "MAINTENANCE" | "INSPECTION" | "LEASING" | "RENT_REVIEW" | "TRIBUNAL" | "ACCOUNTING";
+            caseType?: "PROPERTY" | "MAINTENANCE" | "INSPECTION" | "LEASING" | "RENT_REVIEW" | "TRIBUNAL" | "ACCOUNTING" | "SALES";
             /**
              * Format: uuid
              * @description The workflow case id paired with `caseType`.
@@ -12142,7 +12196,7 @@ export interface components {
             dailyRent: number | null;
             /**
              * @description The daily rate as displayed. Render this verbatim; do not re-round.
-             * @example 142.857
+             * @example 142.86
              */
             dailyRentDisplay: string | null;
             term: components["schemas"]["GiiTermProgressDto"] | null;
@@ -12240,6 +12294,48 @@ export interface components {
              * @example no_speech
              */
             outcome?: string;
+        };
+        AgentCreateOwnerDecisionDto: {
+            /**
+             * @example MAINTENANCE
+             * @enum {string}
+             */
+            caseType: "MAINTENANCE" | "INSPECTION" | "LEASING" | "RENT_REVIEW" | "END_LEASING" | "TRUST" | "GENERAL";
+            /**
+             * Format: uuid
+             * @description The job this decision belongs to.
+             */
+            caseId?: string;
+            /** @example Quote approved */
+            decision: string;
+            /** @example We approved the $420 quote from Ace Plumbing to replace the kitchen mixer tap. */
+            summary: string;
+        };
+        AgentOwnerDecisionDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            propertyId: string;
+            /** @enum {string} */
+            caseType: "MAINTENANCE" | "INSPECTION" | "LEASING" | "RENT_REVIEW" | "END_LEASING" | "TRUST" | "GENERAL";
+            /** Format: uuid */
+            caseId: string | null;
+            decision: string;
+            summary: string;
+            /** @description Who decided. */
+            decidedByName: string | null;
+            /** @description Owner address the copy went to. Null when no owner email is on file. */
+            ownerEmail: string | null;
+            /**
+             * @description What became of the owner copy. Null when none was sent because the property has no owner email.
+             * @enum {string|null}
+             */
+            emailStatus: "sent" | "not_configured" | "stub_recipient" | "blocked_recipient" | "blocked_landlord" | "blocked_archived_agency" | "withheld_template" | "failed" | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AgentOwnerDecisionListDto: {
+            items: components["schemas"]["AgentOwnerDecisionDto"][];
         };
         MeProfileResponseDto: {
             /** Format: uuid */
@@ -20184,6 +20280,52 @@ export interface operations {
             };
         };
     };
+    AgentPortalController_updateAgencyServiceLevel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agencyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentUpdateAgencyServiceLevelDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentAgencyResponseDto"];
+                };
+            };
+            /** @description The plan is not one an agency may choose. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The agency is not on Self-Manage. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description agencyId does not exist or the caller is not a principal of this agency. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     AgentPortalController_updateAgencyPrimaryContact: {
         parameters: {
             query?: never;
@@ -23820,6 +23962,7 @@ export interface operations {
             header?: never;
             path: {
                 requestId: string;
+                /** @description The workflow quotation id as the maintenance board returns it (`Q-<timestamp>`), not a UUID. */
                 quotationId: string;
             };
             cookie?: never;
@@ -23834,7 +23977,7 @@ export interface operations {
                     "application/json": components["schemas"]["AgentMaintenanceDto"];
                 };
             };
-            /** @description requestId or quotationId is not a valid UUID. */
+            /** @description requestId is not a valid UUID. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -23877,6 +24020,7 @@ export interface operations {
             header?: never;
             path: {
                 requestId: string;
+                /** @description The workflow quotation id as the maintenance board returns it (`Q-<timestamp>`), not a UUID. */
                 quotationId: string;
             };
             cookie?: never;
@@ -23895,7 +24039,7 @@ export interface operations {
                     "application/json": components["schemas"]["AgentMaintenanceDto"];
                 };
             };
-            /** @description requestId/quotationId is not a valid UUID, or the reason is missing/too short. */
+            /** @description requestId is not a valid UUID, or the reason is missing/too short. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -23938,6 +24082,7 @@ export interface operations {
             header?: never;
             path: {
                 requestId: string;
+                /** @description The workflow quotation id as the maintenance board returns it (`Q-<timestamp>`), not a UUID. */
                 quotationId: string;
             };
             cookie?: never;
@@ -23956,7 +24101,7 @@ export interface operations {
                     "application/json": components["schemas"]["AgentMaintenanceDto"];
                 };
             };
-            /** @description requestId/quotationId is not a valid UUID, or the counter price is invalid. */
+            /** @description requestId is not a valid UUID, or the counter price is invalid. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -24339,6 +24484,76 @@ export interface operations {
             };
             /** @description Speech transcription is not configured on this environment. */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AgentOwnerDecisionController_list: {
+        parameters: {
+            query?: {
+                caseType?: "MAINTENANCE" | "INSPECTION" | "LEASING" | "RENT_REVIEW" | "END_LEASING" | "TRUST" | "GENERAL";
+                caseId?: string;
+            };
+            header?: never;
+            path: {
+                propertyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentOwnerDecisionListDto"];
+                };
+            };
+            /** @description The property is not in this agent’s book. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AgentOwnerDecisionController_record: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                propertyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentCreateOwnerDecisionDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentOwnerDecisionDto"];
+                };
+            };
+            /** @description The property is not Self-Manage, or CROSSUB has not confirmed it services this property. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The property is not in this agent’s book. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
