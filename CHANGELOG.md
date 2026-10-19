@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-19
+
+### Fixed
+- End of lease repair responsibilities no longer say CROSSUB prepares the quotation, which is wrong on Self-Manage plans.
+
 ## 2026-09-18
 
 ### Changed

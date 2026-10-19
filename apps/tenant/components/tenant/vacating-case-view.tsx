@@ -301,7 +301,7 @@ function TenantResponsibilityReviewPanel({
       </div>
       <p className="text-muted-foreground text-xs">
         Your property manager has listed items from the outgoing inspection that you are responsible
-        for. Please review and confirm before CROSSUB prepares quotations.
+        for. Please review and confirm before the repair quotation is prepared.
       </p>
       {items.length > 0 ? (
         <div className="mt-4 overflow-hidden rounded-xl border text-xs">
@@ -333,7 +333,7 @@ function TenantResponsibilityReviewPanel({
       ) : null}
       {vacating.tenantResponsibilityReviewStatus === 'accepted' ? (
         <p className="mt-3 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-          You acknowledged these items. Pending quotation from CROSSUB.
+          You acknowledged these items. The repair quotation is being prepared.
         </p>
       ) : null}
       {vacating.tenantResponsibilityReviewStatus === 'declined' ? (
@@ -664,8 +664,8 @@ function PhasePanel({
           </div>
           {vacating.tenantResponsibilityReviewStatus === 'accepted' ? (
             <p className="text-muted-foreground text-xs font-medium text-emerald-700 dark:text-emerald-300">
-              Pending quotation from CROSSUB — your agent will notify you when bond deductions are
-              ready to review.
+              The repair quotation is being prepared — your agent will notify you when bond
+              deductions are ready to review.
             </p>
           ) : vacating.tenantResponsibilityReviewStatus === 'declined' ? (
             <p className="text-muted-foreground text-xs">
@@ -695,8 +695,8 @@ function PhasePanel({
           {!vacating.tenantBondAckSentAt &&
           vacating.tenantResponsibilityReviewStatus === 'accepted' ? (
             <p className="text-muted-foreground text-xs font-medium text-emerald-700 dark:text-emerald-300">
-              You acknowledged your repair responsibilities. Pending quotation from CROSSUB — your
-              agent will notify you when bond deductions are ready to review.
+              You acknowledged your repair responsibilities. The repair quotation is being prepared —
+              your agent will notify you when bond deductions are ready to review.
             </p>
           ) : null}
           {vacating.refundAmount != null && (
@@ -962,7 +962,7 @@ export function VacatingCaseView({
                 void acceptVacatingResponsibilities(vacating.id)
                   .then(() => {
                     setViewStage(VACATING_STAGE.BOND);
-                    toast.success('Responsibilities acknowledged — pending quotation from CROSSUB');
+                    toast.success('Responsibilities acknowledged — the repair quotation is being prepared');
                   })
                   .finally(() => setResponsibilityBusy(false));
               }}
