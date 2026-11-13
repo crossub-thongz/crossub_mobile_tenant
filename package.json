@@ -12,7 +12,9 @@
     "start": "pnpm --filter @crossub/tenant start",
     "start:tenant": "pnpm --filter @crossub/tenant start",
     "start:portal": "pnpm start:tenant",
-    "lint": "pnpm --filter @crossub/tenant lint"
+    "lint": "pnpm --filter @crossub/tenant lint",
+    "typecheck": "pnpm --filter @crossub-thongz/api-contract build && pnpm --filter @crossub/tenant exec tsc --noEmit",
+    "verify": "pnpm build:tenant"
   },
   "packageManager": "pnpm@9.12.0",
   "engines": {
