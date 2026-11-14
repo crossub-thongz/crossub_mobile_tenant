@@ -62,8 +62,7 @@ pnpm start                     # next start -H 0.0.0.0
 cd apps/tenant && ./node_modules/.bin/tsc --noEmit    # the real correctness gate
 ```
 
-- **`next build` does not typecheck** — `next.config.mjs` sets `typescript.ignoreBuildErrors: true`.
-  A green build means nothing; run `tsc --noEmit` after any change.
+- **`next build` type checks** since 13 Nov 2026 (see Checks below); a type error fails the build.
 - **`pnpm lint` is broken** — the `lint` script runs `eslint .` but eslint is neither a
   dependency nor configured. Don't rely on it; don't cite it as a check.
 - **No test suite exists.** Verify by typechecking and running the app.
@@ -205,3 +204,15 @@ Render deploy steps are still accurate — trust those, not its feature/demo cla
 proxy), `API_INTERNAL_URL=http://localhost:3001` (server → Nest API, **no** `/api` suffix), and
 optional `NEXT_PUBLIC_WEB_URL` / `NEXT_PUBLIC_AGENT_PORTAL_URL` link targets. Deployment is Render
 (`render.yaml`, build `pnpm build:tenant`, health check `/login`).
+
+### Checks
+
+- `pnpm verify` is the check to run before handing work back. It is the production build
+  (`pnpm build:tenant`), and since 13 Nov 2026 the build type checks: `typescript.ignoreBuildErrors`
+  was removed from `next.config.mjs` and must not come back (shared rule 7). A type error now
+  fails the build here, in CI and on Render.
+- `pnpm typecheck` is the faster `tsc --noEmit` for use while working. It needs one earlier
+  build or dev run, because `next-env.d.ts` imports route types that Next generates.
+- `.github/workflows/ci.yml` runs `pnpm verify` on every pull request.
+- The app type checked at zero errors when this was written. Keep it there.
+- There is no lint config and no test suite yet; `pnpm lint` does not work. Do not claim either passed.
