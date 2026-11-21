@@ -33,7 +33,8 @@ export default function OnboardingPage() {
   const { onboardingSteps, leasingOnboarding, loading } = useTenantData();
   const [applicationDocsOpen, setApplicationDocsOpen] = useState(false);
   const completed = onboardingSteps.filter((s) => s.status === 'completed').length;
-  const onboardingComplete = isOnboardingChecklistComplete(onboardingSteps);
+  const onboardingComplete =
+    leasingOnboarding?.onboardingComplete === true || isOnboardingChecklistComplete(onboardingSteps);
   const applicationDocs = leasingOnboarding?.applicationDocuments ?? [];
 
   return (
