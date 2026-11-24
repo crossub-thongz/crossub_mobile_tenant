@@ -47,7 +47,7 @@ When a hidden failure would be covered by default or empty data, show the failur
 ## This repo: crossub_mobile_tenant (tenant app)
 
 The CROSSUB **tenant** mobile-web app (Next.js 16 App Router, React 19, Tailwind v4).
-pnpm workspace: `apps/tenant` (`@crossub/tenant`, port **3003**) + `packages/api-contract`.
+pnpm workspace: `apps/tenant` (`@crossub/tenant`, port **3003**).
 One of five role apps; the backend and the other four apps are **sibling repos** under
 `~/Desktop/crossub/`.
 
@@ -80,29 +80,21 @@ The app never hand-writes request/response types. Everything comes from
   `components['schemas'][...]` types. A backend change should surface as a TypeScript
   error, not a runtime surprise.
 
-#### Two copies of the contract — know which one resolves
+#### One contract: the published package
 
-`apps/tenant/package.json` declares `"@crossub-thongz/api-contract": "workspace:*"`, so it
-resolves to the **checked-in `packages/api-contract/`** in this repo — a synced snapshot of
-`crossub_web/packages/api-contract` (the canonical generator, currently ahead of the copy here).
-The published GitHub Packages tarball is only used by repos that don't vendor it.
+`apps/tenant/package.json` depends on a published version of `@crossub-thongz/api-contract`
+(GitHub Packages), generated in `crossub_web/packages/api-contract`. There is no copy in this
+repo since 24 Nov 2026.
 
-Consequences worth knowing before debugging type errors:
-
-- TypeScript reads the package's **built `dist/index.d.ts`** (`dist/` is gitignored), so the
-  contract must be built for types to be current — that's what `pnpm build:tenant` does and
-  plain `pnpm build` does not.
-- `apps/tenant/node_modules/@crossub-thongz/api-contract` can be a **stale symlink to a
-  published `0.10.0` tarball** left over from before the workspace switch. When that's the
-  case `tsc --noEmit` reports dozens of "Property `Tenant…Dto` does not exist" and
-  "not assignable to `PathsWithMethod`" errors even though `packages/api-contract/src/types.ts`
-  defines them. Fix by reinstalling and building the contract, not by editing call sites.
 - `.npmrc` points the `@crossub-thongz` scope at GitHub Packages and expects `GITHUB_TOKEN`
-  in the environment; without it `pnpm install` warns (and would fail if it had to fetch).
+  (a token with `read:packages`) in the environment; without it `pnpm install` fails.
+- A "Property `Tenant…Dto` does not exist" or "not assignable to `PathsWithMethod`" error
+  means the app calls something the installed version does not have. Raise the version, do
+  not edit call sites or add casts.
 
-**Updating the contract:** regenerate in `crossub_web` (`pnpm --filter @crossub/api contract`),
-then sync `src/types.ts` + `openapi*.json` into `packages/api-contract/` here (and bump/publish
-if the other apps need it).
+**Updating the contract:** regenerate and publish in `crossub_web`, raise the version in
+`apps/tenant/package.json`, run `pnpm install`, commit `package.json` and `pnpm-lock.yaml`.
+Never copy contract files into this repo.
 
 ### Request path & auth
 
